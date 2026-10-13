@@ -1,17 +1,20 @@
-﻿# 在「桌面」和「开始菜单」各放一个「同步到 GitHub」的快捷方式（带自绘图标）。
-# 想重建 / 改名，直接再运行一次：powershell -ExecutionPolicy Bypass -File tools\make_shortcut.ps1
+﻿# 在「桌面」和「开始菜单」放两个快捷方式（都带自绘图标）：
+#   ① ★ 同步到GitHub       —— 提交 + 推送到 GitHub
+#   ② ★ 一键发布上线（数境） —— 重建 + 回归 + 推 GitHub + 检查线上 + 把 IDE 切到最前
+# 想重建 / 改名，直接再运行一次：
+#   powershell -ExecutionPolicy Bypass -File tools\make_shortcut.ps1
 #
-# 名字故意用一个排序靠前的符号开头，桌面上会排在前面好找；
-# 开始菜单里也有了，按 Win 键搜「同步」就能直接回车打开。
+# 名字用 ★ 开头：桌面按名称排序时排在前面，不容易被别的文件盖住。
 
 $ErrorActionPreference = 'Stop'
-$root   = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$cmd    = Join-Path $root '同步到GitHub.cmd'
-$icon   = Join-Path $root 'tools\assets\sync.ico'
-$name   = '★ 同步到GitHub'
+$root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
-if (-not (Test-Path $cmd))  { throw "找不到 $cmd" }
-if (-not (Test-Path $icon)) { throw "找不到图标 $icon（先运行 python tools/make_icon.py）" }
+$items = @(
+    @{ name = '★ 同步到GitHub';        cmd = '同步到GitHub.cmd';   icon = 'tools\assets\sync.ico';
+       desc = '把数境169的最新改动提交并推送到 GitHub' },
+    @{ name = '★ 一键发布上线（数境）'; cmd = '一键发布上线.cmd';   icon = 'tools\assets\publish.ico';
+       desc = '重建 + 回归 + 推 GitHub + 检查线上，最后提示在 IDE 里点发布' }
+)
 
 $targets = @(
     [Environment]::GetFolderPath('Desktop'),
@@ -19,27 +22,36 @@ $targets = @(
 )
 
 $shell = New-Object -ComObject WScript.Shell
-foreach ($dir in $targets) {
-    if (-not (Test-Path $dir)) { continue }
-    $lnk = Join-Path $dir ($name + '.lnk')
-    $sc = $shell.CreateShortcut($lnk)
-    $sc.TargetPath       = "$env:SystemRoot\System32\cmd.exe"
-    $sc.Arguments        = '/c ""' + $cmd + '""'
-    $sc.WorkingDirectory = $root
-    $sc.IconLocation     = $icon + ',0'
-    $sc.Description      = '把数境169的最新改动提交并推送到 GitHub'
-    $sc.Save()
-    Write-Host "已创建：$lnk"
+foreach ($it in $items) {
+    $cmd  = Join-Path $root $it.cmd
+    $icon = Join-Path $root $it.icon
+    if (-not (Test-Path $cmd))  { throw "找不到 $cmd" }
+    if (-not (Test-Path $icon)) { throw "找不到图标 $icon（先运行 python tools/make_icon.py）" }
+    foreach ($dir in $targets) {
+        if (-not (Test-Path $dir)) { continue }
+        $lnk = Join-Path $dir ($it.name + '.lnk')
+        $sc = $shell.CreateShortcut($lnk)
+        $sc.TargetPath       = "$env:SystemRoot\System32\cmd.exe"
+        $sc.Arguments        = '/c ""' + $cmd + '""'
+        $sc.WorkingDirectory = $root
+        $sc.IconLocation     = $icon + ',0'
+        $sc.Description      = $it.desc
+        $sc.Save()
+        Write-Host "已创建：$lnk"
+    }
 }
 
-# 顺便把手边的 cmd 文件也在开始菜单留一份（怕快捷方式被误删）
-$lnkBak = Join-Path ([Environment]::GetFolderPath('Programs')) '同步到GitHub（命令行原文件）.lnk'
-$sc = $shell.CreateShortcut($lnkBak)
-$sc.TargetPath       = $cmd
-$sc.WorkingDirectory = $root
-$sc.IconLocation     = $icon + ',0'
-$sc.Description      = '直接运行同步脚本（和上个快捷方式等价）'
-$sc.Save()
-Write-Host "已创建：$lnkBak"
+# 开始菜单再留一份"命令行原文件"版本（怕快捷方式被误删时还能跑）
+foreach ($it in $items) {
+    $lnkv = Join-Path ([Environment]::GetFolderPath('Programs')) ($it.name + '（原文件）.lnk')
+    $sc = $shell.CreateShortcut($lnkv)
+    $sc.TargetPath       = Join-Path $root $it.cmd
+    $sc.WorkingDirectory = $root
+    $sc.IconLocation     = (Join-Path $root $it.icon) + ',0'
+    $sc.Description      = $it.desc + '（直接运行 cmd 文件）'
+    $sc.Save()
+    Write-Host "已创建：$lnkv"
+}
+
 Write-Host ''
-Write-Host '完成。桌面上找「★ 同步到GitHub」；开始菜单按 Win 键搜「同步」同样能找到。'
+Write-Host '完成。桌面 / 开始菜单里搜「同步」或「发布」都能找到。'
