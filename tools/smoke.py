@@ -104,6 +104,14 @@ PROBE = r"""
       if(!t||!t.textContent.trim())throw new Error('公告没有标题');
       if(!/^v?\d/.test(String(NEWS_VER)))throw new Error('NEWS_VER 长得不对：'+NEWS_VER);
       return NEWS_VER+' · '+t.textContent.trim();});
+    out.checks.账号与同步 = safe('acct',function(){
+      closePanel();showAccountPanel();
+      var hasPhone=!!document.getElementById('acctPhone'),hasWx=!!document.getElementById('acctWx');
+      var why=/登录同步用不了/.test(panel.textContent||'');
+      closePanel();
+      if(!hasPhone&&!why)throw new Error('面板里既没有手机号输入框，也没有"不支持登录"的说明');
+      return hasPhone?('手机号+验证码入口在 · 微信登录'+(hasWx?'在':'缺'))
+                     :'本地地址：按设计提示不支持登录（线上域名下才可用）';});
     out.checks.存档面板 = safe('panel',function(){
       openPanel('<h2>冒烟</h2><div class="sub">面板通路</div>');closePanel();return '开合正常';});
     dump();
