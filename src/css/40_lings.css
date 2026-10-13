@@ -1,0 +1,228 @@
+/* ================================================================
+   手机横屏专用布局（173.1）
+   ----------------------------------------------------------------
+   竖屏时面板是 560px 宽的窄条 —— 一列往下排刚刚好。
+   可横屏手机是 830×330 这种"又宽又矮"的形状：宽度用不到七成
+   （两侧白空 260px），高度只有 260px 出头，题干和四个选项
+   一列排下来必然超屏，只能靠滚动 —— 这正是用户截图里看到的样子。
+
+   横屏要解决的是「高度不足」而不是「宽度不足」，所以对策是**把一列拆成两列**：
+     左栏 → 题面（题干 + 条件清单 + 题图）
+     右栏 → 作答（选项 + 思路台阶 + 解析反馈 + 按钮）
+   同样一块屏幕，纵向内容直接减半，一屏就能看全，不用滚。
+   标题、统计行、进度这类"全局信息"横跨两栏，维持原来的居中观感。
+
+   判定用 orientation + max-height 双条件：
+   只写 orientation 会把 iPad 横屏（1024 高）也当成手机横屏，
+   而平板横屏本来就够高，一列排下来很稳，不该被拆栏。
+   ================================================================ */
+@media (orientation:landscape) and (max-height:560px){
+  /* 1. 面板放宽 + 取消高度压缩：横屏的瓶颈是高度，面板要尽量吃满 */
+  #modal{padding:max(6px,var(--safeT)) max(8px,var(--safeR)) max(6px,var(--safeB)) max(8px,var(--safeL))}
+  /* 96% → calc(100% - 8px)：横屏的竖向空间要用尽。
+     解析常常三四行，差这几像素就从"能看到结论"变成"要滚一下"。
+     留 8px 上下各 4px，避免面板边框和屏幕边缘贴死。 */
+  .panel{width:min(940px,100%);max-height:calc(100% - 8px);
+    padding:clamp(9px,calc(var(--vmin) * .0338),14px) clamp(12px,calc(var(--vmin) * .0436),17px)}
+
+  /* 2. 题面面板切成两栏 —— 只对"答题面板"生效（它才有 .qtext + .opts）。
+     用 :has() 判定：面板里同时存在题面和选项时才是答题面板，
+     菜单 / 图鉴 / 商行这些面板没有 .opts，保持单列不受影响。
+     浏览器不支持 :has() 时整条规则被忽略，自动退回竖屏单列，不会坏掉。 */
+  .panel:has(> .qtext):has(> .opts){
+    display:grid;
+    grid-template-columns:minmax(0,1.06fr) minmax(0,1fr);
+    /* 不能用 dense：它会把跨栏的标题行塞到题面之后的空位里，
+       屏幕上就变成"题干在上、标题跑到题干下面"。
+       按 DOM 顺序老实排 —— 标题 → 题面/选项 → 解析，本来就是这个次序。 */
+    grid-auto-flow:row;
+    column-gap:clamp(12px,calc(var(--vmin) * .0436),18px);
+    row-gap:0;
+    align-content:start;
+  }
+  /* 跨栏元素：标题 / 统计 / 进度徽章 / 灵条 / 宽按钮行 / 解析反馈。
+     它们各占一整行、按 DOM 顺序自上而下排，不用 dense 也不会乱。
+     不给 grid-row —— 前端元素的行号取决于前面有几个，
+     写死一个行号会把标题行全叠在同一格里。让自动放置按顺序排即可。 */
+  .panel:has(> .qtext):has(> .opts) > h2,
+  .panel:has(> .qtext):has(> .opts) > .sub,
+  .panel:has(> .qtext):has(> .opts) > div[style*="text-align:center"],
+  .panel:has(> .qtext):has(> .opts) > .lstrip,
+  .panel:has(> .qtext):has(> .opts) > .row,
+  .panel:has(> .qtext):has(> .opts) > .imp-box{grid-column:1 / -1}
+  /* 题面固定在左栏；选项、思路回顾、解析反馈全部进右栏，
+     右栏自上而下就是"作答 → 对答案 → 看解析"这一条完整动线 */
+  .panel:has(> .qtext):has(> .opts) > .qtext,
+  .panel:has(> .qtext):has(> .opts) > .qfig{grid-column:1}
+  /* 左栏只有题面，短题会留下一大片空白 —— 让题面卡**撑满左栏**，
+     空白就变成了卡片自己的留白，左栏看着是"一张题面卡"而不是"半边空"；
+     题干文字在卡内垂直居中，短题不会孤零零飘在顶端。
+     span 2 是关键：右栏的选项与解析各占一行（共两行），
+     左栏只跨一行的话第 2 行是空的，卡就撑不满。 */
+  .panel:has(> .qtext):has(> .opts):not(:has(> .qfig)) > .qtext{
+    grid-row:span 2;align-self:stretch;
+    display:flex;align-items:center;justify-content:center;
+    flex-direction:column;min-height:0}
+  .panel:has(> .qtext):has(> .opts) > .qtext > .qs{width:100%}
+  /* 拆过条的题（seg）是左对齐的多行清单，不能居中 —— 居中了每行起点都不同 */
+  .panel:has(> .qtext):has(> .opts) > .qtext.seg{align-items:flex-start;justify-content:flex-start}
+  .panel:has(> .qtext):has(> .opts) > .qmeta,
+  .panel:has(> .qtext):has(> .opts) > .opts,
+  .panel:has(> .qtext):has(> .opts) > .appr-recap,
+  .panel:has(> .qtext):has(> .opts) > #feedback,
+  .panel:has(> .qtext):has(> .opts) > #hintBox,
+  .panel:has(> .qtext):has(> .opts) > .wb-op{grid-column:2}
+  /* 右栏的第一个元素顶上去，和左栏题干齐平 */
+  .panel:has(> .qtext):has(> .opts) > .qmeta,
+  .panel:has(> .qtext):has(> .opts) > .opts:first-child{margin-top:0}
+
+  /* 3. 横屏纵向空间的再分配：标题压扁、锚线内推收窄。
+     标题行和统计行横屏下合成紧凑的一条 —— 竖向每 1px 都是选项的地盘。 */
+  .panel h2{font-size:var(--fs-md);margin-bottom:0;line-height:1.28}
+  .panel .sub{font-size:var(--fs-2xs);margin-bottom:3px;line-height:1.3}
+  .panel .qtag,.panel .qsrc{margin-bottom:4px;padding:1px 8px;font-size:var(--fs-2xs)}
+  .qtext{padding:9px 10px!important;
+    padding-left:clamp(12px,calc(var(--vmin) * .0390),15px)!important}
+  .qtext::after{top:6px;bottom:6px}
+  /* 右栏元素之间的竖向间距：Grid 子项自己的 margin 会被 row-gap 叠加，
+     所以把 row-gap 设 0，靠元素自身 margin 控制节奏，避免双份间距 */
+  .panel:has(> .qtext):has(> .opts) > .opts{margin-bottom:0}
+  .panel:has(> .qtext):has(> .opts) > .appr-recap,
+  .panel:has(> .qtext):has(> .opts) > #hintBox{margin-bottom:6px}
+
+  /* 4. 右栏选项：横屏时半屏宽约 400px，足够两列排开 */
+  .opts{gap:8px}
+  .opt{min-height:2.15em;padding-top:7px;padding-bottom:7px;font-size:calc(var(--fs-md) * var(--qs,1))}
+  .opt::after{width:1.48em;height:1.48em}
+  .opts.one .opt{font-size:calc((var(--fs-md) + var(--fs-sm)) / 2 * var(--qs,1))}
+
+  /* 5. 横屏里的提示行、按钮行收紧 */
+  .qmeta{margin-bottom:6px}
+  /* toast 在横屏改挂底部：横屏只有 300px 高，面板又几乎占满全屏，
+     放顶部必然压住标题和第一行选项。底部在横屏反而是空的
+     （摇杆和互动键都在左右两侧），落到那儿谁也挡不着。 */
+  #toast{top:auto;bottom:calc(var(--safeB) + 6px);gap:4px}
+  .tst{font-size:var(--fs-xs);padding:calc(var(--pad) * .6) calc(var(--pad) * 1.35)}
+  .row{margin-top:8px;gap:8px}
+  .row .btn{padding-top:7px;padding-bottom:7px;font-size:var(--fs-sm)}
+  #feedback{margin-top:8px;padding:9px 11px;font-size:var(--fs-sm);line-height:1.62}
+
+  /* 6. 题干限高在横屏下要松绑：换两栏后纵向已经不紧张，
+     再限高会让本来就短的左栏更空 */
+  .qtext.scrollable{max-height:none!important}
+
+  /* 7. 菜单类面板（☰ 菜单、设置、模型选择）改双列。
+     它们本来就是 display:grid 的一列卡片，横屏宽度富余、高度吃紧，
+     排成两列一屏就能看全，不用滚。 */
+  .menu-list{grid-template-columns:1fr 1fr;gap:7px}
+  .menu-li{padding-top:8px;padding-bottom:8px}
+  .menu-li .e{font-size:var(--fs-xl)}
+  .menu-li .d{font-size:var(--fs-2xs);line-height:1.35;margin-top:1px}
+}
+
+/* 横屏 + 极矮（<340px）：字号与间距再收一档，保证一屏放得下 */
+@media (orientation:landscape) and (max-height:400px){
+  .panel{padding:8px 12px}
+  .panel h2{font-size:var(--fs-md)}
+  .panel .sub{display:none}
+  .opts{gap:6px}
+  .opt{min-height:2em;padding-top:6px;padding-bottom:6px}
+  .row .btn{padding-top:6px;padding-bottom:6px}
+}
+
+/* ============ 思路灵 · 心声条（3.3.0）============
+   墨蓝夜航上一道会说话的鎏金细缝：只占一行，挤在题干与选项之间，
+   给气质不给答案。✕ 永久静默；轻点条身展开。
+   用左边框 3px 吃灵的颜色，不另起色块 —— 八色徽章已经建立了颜色语言。 */
+.lstrip{position:relative;margin:0 0 8px;border-radius:12px;
+  background:rgba(9,20,34,.62);border:1px solid rgba(255,255,255,.08);
+  border-left:3px solid var(--lc,#ffd76a);
+  padding:7px 30px 7px 11px;overflow:hidden;cursor:pointer;
+  animation:lsIn .25s ease-out}
+@keyframes lsIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.ls-row{display:flex;gap:7px;align-items:baseline;
+  font-size:var(--fs-xs);line-height:1.5;min-width:0}
+.ls-row+.ls-row{margin-top:3px}
+.ls-who{flex:none;font-weight:800;white-space:nowrap;color:var(--lc,#ffd76a)}
+.ls-say{color:#d4e4f5;min-width:0;overflow-wrap:anywhere}
+.ls-say i{color:#8fa8c2;font-style:normal}
+.ls-tag{flex:none;margin-left:auto;align-self:center;color:#7d94ab;
+  font-size:var(--fs-2xs);white-space:nowrap}
+.ls-more{display:none;margin-top:5px;padding-top:5px;
+  border-top:1px dashed rgba(255,255,255,.12);
+  color:#9cc0e0;font-size:var(--fs-xs);line-height:var(--lh-base)}
+.lstrip[data-open="1"] .ls-more{display:block}
+.lstrip[data-open="1"] .ls-tag{display:none}
+.ls-x{position:absolute;top:5px;right:5px;width:21px;height:21px;border-radius:50%;
+  border:none;background:transparent;color:#7d94ab;font-size:var(--fs-xs);
+  line-height:1;cursor:pointer;flex:none}
+.ls-x:active{background:rgba(255,255,255,.12);color:#eaf4ff}
+
+/* ============ 思路灵 · 图鉴分区 ============ */
+.lgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.lcell{background:var(--gb-face-2);border:none;
+  border-radius:13px;padding:8px 4px 7px;text-align:center;cursor:pointer;
+  color:#eaf4ff;font-family:inherit;-webkit-tap-highlight-color:transparent;
+  position:relative;isolation:isolate;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.lcell::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.lcell:active{transform:scale(.95);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.lcell .e{font-size:var(--fs-xl);line-height:1.2;filter:drop-shadow(0 2px 7px rgba(0,0,0,.4))}
+.lcell .n{font-size:var(--fs-xs);font-weight:700;margin-top:2px}
+.lcell .lv{font-size:var(--fs-2xs);color:#ffd76a;margin-top:1px;letter-spacing:-1px}
+.lcell.lock{opacity:.62}
+.lcell.lock .e{filter:grayscale(1)}
+.lcell.lock .n{color:#7d94ab;font-weight:600}
+.lcell.lock .lv{color:#5f748a}
+/* 图鉴里的灵详情卡 */
+.lcard{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:15px;padding:11px 13px;margin-top:9px;text-align:left}
+.lcard.lock{background:rgba(255,255,255,.03)}
+.lc-hd{display:flex;align-items:center;gap:9px}
+.lc-e{font-size:var(--fs-2xl);line-height:1;flex:none}
+.lc-tt{min-width:0}
+.lc-n{font-size:var(--fs-lg);font-weight:800;color:#fff;line-height:1.2}
+.lc-sub{font-size:var(--fs-xs);color:#9cc0e0}
+.lc-stars{margin-left:auto;flex:none;color:#ffd76a;font-size:var(--fs-sm);
+  letter-spacing:1px;white-space:nowrap}
+.lc-craft{margin-top:7px;font-size:var(--fs-sm);color:#cfe0f2;line-height:var(--lh-base)}
+.lc-quote{margin-top:6px;border-left:3px solid var(--lc,#ffd76a);
+  background:rgba(0,0,0,.22);border-radius:0 9px 9px 0;padding:6px 10px;
+  font-size:var(--fs-sm);color:#e8f1fb;line-height:var(--lh-base)}
+.lc-how{margin-top:7px;font-size:var(--fs-xs);color:#ffd0a0;line-height:var(--lh-base)}
+
+/* ============ 思路灵 · 觉醒仪式 ============
+   一屏金光：扩散环 + 灵浮现 + 名号，2.4s 自动散，全程 pointer-events:none，
+   不挡玩家紧接着点「继续」。 */
+#lingFx{position:absolute;inset:0;z-index:60;display:none;
+  align-items:center;justify-content:center;flex-direction:column;
+  pointer-events:none;text-align:center;padding:24px}
+#lingFx.go{display:flex}
+#lingFx .lf-veil{position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 46%,rgba(255,215,106,.22),rgba(7,16,28,.86) 68%);
+  animation:lfVeil 2.3s ease both}
+#lingFx .lf-ring{position:absolute;left:50%;top:46%;
+  width:min(76vw,440px);height:min(76vw,440px);
+  border-radius:50%;border:3px solid rgba(255,215,106,.85);
+  animation:lfRing 1.15s ease-out both}
+#lingFx .lf-ring.r2{animation-delay:.18s;border-color:rgba(255,235,170,.6)}
+#lingFx .lf-e{position:relative;font-size:clamp(58px,calc(var(--vmin)*.19),96px);
+  line-height:1;filter:drop-shadow(0 0 26px rgba(255,215,106,.8));
+  animation:lfPop .5s cubic-bezier(.2,1.6,.4,1) both,lfFloat 2.4s ease-in-out .55s infinite}
+#lingFx .lf-t{position:relative;margin-top:16px;font-size:var(--fs-xl);
+  font-weight:800;letter-spacing:7px;color:#ffe9a8;
+  text-shadow:0 2px 14px rgba(0,0,0,.75);animation:lfIn .55s .18s both}
+#lingFx .lf-n{position:relative;margin-top:7px;font-size:var(--fs-2xl);
+  font-weight:800;text-shadow:0 2px 14px rgba(0,0,0,.75);
+  animation:lfIn .55s .3s both}
+#lingFx .lf-c{position:relative;margin-top:8px;font-size:var(--fs-sm);
+  color:#cfe6ff;text-shadow:0 1px 8px rgba(0,0,0,.8);
+  animation:lfIn .55s .42s both}
+@keyframes lfPop{from{transform:scale(.25);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes lfIn{from{opacity:0;transform:translateY(11px)}to{opacity:1;transform:none}}
+@keyframes lfFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes lfRing{0%{transform:translate(-50%,-50%) scale(.03);opacity:.95}
+  100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
+@keyframes lfVeil{0%{opacity:0}18%{opacity:1}100%{opacity:0}}

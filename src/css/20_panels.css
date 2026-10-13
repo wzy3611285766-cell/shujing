@@ -1,0 +1,208 @@
+/* ============ 练枪专题（1.9.0）============
+   专题 chip 比科目 chip 小一号，一行能挤下三四个 */
+.tp-wrap{max-height:38vh;overflow:auto;-webkit-overflow-scrolling:touch;
+  border-radius:14px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);padding:9px 10px;margin-top:6px;text-align:left}
+.tp-grp{margin-bottom:9px}
+.tp-grp:last-child{margin-bottom:0}
+.tp-hd{color:#8fb4d6;font-size:var(--fs-xs);font-weight:800;margin-bottom:5px}
+.tp-chips{display:flex;gap:5px;flex-wrap:wrap}
+.tp{background:var(--gb-face-2);border:none;
+  border-radius:999px;padding:4px 10px;color:#cfe6ff;font-size:var(--fs-sm);font-weight:700;
+  cursor:pointer;white-space:nowrap;line-height:1.5;display:inline-flex;align-items:center;gap:4px;
+  position:relative;isolation:isolate;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.tp::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.tp:active{transform:scale(.93);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.tp.on{background:var(--gb-tint-gold);color:#fff;text-shadow:0 1px 4px rgba(90,45,0,.45);
+  box-shadow:var(--gb-tint-gold-hi),var(--gb-tint-gold-edge),var(--gb-drop)}
+.tp b{font-weight:800;font-variant-numeric:tabular-nums;opacity:.85}
+.tp.on b{opacity:1}
+/* 这个难度档没有该专题的题：置灰但仍可点（点了会自动切档）。
+   虚线改用 outline（不占布局尺寸，边框已换成玻璃结构的发丝线） */
+.tp.off{opacity:.55;outline:1px dashed rgba(255,255,255,.30);outline-offset:-1.5px}
+.tp-all{margin-bottom:8px}
+
+/* ============ AI 深度解析（1.8.0）============
+   导入卡片里的解析 / 步骤 / 思路层，以及重练时的思路展开 */
+.ai-sec{border-radius:12px;background:rgba(94,214,255,.07);
+  border:1px solid rgba(94,214,255,.24);padding:8px 10px;margin-top:6px}
+.ai-sec .ai-hd{color:#9fe4ff;font-size:var(--fs-xs);font-weight:800;margin-bottom:5px;
+  display:flex;align-items:center;gap:5px}
+.ai-sec .shot-inp{background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.12)}
+.ai-sec[open] summary{color:#9fe4ff}
+.ai-sec summary{color:#8fb4d6;font-size:var(--fs-xs);font-weight:700;cursor:pointer;
+  list-style:none;padding:1px 0}
+.ai-sec summary::-webkit-details-marker{display:none}
+.ai-sec summary::before{content:'▸ ';color:#5ed6ff}
+.ai-sec[open] summary::before{content:'▾ '}
+/* 重练反馈里的解题步骤：一步一行，编号用青色圆点 */
+.ai-steps{text-align:left;margin:8px 0 2px;padding:8px 10px;border-radius:12px;
+  background:rgba(94,214,255,.08);border:1px solid rgba(94,214,255,.22)}
+.ai-steps .hd{color:#9fe4ff;font-size:var(--fs-xs);font-weight:800;margin-bottom:5px}
+.ai-steps ol{margin:0;padding-left:1.25em}
+.ai-steps li{color:#dbeafe;font-size:var(--fs-sm);line-height:var(--lh-base);margin:2px 0;
+  overflow-wrap:anywhere}
+.ai-steps li::marker{color:#5ed6ff;font-weight:800}
+/* 错题中心列表里折叠的思路 */
+.wb-ai{margin-top:7px}
+/* 自评题（没有选项的导入题）：第二步的对答案区 */
+.sr-ans{border-radius:14px;padding:12px 14px;margin-top:10px;text-align:left;
+  font-size:var(--fs-md);line-height:var(--lh-base);overflow-wrap:anywhere;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#eaf4ff}
+.sr-ans b{color:#ffd76a}
+/* ============ 错题中心（1.7.0）============
+   页签 / 角标 / 单题操作 / 分布条：错题本升级成复习系统后新增的样式 */
+.wb-tabs{display:flex;gap:6px;margin:0 0 10px;justify-content:center;flex-wrap:wrap}
+.wb-tab{background:var(--gb-face-2);border:none;
+  border-radius:999px;padding:5px 11px;color:#cfe6ff;font-size:var(--fs-sm);font-weight:700;
+  cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;
+  line-height:1.4;position:relative;isolation:isolate;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.wb-tab::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.wb-tab:active{transform:scale(.94);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.wb-tab.on{background:var(--gb-tint-gold);color:#fff;text-shadow:0 1px 4px rgba(90,45,0,.45);
+  box-shadow:var(--gb-tint-gold-hi),var(--gb-tint-gold-edge),var(--gb-drop)}
+/* 顶栏 📕 上的待复习角标：有到期题时红点 + 呼吸光 */
+.wb-dot{display:inline-flex;align-items:center;justify-content:center;
+  min-width:1.3em;height:1.3em;padding:0 .3em;margin-left:4px;border-radius:999px;
+  background:#ff5a5a;color:#fff;font-size:.76em;font-weight:800;
+  font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px rgba(10,24,40,.55)}
+.wb-dot[hidden]{display:none}
+/* 窄屏顶栏放不下 📕，待复习数改挂在 ☰ 的右上角 */
+#btnMenu{position:relative}
+.wb-dot.pin{position:absolute;top:-5px;right:-5px;margin:0;min-width:15px;height:15px;
+  font-size:var(--fs-2xs);border:1px solid rgba(10,24,40,.7)}
+/* 菜单里「📕 错题中心」那一项：有到期题就描一圈红边 + 挂同款角标。
+   顶栏 ☰ 上的数字必须有个落点 —— 否则玩家点开菜单，
+   满屏找不到哪一项在提醒他（这正是"红点 4 却不知道是谁"的来源）。 */
+.menu-li.pend-item{box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),
+  0 0 0 .5px rgba(255,90,90,.60),var(--gb-drop)}
+.menu-li.pend-item .d{color:#ffc0c0}
+#btnWb.pend{box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),0 0 0 .5px rgba(255,90,90,.65),var(--gb-drop);
+  animation:wbPulse 2s ease-in-out infinite}
+@keyframes wbPulse{
+  0%,100%{box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),0 0 0 .5px rgba(255,90,90,.65),var(--gb-drop)}
+  50%{box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),0 0 0 4px rgba(255,90,90,.22),var(--gb-drop)}}
+/* 单题下面的熟炼度 / 复习日小标签 */
+.wb-meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.wb-tag{border-radius:999px;padding:2px 8px;font-size:var(--fs-xs);font-weight:700;
+  border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);
+  color:#9cc0e0;white-space:nowrap;line-height:var(--lh-base)}
+.wb-tag.box{background:rgba(94,214,255,.12);border-color:rgba(94,214,255,.34);color:#9fe4ff;
+  letter-spacing:1px}
+.wb-tag.due{background:rgba(255,90,90,.16);border-color:rgba(255,90,90,.42);color:#ffb0b0}
+.wb-tag.ok{background:rgba(52,199,123,.14);border-color:rgba(52,199,123,.36);color:#8ef0b8}
+/* 单题操作：收藏 / 改 / 提前复习 / 会了 / 删 */
+.wb-ops{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.wb-op{background:var(--gb-face-2);border:none;
+  border-radius:999px;padding:3px 9px;color:#cfe6ff;font-size:var(--fs-xs);font-weight:700;
+  cursor:pointer;white-space:nowrap;line-height:var(--lh-base);
+  position:relative;isolation:isolate;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.wb-op::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.wb-op:active{transform:scale(.93);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.wb-op.on{background:var(--gb-tint-gold);color:#fff;text-shadow:0 1px 3px rgba(90,45,0,.45);
+  box-shadow:var(--gb-tint-gold-hi),var(--gb-tint-gold-edge),var(--gb-drop)}
+/* 搜索框：全局禁了 user-select，这里要单独放开才选得中文字 */
+.wb-sr{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;padding:7px 13px;color:#eaf4ff;font-size:var(--fs-sm);
+  margin-bottom:8px;-webkit-user-select:text;user-select:text;outline:none}
+.wb-sr::placeholder{color:#7f9cba}
+/* 分析页的分布条 */
+.wb-bar{display:flex;align-items:center;gap:8px;margin:5px 0}
+.wb-bar .nm{flex:none;min-width:56px;color:#9cc0e0;font-size:var(--fs-xs);font-weight:700}
+.wb-bar .tr{flex:1;height:9px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden}
+.wb-bar .tr i{display:block;height:100%;border-radius:999px;
+  background:linear-gradient(90deg,#ff9f2b,#ff5a5a)}
+.wb-bar .vl{flex:none;color:#fff;font-size:var(--fs-xs);font-weight:700;
+  font-variant-numeric:tabular-nums;min-width:24px;text-align:right}
+.wb-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:11px 13px;margin-bottom:9px}
+.wb-kv{display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-sm);
+  color:#9cc0e0;line-height:var(--lh-loose)}
+.wb-kv b{color:#fff;font-variant-numeric:tabular-nums}
+/* 错题照片：列表里的小缩略图 */
+.wb-th{display:block;width:100%;max-height:150px;object-fit:contain;
+  border-radius:8px;background:#fff;margin-bottom:6px;cursor:zoom-in}
+/* 错题本里的折叠题图 */
+.wb-fig{margin-top:6px}
+.wb-fig>summary{color:#9fe4ff;font-size:var(--fs-sm);font-weight:600;cursor:pointer;
+  padding:3px 0}
+.wb-fig .fgbox{margin-top:5px}
+.wb-fig .qfig-svg{max-height:26vh}
+/* 攻坚题图：内联 SVG，白底深线，点一下放大看 */
+.qfig{margin:8px 0 10px;text-align:center}
+.qfig-svg{display:block;width:100%;height:auto;max-height:32vh;
+  border-radius:10px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.4);
+  cursor:zoom-in}
+/* 题图缩档：面板挤不下时由 JS 挂上 fig-sm / fig-xs，
+   width 改成 auto 让图等比缩小居中（只压 max-height 会把图压扁） */
+.qfig.fig-sm .qfig-svg{max-height:22vh;width:auto;margin:0 auto}
+.qfig.fig-xs .qfig-svg{max-height:15vh;width:auto;margin:0 auto}
+/* 长解析 / 完整解题步骤：答完之后才摊开 */
+.qexp{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:10px 13px;margin-top:9px;text-align:left;
+  font-size:var(--fs-sm);line-height:var(--lh-loose);color:#dbeafe;overflow-wrap:anywhere}
+.qexp .hd{color:#ffd76a;font-weight:800;margin-bottom:3px}
+.qexp ol{margin:4px 0 0 18px;padding:0}
+.qexp li{margin:4px 0}
+/* 多解层：一题的 2~3 条路，每条自带「什么时候想到它」 */
+.ang{background:rgba(168,120,255,.09);border-left:3px solid rgba(168,120,255,.5);
+  border-radius:0 10px 10px 0;padding:8px 11px;margin-top:7px}
+.ang-n{color:#e4d9ff;font-weight:800;font-size:var(--fs-md);margin-bottom:2px}
+.ang-d{color:#dbeafe}
+.ang-s{color:#c9b6f0;font-size:var(--fs-sm);margin-top:4px;line-height:var(--lh-base)}
+.ang-tip{color:#9cc0e0;font-size:var(--fs-xs);margin-top:8px;
+  padding-top:7px;border-top:1px dashed rgba(255,255,255,.14);line-height:var(--lh-base)}
+/* AI 讲解卡（拍题后生成） */
+.tc{border:1px solid rgba(94,214,255,.34);background:rgba(94,214,255,.08);
+  border-radius:16px;padding:12px 13px;margin-top:10px;text-align:left}
+.tc .hd{font-weight:800;color:#9fe4ff;font-size:var(--fs-md);margin-bottom:6px}
+.tc-step{background:rgba(255,255,255,.06);border-radius:10px;padding:8px 11px;
+  margin-top:7px;font-size:var(--fs-sm);line-height:var(--lh-base);color:#dbeafe;
+  overflow-wrap:anywhere}
+.tc-step b{color:#ffd76a}
+.tc-lv{display:inline-block;border-radius:999px;padding:2px 9px;font-size:var(--fs-xs);
+  font-weight:700;margin-left:6px;vertical-align:middle}
+/* 答题面板里的大图 */
+.qimg{margin:2px 0 10px;text-align:center}
+.qimg-i{display:block;max-width:100%;max-height:34vh;object-fit:contain;
+  border-radius:10px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:zoom-in}
+.qimg-s{display:block;max-width:100%;max-height:74vh;object-fit:contain;
+  border-radius:12px;background:#fff}
+/* 导入照片：一张图一张卡片 */
+.shot{display:flex;gap:10px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px;margin-bottom:9px}
+.shot .pic{width:66px;height:66px;flex:none;border-radius:8px;object-fit:cover;
+  background:#fff;cursor:zoom-in}
+.shot .fd{flex:1;min-width:0;display:grid;gap:5px}
+.shot .st{font-size:var(--fs-xs);font-weight:700;line-height:1.5;color:#9cc0e0}
+.shot .st.ok{color:#8ef0b8}
+.shot .st.no{color:#ffb0b0}
+.shot .st.run{color:#ffd76a}
+.shot .del{align-self:flex-start;background:var(--gb-tint-red);
+  border:none;color:#ffd0d0;border-radius:999px;
+  padding:3px 10px;font-size:var(--fs-xs);font-weight:700;cursor:pointer;
+  box-shadow:var(--gb-edge-hi),var(--gb-tint-red-edge),var(--gb-drop);
+  transition:transform .12s ease-out,filter .15s}
+.shot .del:active{transform:scale(.94);filter:brightness(.96)}
+.shot-inp{width:100%;background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.14);
+  border-radius:9px;padding:7px 9px;color:#eaf4ff;font-size:var(--fs-sm);
+  font-family:inherit;line-height:1.5;resize:vertical;user-select:text;
+  -webkit-user-select:text;touch-action:auto}
+.shot-inp::placeholder{color:#7f9cba}
+/* 全屏看图 */
+#imgView{position:fixed;inset:0;background:rgba(2,8,16,.94);z-index:60;
+  display:none;align-items:center;justify-content:center;padding:14px;
+  touch-action:pinch-zoom;overflow:auto}
+#imgView.show{display:flex}
+#imgView .bar{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:14px;
+  display:flex;gap:8px}
+

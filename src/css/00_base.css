@@ -1,0 +1,313 @@
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+
+/* ============ 响应式基准 ============
+   全部尺寸以「屏幕短边」为尺子：短边 390px（iPhone 14）时取到设计值，
+   更窄的屏幕等比缩小，更宽的屏幕放到上限后不再变（免得平板上按钮大得离谱）。
+   短边而不是宽度：横屏手机宽度很大但高度很小，按宽度算会把控件撑爆。 */
+:root{
+  --vmin:min(100vw,100vh);
+  --vmax:max(100vw,100vh);
+  --safeT:env(safe-area-inset-top,0px);
+  --safeB:env(safe-area-inset-bottom,0px);
+  --safeL:env(safe-area-inset-left,0px);
+  --safeR:env(safe-area-inset-right,0px);
+
+  /* 字号档位（括号内 = 短边 390px 时的值）
+     等比阶梯：相邻两档固定放大 15%，11.5 → 26.6 正好七级。
+     以前是 11 / 12.5 / 14 / 15 / 18 / 22 / 26，台阶忽大忽小
+     （14→15 只差 7%，几乎看不出分档），同一层级里大屏小屏还各涨各的。
+     现在每档的下限≈中值×0.88、上限≈中值×1.28，全档统一，
+     小屏不会糊、大屏也不会让正文涨到和标题一样大。 */
+  --fs-2xs:clamp(9px,  calc(var(--vmin) * .0256), 12.5px);  /* 10.0  刻度 / 角标（微文字） */
+  --fs-xs:clamp(10.2px, calc(var(--vmin) * .0295), 14.5px);  /* 11.5  角标 / 标签 / 辅助说明 */
+  --fs-sm:clamp(11.6px, calc(var(--vmin) * .0338), 16.8px);  /* 13.2  次要文字 / 步骤 / 数据 */
+  --fs-md:clamp(13.2px, calc(var(--vmin) * .0390), 19.5px);  /* 15.2  正文基准 / 按钮 */
+  --fs-lg:clamp(14.8px, calc(var(--vmin) * .0449), 22.5px);  /* 17.5  强调 / 名称 / 卡片标题 */
+  --fs-xl:clamp(16.6px, calc(var(--vmin) * .0515), 26px);    /* 20.1  小标题 / 选项 / 奖励名 */
+  --fs-2xl:clamp(19px, calc(var(--vmin) * .0592), 30px);     /* 23.1  标题 / 题干 */
+  --fs-3xl:clamp(21.5px, calc(var(--vmin) * .0682), 34px);   /* 26.6  横幅大标题 */
+
+  /* 行高档位：原本散着 1.6 / 1.65 / 1.7 / 1.75 / 1.8 五种"正文行距"、
+     1.85 / 1.9 / 1.95 / 2 四种"长文行距"，同一层级里差出 10% 以上。
+     收敛成两档：正文章节 1.7、长段落 1.9，读起来节奏就齐了。 */
+  --lh-tight:1.3;    /* 单行 / 按钮 / 名称 */
+  --lh-snug:1.45;    /* 选项 / 短文本 */
+  --lh-base:1.7;     /* 正文 / 列表 / 说明 */
+  --lh-loose:1.9;    /* 长段落 / 解析 / 帮助 */
+
+  /* 间距 / 圆角 */
+  --gap:clamp(5px, calc(var(--vmin) * .0154), 9px);       /* 6    */
+  --pad:clamp(6px, calc(var(--vmin) * .0205), 11px);      /* 8    */
+  --r:clamp(11px, calc(var(--vmin) * .0359), 18px);       /* 14   */
+
+  /* 底部控件：矮屏（横屏手机）必须缩小，否则会顶到屏幕中间 */
+  --stick:clamp(84px, calc(var(--vmin) * .3385), 148px);  /* 132  */
+  --act:clamp(70px, calc(var(--vmin) * .2718), 118px);    /* 106  */
+
+  /* 顶栏实测高度，由 JS 写入；任务条据此下移，避免和换行后的按钮叠在一起 */
+  --topH:52px;
+
+  /* ============ iOS 玻璃按键系统（3.4.0）============
+     照搬「学习目标管理台」的三层玻璃结构，游戏是夜航主题，全天候取深色档：
+       1. 底面 —— 半透明玻璃 + backdrop 模糊（把身后的地图 / 面板揉进来）
+       2. 边缘 —— 0.5px 发丝线：上亮下暗，模拟玻璃厚度
+       3. 高光 —— 顶部 inset 高光 + 一道自上而下衰减的镜面渐变
+     金色 = 游戏主色，对应工作台的 iOS 橙；绿 / 红 = 对错反馈色。 */
+  --gb-blur:blur(24px) saturate(190%);
+  --gb-blur-sm:blur(16px) saturate(180%);
+  /* 面板里的按钮：白色玻璃（深底上的浅玻璃，同工作台深色档） */
+  --gb-face:linear-gradient(180deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,.08) 100%);
+  --gb-face-2:linear-gradient(180deg,rgba(255,255,255,.11) 0%,rgba(255,255,255,.05) 100%);
+  /* 压在地图上的按钮 / chip：深蓝玻璃，浅色字才立得住 */
+  --gb-face-deep:linear-gradient(180deg,rgba(24,46,74,.82) 0%,rgba(10,24,40,.72) 100%);
+  --gb-edge-hi:inset 0 .5px 0 rgba(255,255,255,.18);
+  --gb-edge-lo:inset 0 -.5px 0 rgba(0,0,0,.34);
+  --gb-hair:0 0 0 .5px rgba(255,255,255,.10);
+  --gb-drop:0 1px 2px rgba(0,0,0,.34),0 8px 20px -10px rgba(0,0,0,.55);
+  --gb-sheen:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.04) 42%,rgba(255,255,255,0) 62%);
+  --gb-press-lift:inset 0 2px 6px rgba(0,0,0,.40);
+  /* 有色玻璃（Tinted Glass）：金色主键 / 对错反馈 */
+  --gb-tint-gold:linear-gradient(180deg,rgba(255,215,106,.94) 0%,rgba(245,159,43,.92) 100%);
+  --gb-tint-gold-hi:inset 0 .5px 0 rgba(255,255,255,.42);
+  --gb-tint-gold-edge:0 0 0 .5px rgba(255,214,110,.42);
+  --gb-tint-gold-drop:0 8px 22px -8px rgba(245,159,43,.55);
+  --gb-tint-green:linear-gradient(180deg,rgba(52,199,123,.36) 0%,rgba(52,199,123,.22) 100%);
+  --gb-tint-green-edge:0 0 0 .5px rgba(110,231,183,.42);
+  --gb-tint-red:linear-gradient(180deg,rgba(255,107,107,.32) 0%,rgba(255,107,107,.20) 100%);
+  --gb-tint-red-edge:0 0 0 .5px rgba(255,138,128,.42);
+}
+/* 支持 dvh 的浏览器（iOS 15.4+ / Chrome 108+）改用动态视口，
+   地址栏收起时不会把底部控件顶出可视区 */
+@supports (height:100dvh){
+  :root{--vmin:min(100vw,100dvh);--vmax:max(100vw,100dvh)}
+}
+
+/* ⚠️ 这里和 #app 以前都是 touch-action:none —— 面板因此完全划不动。
+   touch-action 的实际取值是「命中元素到根这条路径上所有值的交集」：
+   祖先写了 none，.panel 自己的 pan-y 就被吃掉了，纵向滚动手势根本不产生
+   （桌面滚轮不受影响，所以只在手机上暴露）。
+   改成 pan-y：配合 body / #app 的 overflow:hidden 与 overscroll-behavior:none，
+   页面本身不会真的滚动，但内部的滚动容器（面板）能正常响应手指。 */
+html,body{width:100%;height:100%;overflow:hidden;background:#0d1b2a;
+  font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",
+    "Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji",sans-serif;
+  font-size:var(--fs-md);
+  touch-action:pan-y;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
+/* 世界地图的手势由 canvas 自己的 touch-action:none 挡住，不必再罩一层 */
+#app{position:fixed;inset:0;height:100vh;height:100dvh;overflow:hidden;
+  touch-action:pan-y;overscroll-behavior:none}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+/* 静态地形层：按世界尺寸(2400x1900)原样铺开，靠 transform 跟着镜头走。
+   尺寸由 JS 写成 px（要盖掉上面那条 width:100%），这块不参与命中测试。 */
+#bg{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none;z-index:0;
+  will-change:transform}
+/* #game 要抬到 #bg 上面：定位元素的绘制层级在普通流之上，
+   不加这一条的话 #bg 会盖住整块画布。relative 不影响它的占位尺寸。 */
+#game{position:relative;z-index:1}
+
+/* ============ 顶部 HUD ============
+   窄屏一行放不下 7 个入口，以前会挤成 3~4 行压住地图。
+   现在：位置 / 难度 / 结晶 / ☰ 常驻，其余功能收进 ☰ 菜单；宽屏才全部平铺。 */
+#topbar{position:absolute;top:0;left:0;right:0;
+  padding:calc(var(--safeT) + var(--pad)) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
+  display:flex;gap:var(--gap);align-items:center;pointer-events:none;z-index:20}
+.chip{pointer-events:auto;background:var(--gb-face-deep);
+  backdrop-filter:var(--gb-blur-sm);-webkit-backdrop-filter:var(--gb-blur-sm);
+  border:none;border-radius:999px;position:relative;isolation:isolate;
+  padding:calc(var(--pad) * .8) calc(var(--pad) * 1.6);
+  color:#eaf4ff;font-size:var(--fs-sm);font-weight:600;display:flex;align-items:center;gap:5px;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  line-height:var(--lh-tight);
+  max-width:44vw;min-width:0;overflow:hidden;white-space:nowrap}
+.chip::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.chip .txt{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.chip.small{padding:calc(var(--pad) * .8) calc(var(--pad) * 1.3);font-size:var(--fs-xs)}
+#topRight{margin-left:auto;display:flex;gap:var(--gap);align-items:center;flex-wrap:nowrap;
+  min-width:0;justify-content:flex-end}
+#crystalChip{color:#ffd76a;font-variant-numeric:tabular-nums;flex:none}
+/* ---- iOS 玻璃胶囊按钮（.btn 族，照搬工作台）----
+   结构 = 半透明玻璃底面 + backdrop 模糊 + 发丝描边 + 顶部高光 + 镜面渐变层
+   按下 = 轻微缩小 + 下沉内阴影 + 高光收敛（iOS 的「压下去」） */
+.btn{pointer-events:auto;
+  border:none;border-radius:999px;padding:calc(var(--pad) * .9) calc(var(--pad) * 1.6);
+  color:#eaf4ff;font-size:var(--fs-md);font-weight:600;line-height:var(--lh-tight);
+  cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex:none;
+  position:relative;isolation:isolate;
+  background:var(--gb-face);
+  -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,filter .15s,box-shadow .15s}
+/* 镜面层：压在文字之下、玻璃底面之上的那道自上而下衰减的高光 */
+.btn::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.btn:active{transform:scale(.96);filter:brightness(.96);
+  box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.btn:disabled{opacity:.4}
+/* 图标按钮：只有 emoji/符号，没有文字 */
+.btn.ico{padding:calc(var(--pad) * .9);justify-content:center;aspect-ratio:1}
+/* 顶栏的按钮压在地图上：换深蓝玻璃，浅色字才立得住 */
+#topbar .btn{background:var(--gb-face-deep)}
+
+/* ============ 任务条 ============ */
+#quest{position:absolute;left:50%;transform:translateX(-50%);
+  top:calc(var(--safeT) + var(--topH) + 6px);
+  max-width:calc(100% - 32px);text-align:center;
+  background:rgba(10,24,40,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.12);border-radius:var(--r);
+  padding:calc(var(--pad) * .8) calc(var(--pad) * 2);
+  color:#cfe6ff;font-size:var(--fs-sm);font-weight:600;line-height:1.5;z-index:18;
+  box-shadow:0 4px 14px rgba(0,0,0,.3);opacity:0;
+  pointer-events:none;transition:opacity .45s}
+#quest b{color:#ffd76a}
+
+/* ============ 区域横幅 ============
+   旧版字号写死 38px，13 个字的标题在 320px 屏上会顶出屏幕外。 */
+#banner{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%);
+  width:min(92vw,560px);text-align:center;z-index:19;pointer-events:none;opacity:0;
+  transition:opacity .5s}
+#banner .t{font-size:var(--fs-3xl);font-weight:800;color:#fff;
+  text-shadow:0 4px 18px rgba(0,0,0,.65);letter-spacing:1px;line-height:var(--lh-tight);
+  overflow-wrap:anywhere}
+#banner .s{font-size:var(--fs-md);color:#bcd9f5;margin-top:4px;line-height:var(--lh-snug);
+  text-shadow:0 2px 8px rgba(0,0,0,.65);overflow-wrap:anywhere}
+
+/* ============ 摇杆（浮动：按下时移动到手指位置） ============ */
+#stick{position:absolute;left:calc(var(--safeL) + 14px);bottom:calc(var(--safeB) + 16px);
+  width:var(--stick);height:var(--stick);border-radius:50%;
+  background:rgba(10,24,40,.34);border:2px solid rgba(255,255,255,.16);
+  z-index:22;touch-action:none;pointer-events:none;opacity:.55;transition:opacity .18s}
+#stick.active{opacity:1;border-color:rgba(255,215,106,.6);background:rgba(10,24,40,.5)}
+/* 旋钮靠 left/top:50% + translate(-50%,-50%) 居中。
+   JS 推旋钮时只改 --kx / --ky 两个变量，不碰 transform ——
+   以前直接写 transform:translate(dx,dy)，把居中的 -50% 覆盖掉了，
+   旋钮会整体偏到中心右下方，静止时看得最明显。 */
+#knob{position:absolute;left:50%;top:50%;width:42%;height:42%;
+  --kx:0px;--ky:0px;
+  transform:translate(calc(-50% + var(--kx)),calc(-50% + var(--ky)));
+  border-radius:50%;background:radial-gradient(circle at 35% 30%,#9fd8ff,#3b82c4);
+  box-shadow:0 4px 14px rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.6)}
+
+/* 移动提示：抬到摇杆上方，免得和摇杆叠在一起 */
+#moveHint{position:absolute;left:50%;bottom:calc(var(--safeB) + var(--stick) + 20px);
+  transform:translateX(-50%);max-width:calc(100% - 28px);
+  background:rgba(10,24,40,.82);color:#ffe9a8;
+  border:1px solid rgba(255,215,106,.35);border-radius:999px;
+  padding:calc(var(--pad) * .9) calc(var(--pad) * 2.2);
+  font-size:var(--fs-md);font-weight:700;z-index:23;pointer-events:none;text-align:center;
+  transition:opacity .4s;animation:float 2.4s ease-in-out infinite}
+#moveHint.hide{opacity:0}
+/* 电脑端常驻键位小抄：贴在摇杆右边，点一下打开完整键位表 */
+#pcHint{position:absolute;left:calc(var(--safeL) + var(--stick) + 22px);
+bottom:calc(var(--safeB) + 18px);display:none;align-items:center;gap:6px;
+background:var(--gb-face-deep);border:none;
+border-radius:999px;padding:calc(var(--pad) * .7) calc(var(--pad) * 1.5);
+color:#9cc0e0;font-size:var(--fs-xs);font-weight:600;z-index:21;
+cursor:pointer;white-space:nowrap;max-width:44vw;overflow:hidden;
+text-overflow:ellipsis;
+-webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
+box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop)}
+#pcHint:active{transform:scale(.97);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+#pcHint b{color:#ffd76a}
+body.pc #pcHint{display:flex}
+/* 电脑端摇杆常驻时淡一点，鼠标按住拖动才亮起来 */
+body.pc #stick{opacity:.3}
+body.pc #stick.active{opacity:1}
+@keyframes float{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-8px)}}
+
+/* ============ 互动键 ============ */
+/* 互动大键：全站唯一发光体（对应工作台的大 +1 键）
+   结构 = 径向渐变球体 + 多层内阴影高光 + 常驻斜向镜面 + 呼吸光晕 */
+#actBtn{position:absolute;right:calc(var(--safeR) + 16px);bottom:calc(var(--safeB) + 24px);
+  width:var(--act);height:var(--act);border-radius:50%;border:none;
+  color:#fff;font-size:var(--fs-lg);font-weight:800;line-height:var(--lh-tight);
+  z-index:24;display:none;white-space:nowrap;overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 116%,rgba(255,255,255,.30),transparent 60%),
+    radial-gradient(122% 122% at 30% 16%,#FFE39A 0%,#FFD76A 30%,#F5A623 62%,#B3651A 100%);
+  text-shadow:0 2px 10px rgba(120,54,0,.50);
+  box-shadow:
+    0 10px 30px -6px rgba(245,159,43,.55),
+    0 2px 6px rgba(20,21,43,.10),
+    0 0 0 1px rgba(255,255,255,.14),
+    inset 0 2px 1px rgba(255,255,255,.45),
+    inset 0 -10px 20px -12px rgba(255,255,255,.28),
+    inset 0 -14px 26px -14px rgba(110,50,0,.60);
+  transition:transform 90ms cubic-bezier(.2,0,.2,1),box-shadow 200ms ease-out,filter 200ms ease-out;
+  align-items:center;justify-content:center;isolation:isolate;will-change:transform}
+/* 常驻斜向高光：静止时也有「光泽」，这正是「贵」的关键 */
+#actBtn::before{content:"";position:absolute;inset:-30% -55%;border-radius:50%;pointer-events:none;z-index:-1;
+  background:linear-gradient(112deg,rgba(255,255,255,0) 34%,rgba(255,255,255,.30) 46%,rgba(255,255,255,.05) 54%,rgba(255,255,255,0) 66%);
+  opacity:.30;transform:translateX(-38%)}
+/* 呼吸光晕：2.8s 一次，几乎察觉不到但按键「活着」 */
+#actBtn::after{content:"";position:absolute;inset:-14px;border-radius:50%;pointer-events:none;z-index:-1;
+  background:radial-gradient(circle,rgba(255,215,106,.45),rgba(255,215,106,0) 68%);
+  filter:blur(8px);opacity:.55;
+  animation:p1Breathe 2.8s cubic-bezier(.45,0,.55,1) infinite}
+#actBtn.show{display:flex}
+#actBtn:active{transform:scale(.92);filter:brightness(.94)}
+@keyframes p1Breathe{0%,100%{opacity:.42;transform:scale(.96)}50%{opacity:.72;transform:scale(1.04)}}
+/* 按下回弹（JS 依赖 p1-pop）：+1 键同款弹跳 */
+#actBtn.p1-pop{animation:p1Pop .42s cubic-bezier(.34,1.56,.64,1)}
+@keyframes p1Pop{
+  0%{transform:scale(.92)}
+  55%{transform:scale(1.06)}
+  78%{transform:scale(.99)}
+  100%{transform:scale(1)}
+}
+#actHint{position:absolute;right:calc(var(--safeR) + 16px);
+  bottom:calc(var(--safeB) + var(--act) + 34px);
+  background:rgba(10,24,40,.85);color:#eaf4ff;padding:calc(var(--pad) * .8) calc(var(--pad) * 1.6);
+  border-radius:var(--r);font-size:var(--fs-sm);font-weight:600;z-index:23;display:none;
+  max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  border:1px solid rgba(255,255,255,.14)}
+#actHint.show{display:block}
+
+/* ============ 浮动提示（toast） ============
+   拾取、升档降档、传送、清档反馈都走这里。
+   挂在顶栏下方居中：底部被摇杆 + 互动键 + 移动提示占满了，
+   放那儿不是被挡住就是压住按键。 */
+#toast{position:absolute;left:50%;top:calc(var(--safeT) + var(--topH) + 58px);
+  transform:translateX(-50%);z-index:70;display:flex;flex-direction:column;
+  align-items:center;gap:6px;pointer-events:none;width:max-content;
+  max-width:calc(100% - 28px)}
+.tst{background:rgba(10,24,40,.92);color:#eaf4ff;border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;padding:calc(var(--pad) * .85) calc(var(--pad) * 1.8);
+  font-size:var(--fs-md);font-weight:700;line-height:1.35;
+  box-shadow:0 6px 18px rgba(0,0,0,.42);max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  animation:tstIn .2s ease-out}
+@keyframes tstIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+
+/* ============ 弹窗 ============ */
+#modal{position:absolute;inset:0;background:rgba(4,12,24,.68);backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  z-index:40;display:none;align-items:center;justify-content:center;
+  padding:max(10px,var(--safeT)) max(10px,var(--safeR)) max(10px,var(--safeB)) max(10px,var(--safeL));
+  touch-action:pan-y;overscroll-behavior:contain}
+#modal.show{display:flex}
+/* 面板内容比面板高时才出现的「还能往下滑」提示。
+   图鉴几十个精灵、错题本能装两百题，首屏一定装不下 ——
+   没有任何提示的话，人只会以为内容就这么点，压根不会去试着划。
+   放在 #modal 里而不是 .panel 里：跟着 panel 一起滚就失去意义了。 */
+#scrollTip{position:absolute;left:50%;transform:translateX(-50%);
+  bottom:max(12px,var(--safeB));z-index:41;
+  background:rgba(10,24,40,.82);border:1px solid rgba(255,215,106,.34);
+  color:#ffd76a;border-radius:999px;padding:4px 13px;
+  font-size:var(--fs-xs);font-weight:700;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:opacity .22s}
+#modal.can-scroll #scrollTip{opacity:1}
+#modal.scrolled #scrollTip{opacity:0}
+.panel{background:linear-gradient(165deg,#16283f,#0e1c2e);position:relative;
+  border:1px solid rgba(255,255,255,.16);border-radius:22px;width:min(560px,100%);
+  max-height:88%;overflow:auto;padding:clamp(14px,calc(var(--vmin) * .0564),22px);
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  animation:pop .25s cubic-bezier(.2,1.4,.4,1);-webkit-overflow-scrolling:touch;
+  touch-action:pan-y;overscroll-behavior:contain;
+  /* 桌面端给一条细滚动条：一眼看出这里能滚 */
+  scrollbar-width:thin;scrollbar-color:rgba(255,215,106,.34) transparent}
+.panel::-webkit-scrollbar{width:5px}
+.panel::-webkit-scrollbar-thumb{background:rgba(255,215,106,.34);border-radius:99px}
+.panel::-webkit-scrollbar-track{background:transparent}
+

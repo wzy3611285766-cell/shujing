@@ -1,0 +1,157 @@
+/* ============ 实体层 ============
+   emoji 一律用 DOM 渲染 —— iOS Safari 在 canvas 里画彩色 emoji 会退化成纯色方块，
+   所以全部交给 HTML 元素画，canvas 只负责地面、阴影和光效。
+   字号带 --entk（由 JS 按世界缩放写入），世界缩得再小也不会糊成一团。 */
+#ents{position:absolute;inset:0;pointer-events:none;z-index:14;overflow:hidden}
+.ent{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;
+  white-space:nowrap;will-change:transform;--entk:1;
+  font-family:"Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji","Twemoji Mozilla",sans-serif}
+.ent .ico{line-height:1;display:block;
+  -webkit-text-fill-color:initial;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+.ent .lbl{background:rgba(10,22,38,.86);color:#ffe9a8;font-weight:700;
+  font-size:calc(var(--fs-sm) * var(--entk));
+  line-height:1.3;border-radius:11px;padding:3px 9px;margin-bottom:5px;max-width:44vw;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  border:1px solid rgba(255,215,106,.28);box-shadow:0 3px 10px rgba(0,0,0,.45)}
+.ent .nm{color:#fff;font-weight:800;line-height:1.35;
+  text-shadow:0 2px 10px rgba(0,0,0,.8),0 0 4px rgba(0,0,0,.6)}
+.ent .yr{color:rgba(226,240,255,.82);font-weight:600;line-height:1.35;
+  text-shadow:0 2px 10px rgba(0,0,0,.8),0 0 4px rgba(0,0,0,.6)}
+.ent.glow .ico{filter:drop-shadow(0 0 10px rgba(255,215,106,.95))}
+.ent.dim{opacity:.34}
+
+/* ============ 拾取特效层 ============
+   结晶被捡起的一瞬间：地面冲击环 + 光屑迸射 + 「+3」飘字 + 本体飞向顶栏结晶数。
+   全部由 Web Animations 驱动，播完节点自己删掉，不往 DOM 里堆垃圾。 */
+#fx{position:absolute;inset:0;pointer-events:none;z-index:26;overflow:hidden}
+#fx>div{position:absolute;left:0;top:0;will-change:transform,opacity}
+.fx-ring{border-radius:50%;border:2px solid rgba(255,215,106,.9);
+  box-shadow:0 0 16px rgba(255,215,106,.55),inset 0 0 14px rgba(255,215,106,.3)}
+.fx-ring.ice{border-color:rgba(170,230,255,.95);
+  box-shadow:0 0 16px rgba(120,210,255,.6),inset 0 0 14px rgba(150,225,255,.35)}
+.fx-shard{border-radius:50%;
+  background:radial-gradient(circle at 32% 30%,#fff8dc,#ffd76a 55%,rgba(245,159,43,.12) 100%);
+  box-shadow:0 0 9px rgba(255,215,106,.85)}
+.fx-shard.ice{background:radial-gradient(circle at 32% 30%,#ffffff,#a8e6ff 55%,rgba(80,180,255,.12) 100%);
+  box-shadow:0 0 9px rgba(150,220,255,.9)}
+.fx-fly{font-family:"Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji",
+  "Twemoji Mozilla",sans-serif;line-height:1;
+  filter:drop-shadow(0 0 14px rgba(255,215,106,.95)) drop-shadow(0 2px 5px rgba(0,0,0,.5))}
+.fx-fly.ice{filter:drop-shadow(0 0 14px rgba(140,215,255,.95)) drop-shadow(0 2px 5px rgba(0,0,0,.5))}
+.fx-pop{font-weight:800;color:#ffd76a;white-space:nowrap;font-variant-numeric:tabular-nums;
+  text-shadow:0 2px 8px rgba(0,0,0,.75),0 0 14px rgba(255,215,106,.75)}
+.fx-pop.ice{color:#cbeeff;text-shadow:0 2px 8px rgba(0,0,0,.75),0 0 14px rgba(140,215,255,.8)}
+/* 顶栏结晶数被飞行体"砸中"时弹一下 + 一圈光晕 */
+@keyframes chipPop{0%{transform:scale(1)}32%{transform:scale(1.24)}62%{transform:scale(.96)}100%{transform:scale(1)}}
+@keyframes chipGlow{0%{opacity:.85;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.55)}}
+#crystalChip{position:relative}
+#crystalChip.pop{animation:chipPop .46s cubic-bezier(.3,1.4,.5,1)}
+#crystalChip.pop::after{content:'';position:absolute;left:50%;top:50%;width:100%;height:100%;
+  border-radius:999px;pointer-events:none;border:2px solid rgba(255,215,106,.85);
+  animation:chipGlow .5s ease-out forwards}
+
+/* ============ 史诗模式 · 卷轴 ============ */
+.epic-meta{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.epic-meta span{background:rgba(255,215,106,.12);border:1px solid rgba(255,215,106,.32);
+  color:#ffd76a;border-radius:999px;padding:4px 12px;font-size:var(--fs-sm);font-weight:700}
+.epic-body{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:16px;padding:clamp(11px,calc(var(--vmin) * .0410),16px)
+    clamp(11px,calc(var(--vmin) * .0385),15px);
+  color:#e6f2ff;font-size:var(--fs-md);line-height:var(--lh-loose);text-align:left;overflow-wrap:anywhere}
+.epic-body p{margin:0 0 11px}
+.epic-body p:last-child{margin-bottom:0}
+.epic-body b{color:#ffd76a}
+.epic-body .fm{color:#a8e6ff;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace}
+.epic-quote{border-left:3px solid rgba(255,215,106,.55);padding:8px 0 8px 12px;margin:12px 0;
+  color:#ffe9b8;font-style:italic;font-size:var(--fs-md);line-height:var(--lh-loose);
+  background:rgba(255,215,106,.06)}
+.epic-sec{margin-top:12px;border-radius:14px;padding:12px 14px;
+  font-size:var(--fs-md);line-height:var(--lh-loose);text-align:left;overflow-wrap:anywhere}
+.epic-sec.why{background:rgba(168,120,255,.14);border:1px solid rgba(168,120,255,.35);color:#e8dcff}
+.epic-sec.link{background:rgba(52,199,123,.12);border:1px solid rgba(52,199,123,.32);color:#d3f5e3}
+.epic-sec b{color:#fff}
+.era-head{display:flex;align-items:center;gap:8px;margin:14px 0 8px;padding:9px 12px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px}
+.era-head .e{font-size:var(--fs-2xl);flex:none}
+.era-head .nm{color:#fff;font-weight:800;font-size:var(--fs-lg)}
+.era-head .yr{color:#9cc0e0;font-size:var(--fs-xs);margin-top:1px}
+.era-head .pg{margin-left:auto;color:#ffd76a;font-weight:800;font-size:var(--fs-sm);white-space:nowrap}
+.era-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.era-li{background:var(--gb-face-2);border:none;
+  border-radius:12px;padding:9px 10px;color:#dbeafe;font-size:var(--fs-sm);font-weight:600;
+  text-align:left;line-height:1.5;font-family:inherit;cursor:pointer;overflow-wrap:anywhere;
+  position:relative;isolation:isolate;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.era-li::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.era-li:active{transform:scale(.97);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.era-li .t{font-size:var(--fs-md)}
+.era-li.done{background:var(--gb-tint-green);
+  box-shadow:var(--gb-edge-hi),0 0 0 .5px rgba(110,231,183,.40),var(--gb-drop)}
+.era-li.done .t{color:#b9f2d3}
+.era-li .s{color:#8fb4d6;font-size:var(--fs-xs);font-weight:600;margin-top:2px}
+
+/* ============ 国度分区 ============ */
+.nat-sec{margin-top:14px}
+.nat-hd{font-size:var(--fs-md);font-weight:800;text-align:left;margin-bottom:7px;
+  padding-left:2px;letter-spacing:.5px;line-height:1.35;
+  display:flex;align-items:center;gap:6px}
+.nat-hd::after{content:'';flex:1;height:1px;background:currentColor;opacity:.25;margin-left:4px}
+
+/* ============ 断点 ============ */
+
+/* 窄屏：功能按钮收进 ☰，顶栏只留位置 / 难度 / 结晶 / 菜单 */
+@media (max-width:719px){
+  #topRight .fn{display:none}
+  #btnMenu{display:flex}
+}
+/* 宽屏（平板 / 电脑）以前会把 ☰ 藏起来，可顶栏那排按钮里根本没有
+   练枪场、错题本、传送阵 —— 想用只能绕「图鉴 → 学习报告 → 练枪场」三层。
+   现在 ☰ 一律保留，高频功能再单独提到顶栏。 */
+@media (min-width:720px){
+  /* 顶栏放不下全部：低频的国度 / 存档 / 音效收进 ☰ */
+  #btnNation,#btnSave,#btnSound{display:none}
+}
+
+/* 小屏：顶栏两枚 chip 会顶到结晶数，缩一档并允许标题省略 */
+@media (max-width:400px){
+  .chip{max-width:38vw}
+  .chip.small{max-width:30vw}
+}
+
+/* 极窄屏（320px 及以下）：选项和编年史列表改单列，避免文字被压成两行 */
+@media (max-width:339px){
+  .opts{grid-template-columns:1fr}
+  .era-list{grid-template-columns:1fr}
+  .row .btn{min-width:76px}
+  .grid6{grid-template-columns:repeat(auto-fill,minmax(70px,1fr))}
+}
+
+/* 矮屏（横屏手机）：控件整体压扁，给地图留出高度 */
+@media (max-height:520px){
+  :root{--stick:clamp(64px,calc(var(--vmin) * .30),104px);
+        --act:clamp(54px,calc(var(--vmin) * .25),86px)}
+  .panel{max-height:94%;padding:clamp(11px,calc(var(--vmin) * .0410),16px)}
+  .panel h2{margin-bottom:2px}
+  .panel .sub{margin-bottom:9px}
+  #banner{top:30%}
+  /* 矮屏时题干锚线的内推要收窄，横向空间比纵向更紧张 */
+  .qtext{padding:10px 11px!important;
+    padding-left:clamp(13px,calc(var(--vmin) * .0436),17px)!important}
+  .opts{gap:7px}
+  .opt{min-height:2.2em;padding-top:8px;padding-bottom:8px}
+  /* 徽标在矮屏里也收一圈，别把选项顶高 */
+  .opt::after{width:1.5em;height:1.5em}
+  .qmeta{margin-bottom:7px}
+  .row{margin-top:11px;gap:8px}
+  .center{line-height:var(--lh-base)}
+  .epic-body{line-height:var(--lh-base)}
+}
+
+/* 极矮（横屏 + 小高度）：隐藏摇杆底座的常驻显示，按下才出现 */
+@media (max-height:380px){
+  #moveHint{bottom:calc(var(--safeB) + var(--stick) + 8px);font-size:var(--fs-sm)}
+}
+
