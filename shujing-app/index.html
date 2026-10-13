@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>格物纪元 · 四国远征</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.0.3 · 2026-10-13 22:16 · 源码摘要 e81c373f · 73 个模块 -->
+<!-- build: v4.0.4 · 2026-10-13 22:24 · 源码摘要 01dceba1 · 73 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -26722,13 +26722,30 @@ async function cloudPull(){
 /* 用云端盖本机：先留一份本机的，再写云端那份，最后整页重载 ——
    存档散在四五个键里，重载是唯一能保证「整份一起生效」的做法。 */
 function applyCloud(pack){
-  try{localStorage.setItem(SYNC_BK,JSON.stringify({at:Date.now(),keys:collectLocal()}));}catch(e){}
+  /* 覆盖前先把本机那份留一份（面板上的「撤销上次覆盖」就是回到这里）。
+     关键：本机是空档时**不覆盖已有的备份** —— 否则连着盖两次，
+     第一次留住的真进度会被第二次的空白顺手抹掉，备份就白留了。 */
+  try{
+    const had=localStorage.getItem(SYNC_BK);
+    if(!had||localProgress()>0)
+      localStorage.setItem(SYNC_BK,JSON.stringify({at:Date.now(),prog:localProgress(),keys:collectLocal()}));
+  }catch(e){}
   try{
     Object.keys(pack.keys).forEach(k=>{localStorage.setItem(k,pack.keys[k]);});
     localStorage.setItem(SYNC_AT,String(pack.savedAt||Date.now()));
   }catch(e){acctMsg('写入失败：浏览器不允许存本地数据。','bad');return;}
+  /* 先把"盖过哪一版"记下来再重载：重启后云对账看到这个标记就不会再盖第二次 */
+  markApplied(pack.savedAt);
   toast('☁️ 云端进度已取回 · 正在重开…');
   setTimeout(()=>location.reload(),900);
+}
+/* 面板上那句「本机备份：…」，让玩家知道撤销能换回什么时候的进度 */
+function backupInfo(){
+  try{
+    const bk=JSON.parse(localStorage.getItem(SYNC_BK)||'null');
+    if(!bk||!bk.keys)return '';
+    return fmtAt(bk.at)+(bk.prog?' · '+bk.prog+' 分':'');
+  }catch(e){return '';}
 }
 function undoCloud(){
   let bak=null;
@@ -26747,17 +26764,53 @@ function undoCloud(){
 }
 
 /* ---------- 启动时自动对一次账 ---------- */
+/* 上一次"云端盖本机"盖的是云端哪一版（同一个标签页内有效）。
+   取回会整页重载，标记活在 sessionStorage 里，重载后还在 ——
+   这是"绝不在同一份云端存档上重载第二次"的凭据。 */
+const SYNC_APPLIED='shujing_applied_at';
+function appliedAt(){try{return Number(sessionStorage.getItem(SYNC_APPLIED))||0;}catch(e){return 0;}}
+function markApplied(v){try{sessionStorage.setItem(SYNC_APPLIED,String(v||0));}catch(e){}}
+
+/* 对账决策：只吃数字，不碰网络也不碰 DOM，所以可以直接被自动化测试喂极端输入。
+   返回 'none' | 'apply'（云端盖本机）| 'push'（本机推上去）
+
+   ⚠️ 这里修的是一个真实事故：老逻辑第一句是「本机进度为 0 → 取回云端」，
+      而取回之后会整页重载；新账号第一次登录时推上云的恰好是一份空档，
+      于是重启后本机还是 0 分、云端还是 0 分 → 再取回 → 再重载 —— 无限循环，
+      玩家永远进不了游戏。现在两头都堵上：
+      ① 两边都是空档就什么都不做（没有"更好的一份"可换）；
+      ② 同一份云端存档只允许盖本机一次（applied 标记），
+         万一盖完本机还是空的，也只是停在那儿，不会来回重载。 */
+function cloudDecide(d){
+  const prog=Number(d.prog)||0, cp=Number(d.cp)||0;
+  const mine=Number(d.mine)||0, at=Number(d.savedAt)||0;
+  const applied=Number(d.applied)||0;
+  if(prog<=0&&cp<=0)return 'none';          // ① 都没东西：不换、不重载
+  if(at&&applied===at)return 'none';        // ② 这份云端刚盖过一次：不再盖
+  if(prog<=0)return 'apply';                //    本机空、云端有 → 取回
+  if(cp<=0)return 'push';                   //    云端空、本机有 → 推上去（别拿空档盖掉真进度）
+  if(!mine)return 'push';                   //    本机练过但从没同步过 → 保本机（原有规矩）
+  if(at>mine+2000)return 'apply';           //    云端更新 → 取回
+  if(d.dirty||mine>at)return 'push';        //    本机更新 → 推上去
+  return 'none';
+}
 async function cloudAutoSync(){
   if(syncOff()||!ACCT.cloud)return;
   const s=await sessionNow();
   if(!s)return;                                  // 没登录：什么都不做
   const pack=await cloudPull();
   if(!pack){cloudPush(true);return;}             // 云端还没有：把本机推上去
-  const mine=localAt(),prog=localProgress();
-  if(prog<=0){applyCloud(pack);return;}          // 本机是空档 → 直接取回云端
-  if(mine===0){cloudPush(true);return;}          // 本机练过但没同步过 → 保本机
-  if(pack.savedAt>mine+2000){applyCloud(pack);return;}   // 云端更新 → 取回
-  if(ACCT.dirty||mine>pack.savedAt){cloudPush(true);return;}   // 本机更新 → 推上去
+  const act=cloudDecide({
+    prog:localProgress(),cp:pack.prog,mine:localAt(),
+    savedAt:pack.savedAt,applied:appliedAt(),dirty:ACCT.dirty
+  });
+  if(act==='apply'){applyCloud(pack);return;}
+  if(act==='push'){cloudPush(true);return;}
+  /* 走到这儿说明"不用动"。如果这份云端刚取回过、本机却还是空的，
+     那就是云端那份也救不了本机 —— 说明白，别让玩家对着空白页猜。 */
+  if(localProgress()<=0&&pack.savedAt&&appliedAt()===pack.savedAt){
+    toast('☁️ 云端存档取回后本机仍是空的 —— 先不重复重载了，去 ☰ → 云存档 看一眼');
+  }
 }
 /* 本机每存一次档就盖一个「本机改过」的时间戳，攒够 15 秒再往云上送一次 ——
    游戏本身是每 5 秒存一跳，直接每次都推会白烧流量。
@@ -26875,6 +26928,7 @@ function acctBodyHtml(){
   }
   if(u){
     const off=syncOff();
+    const bkInfo=backupInfo();
     return '<div class="center" style="font-size:40px;line-height:1.2">✅</div>'
       +'<div class="center" style="color:#8fe0a8;font-weight:700;margin:2px 0 10px">已登录</div>'
       +'<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;'
@@ -26890,6 +26944,8 @@ function acctBodyHtml(){
       +'<div class="row">'
       +'<button class="btn" id="acctToggle">'+(off?'开自动同步':'关自动同步')+'</button>'
       +'<button class="btn" id="acctUndo">↩️ 撤销上次覆盖</button></div>'
+      +(bkInfo?'<div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin-top:6px">'
+        +'本机备份：'+esc(bkInfo)+'（撤销可换回）</div>':'')
       +'<div class="row"><button class="btn" id="acctOut">退出登录</button></div>'
       +'<div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin-top:8px;line-height:1.6">'
       +'换设备时：在新设备上打开同一个网址 → 登录同一账号 → 进度自动取回。</div>';
@@ -26965,7 +27021,10 @@ function showAccountPanel(){
   const _save=save;
   save=function(){
     const r=_save.apply(this,arguments);
-    if(r)cloudMarkDirty();
+    /* 不看返回值：只要存档动作发生过就记一笔"本机改过"。
+       （save() 在"内容没变"时返回 true、在熔断时返回 false，
+         以前用 if(r) 判断，等于把"没写成功"当成了"没改过"。） */
+    cloudMarkDirty();
     return r;
   };
   if(cloudWhy())return;                     // 本地文件版：一个远端请求都不发
@@ -26997,7 +27056,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.0.3';
+const BUILD_VER='4.0.4';
 (function(){
   /* 只在真正的网页部署下检查：本地双击打开 / 沙箱预览里没有"新旧"这回事 */
   if(!/^https?:$/.test(location.protocol))return;

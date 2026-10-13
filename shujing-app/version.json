@@ -1,12 +1,12 @@
 {
   "name": "格物纪元 · 四国远征",
-  "version": "4.0.3",
+  "version": "4.0.4",
   "released": "2026-10-13",
   "file": "index.html",
-  "src_sha256": "e81c373f9584d42839f5f7efd6a3de663e4f58ab2db7d3c073f86b81fa779431",
-  "bytes": 1905788,
-  "sha256": "61e0c62068bffc75c86da711b98b66bb273243582051589b1a92051b722529f3",
-  "built_at": "2026-10-13 22:16",
+  "src_sha256": "01dceba1c2890bf662b80fb19efc574e8f3d09bc09f5de45e26e71a2b984476a",
+  "bytes": 1909524,
+  "sha256": "453e076d5f7840418dc25b65ae5165a4d31a6d4c1fe61d85fa16584719a04579",
+  "built_at": "2026-10-13 22:24",
   "news_ver": "v4.0.3-1013",
   "news_hash": "7c2d9dccf7ce69df8f163a67e85b0dfdcf46ee11bb4db36b02805e1250dcb0e9"
 }

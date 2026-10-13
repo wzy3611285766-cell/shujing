@@ -104,6 +104,32 @@ PROBE = r"""
       if(!t||!t.textContent.trim())throw new Error('公告没有标题');
       if(!/^v?\d/.test(String(NEWS_VER)))throw new Error('NEWS_VER 长得不对：'+NEWS_VER);
       return NEWS_VER+' · '+t.textContent.trim();});
+    /* 云对账决策：把"无限重载"那类事故当测试用例钉住 */
+    out.checks.云端对账决策 = safe('decide',function(){
+      var cases=[
+        [{prog:0,cp:0,savedAt:0,applied:0},'none','两边都空'],
+        [{prog:0,cp:0,savedAt:12345,applied:0},'none','本机空+云端是空档（事故现场：以前会无限重载）'],
+        [{prog:0,cp:30,mine:0,savedAt:100,applied:0},'apply','本机空·云端有真进度'],
+        [{prog:0,cp:30,mine:0,savedAt:100,applied:100},'none','同一份云端刚盖过：不再盖'],
+        [{prog:30,cp:0,mine:50,savedAt:99999,applied:0},'push','云端是空档·本机有进度：不许拿空档盖'],
+        [{prog:10,cp:5,mine:0,savedAt:100,applied:0},'push','本机练过但从没同步过'],
+        [{prog:10,cp:99,mine:1,savedAt:99999,applied:0},'apply','云端明显更新'],
+        [{prog:10,cp:99,mine:99999,savedAt:1,applied:0},'push','本机明显更新'],
+        [{prog:10,cp:99,mine:99999,savedAt:99998,applied:0,dirty:true},'push','本机有新改动']
+      ];
+      var bad=[];
+      cases.forEach(function(c){
+        var got=cloudDecide(c[0]);
+        if(got!==c[1])bad.push(c[2]+' → '+got+'（应 '+c[1]+'）');
+      });
+      /* 再模拟一次"卡在载入中"：同一份空云端连问 5 轮，不许出现第二次 apply */
+      var d={prog:0,cp:0,mine:0,savedAt:12345,applied:0},applies=0;
+      for(var i=0;i<5;i++){
+        if(cloudDecide(d)==='apply'){applies++;d.applied=12345;}
+      }
+      if(applies>1)bad.push('空云端被重复取回 '+applies+' 次（会重载循环）');
+      if(bad.length)throw new Error(bad.join(' · '));
+      return cases.length+' 组对账场景 + 防重载模拟全部通过';});
     out.checks.账号与同步 = safe('acct',function(){
       closePanel();showAccountPanel();
       var hasPhone=!!document.getElementById('acctPhone'),hasWx=!!document.getElementById('acctWx');
