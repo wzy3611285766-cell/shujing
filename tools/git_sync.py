@@ -64,6 +64,21 @@ def ask(prompt, default=""):
     return v or default
 
 
+def git_net(*args):
+    """联网操作：先按系统代理试，不通就改用直连再试一次。
+
+    国内这两种情况都会遇到：代理软件没开（系统里却还留着代理设置）、
+    或者直连被重置。谁通走谁，别让玩家去猜。
+    """
+    code, out = git(*args, net=True)
+    if code == 0:
+        return code, out
+    if system_proxy():
+        print("（按代理没连上，改用直连再试一次…）")
+    code2, out2 = git(*args, net=False)
+    return (code2, out2) if code2 == 0 else (code, out)
+
+
 def ensure_identity(argv):
     _, name = git("config", "--local", "user.name")
     _, mail = git("config", "--local", "user.email")
@@ -172,21 +187,22 @@ def main():
     print("③ 推送到 GitHub")
     print("=" * 60)
     _, branch = git("rev-parse", "--abbrev-ref", "HEAD")
-    code, out = git("push", "-u", "origin", branch, net=True)
+    code, out = git_net("push", "-u", "origin", branch)
     print(out if out else "（没有输出）")
     if code == 0:
         print()
         print("✅ 同步完成。以后改完东西，双击「同步到GitHub.cmd」就行。")
     else:
         low = out.lower()
-        if "timed out" in low or "connection was reset" in low or "could not resolve" in low:
+        if "timed out" in low or "connection was reset" in low or "could not resolve" in low \
+                or "could not connect" in low or "failed to connect" in low:
             print()
-            print("❌ 连不上 GitHub。检查你的代理软件是不是开着（本机 127.0.0.1:7897 那种），")
-            print("   开着再运行一次；或者告诉我，我帮你换个方式配。")
+            print("❌ 现在直连和代理都连不上 GitHub。")
+            print("   常见情况：代理软件关着（或者刚换了端口）。")
+            print("   ⚠️ 本地已经提交好了，改动不会丢 —— 把代理软件打开，再双击一次即可。")
         elif "authentication" in low or "403" in low or "could not read username" in low:
             print()
-            print("❌ 需要先登录 GitHub：随便试一次 push 会弹出登录窗口，")
-            print("   在浏览器里点同意即可（只需要一次）。")
+            print("❌ 需要先登录 GitHub：会弹一个登录窗口，在浏览器里点同意即可（只需要一次）。")
         else:
             print()
             print("❌ 推送没成功，把上面几行发给我看看。")
