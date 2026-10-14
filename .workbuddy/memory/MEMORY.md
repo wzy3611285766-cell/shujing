@@ -5,6 +5,19 @@
 用户是高三学生（内蒙包头八十一中，总分 550 上下），拿它当**碎片化补知识点 + 刷母题**的工具。
 四个世界：闯关 / 科学编年史 / 烽火地带 / 练枪场。
 
+## 四国与传送（2026-10-14 起 ＝ 四国并联）
+- 闯关（ADV）里是四个国度：`math` 数理群岛 / `phys` 力理亚 / `chem` 嬗变利亚 / `bio` 生衍利亚，
+  一科一国、一国一张独立地图（`NATIONS` 定义在 `11_world.js`；理化生三国由 `23_nations_3.js` 批量建）。共 14 个域。
+- **四国完全并列，没有任何先后依赖**（2026-10-14 改的，删掉了 `nationUnlocked()`）。
+  **不要再引入「先通关上一国」这类顺序锁。**
+- 入口三个（都是同一个面板 `showNationPortal()`）：☰ 菜单 🌀 传送阵 · 顶栏 🌍 国度 · 点顶栏那颗区域名。
+- 核心函数全在 `57_multination.js`：`goNationStart(id)`（前往某国出生域，本国也能用＝回到出生域）、
+  `switchNation(id, atStart)`（完整切换：存盘→换图→buildStatic→落镜头；atStart=true 落出生域）、
+  `useNation(id)`（只换图 + 取该国坐标）、`goTotem(nid,tid)`（跳到已点亮的塔）、`totemOn(tid)`。
+- 不卡死的三条保证：① 切过去落地自动点亮该国第一座塔；② 离开前该国一座塔都没亮就先给它留一盏；
+  ③ 面板永远列出四国入口。**动这三条之前先想清楚"回不去"的死局。**
+- 域之间仍按徽章开桥（`BRIDGES[].need`）——那是"一国之内怎么走"，与国家顺序无关，别混为一谈。
+
 ## 改之前必须先摸清的（同名覆盖极多）
 - 两个 `showMenu` 模板（搜 `id="mStudy"` 会命中两处），加菜单项要**两处都加**，
   绑定也两处都加 → 用 `Edit` 的 `replace_all`。
@@ -59,21 +72,42 @@
 
 ## 渲染结构（2026-10-13 性能优化后，改 draw/buildStatic 前必读）
 - **地形不再是每帧 blit**：静态地图画进 DOM 里的 `<canvas id="bg">`（世界尺寸 2400×1900），
-  每帧只写 `syncBgTransform()` → `translate3d(-cam.x*SCALE, -cam.y*SCALE,0) scale(SCALE)`。
+  每帧只写 `syncBgTransform()` → `translate3d(tx,ty,0) scale(SCALE)`，位移**吸附到整数设备像素**
+  （2026-10-14 起：`Math.round(-cam.x*SCALE*rd)/rd`，rd = 真实 devicePixelRatio，不是被降级的 DPR）。
   世界坐标 (wx,wy) → 屏幕 ((wx-cam.x)*SCALE, (wy-cam.y)*SCALE)，两边公式必须一致，否则错位。
   `#game` 必须有 `position:relative;z-index:1`，否则会被定位的 `#bg` 盖住。
-- `loop()` 里有 `if(!panelOpen()&&!newsIsOpen())draw();` —— 面板打开时不重画地图。
-  **如果以后有面板内的东西依赖地图每帧刷新，得先想到这里。**
+- **画布分辨率是「按像素预算」算的**（`36_loop.js` 顶部 `PIX_BUDGET=1800000`）：
+  `DPR=clamp(sqrt(PIX_BUDGET/(VW*VH)),1,min(dpr,2))`。手机 dpr=2 不变；12 寸平板会落到 dpr≈1.14。
+  **改这块要想到**：`draw()` 兜底分支按 `SCALE*DPR>=1` 决定关不关平滑；`#bg` 的吸附必须用真实 dpr。
+- **`loop()` 里不再直接调 draw()**：走 `paceProbe(dt)` + `paceDraw(now)` —— 面板/公告打开时不画、
+  并且按 vsync 整数倍抽帧（`PERF.multi`，144Hz → 144/72/48/36/24）。**如果以后有面板内的东西
+  依赖地图每帧刷新，得先想到这里**；`PERF.*` 同时是 `?dbg=1` 角标的数据源。
 - `draw()` 里保留了兜底分支：`staticLayer===bgCv` 时走老的一次性 blit + 关双线性（倍率≥1 才关）。
-- 性能基线（软件光栅+CPU×6 弱机模拟）：竖屏 菜单 56fps / 答题 54fps / 地图 ~17fps。
+- 性能基线（软件光栅+CPU×6 弱机模拟）：竖屏 菜单 56fps / 答题 54fps / 地图 ~17fps；
+  平板横屏 1400×984@dpr2 地图 9fps → 改完 15~16fps（这台模拟机复现不出 GPU 合成，只能比比例）。
 
 ## 性能排查方法（下次直接复用）
 - **PC headless 有巨大余量（144fps），测不出卡顿** → 必须 `--disable-gpu` + `Emulation.setCPUThrottlingRate(6)`。
 - 逐项 A/B 用轮询多轮取最小值（最小对计时最稳）；单次顺序测量会有漂移，会得出"关掉反而更慢"的假结论。
 - 已知结论：全屏位图 blit 的成本**只取决于要不要重采样**，与贴多大面积无关。
   平移取整、只贴可视区都没用；预缩放 1:1 + 整数偏移、或关 imageSmoothing，都能快 4.5 倍。
-- 探针：`.tmp_play/_perf2.py`（A/B）、`_perf_final.py <html> [标签] [--land]`（前后对比）。
-  `_play.py` 支持 `--file=<路径>` 跑任意版本。
+- 探针：`.tmp_play/_perf2.py`（A/B）、`_perf_final.py <html> [标签] [--land]`（前后对比）、
+  **`_perf_dev.py <html> <标签> [--phone|--tab|--tabp]`**（分设备档位：手机 430×932@2 / 平板横屏 1400×984@2 /
+  平板竖屏；多轮取最好用 `set REPS=3`；末尾还会把 DPR 强改回 2 做隔离实验）。
+  `_play.py` 支持 `--file=<路径>` 跑任意版本；`_diag.py` 逐秒打印 PERF 读数并可 `--shot=`。
+- ⚠️ 三个坑（2026-10-14 踩过）：
+  1. **跳过公告必须用页面自己的 `NEWS_KEY`/`NEWS_VER`**（写死旧值 → 公告照样弹，而公告打开时
+     `draw()` 根本不跑，测出来全是假数据：9fps 其实是"什么都没画"）；要关它就直接调 `hideNews()`。
+  2. **CDP 脚本不能并行跑**（同 PORT + 同 user-data-dir 会互相抢）。
+  3. **调试端口必须每次现取**（脚本里的 `_free_port()`）：写死端口时，上一轮那个 Chrome 还活着占着它，
+     新进程 bind 失败、`urlopen` 却照样有响应 —— CDP 于是接到**旧页面**上，测什么都是上一轮的状态
+     （"全新存档里带着上一轮的四国进度"就是这么来的，白折腾三轮）。profile 目录也要每次唯一，
+     否则同一个 `--user-data-dir` 会被并进旧实例。
+- 功能验收脚本：`_test_nations.py`（四国并联 34 项，含截图）、`_shot_portal.py <html> <out.png> [--visit=phys] [--menu]`
+  （拍传送面板/菜单，新旧版本都能拍，用于前后对比）、`_probe_totem.py`（盯 state.totems 的时序）、
+  `_shot_html.py <html> <out.png>`（任意 HTML 拍长图）。
+- Windows 控制台是 GBK：脚本里打印 emoji 一律先 `sys.stdout.reconfigure(encoding='utf-8',errors='replace')`
+  （`check.py` / `smoke.py` / `_imgcheck.py` 都补了这条）。`sys.path` 里的 python 需要 `websocket-client`。
 
 ## 云存档 / 账号（2026-10-13 接入）
 - **权威副本是 `shujing-app/index.html`**（工作区内），桌面 `数境169.html` 是它的同步副本。

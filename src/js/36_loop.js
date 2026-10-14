@@ -22,11 +22,24 @@ if(IS_PC){
   }
 }
 
+/* 【帧率 4/4】画布像素预算（单位 = CSS 像素 × DPR²，也就是后备画布的总像素数）。
+   以前写的是 DPR=min(devicePixelRatio,2)，这条上限其实只在高 dpr 的手机上生效：
+   手机要维持 393dp 左右的显示宽度，dpr 必然在 3.2 上下 → 被压到 2，
+   等于只用 62% 分辨率渲染 —— 这才是手机流畅的隐藏原因。
+   而 12.1 寸平板（2800px 宽 / 默认密度正好是 2）根本压不动：
+   后备画布 2800×1968 = 551 万像素，是手机的 4 倍，
+   偏偏 144Hz 每帧只有 6.9ms 预算（120Hz 是 8.3ms），拖着摇杆跑就是必然掉帧。
+   改成按预算反推：预算内一分不降（手机竖屏 138 万 / 横屏 160 万，照旧 dpr=2），
+   超了就按面积开方降 dpr —— 平板落到 dpr≈1.14、画布约 180 万像素，
+   主线程光栅化的活直接少掉 2/3。
+   画质代价很小：#game 上只有光晕、影子、圈、小地图这些没有细节的东西，
+   文字和 emoji 全在 DOM 实体层，不经过这张画布。 */
+const PIX_BUDGET=1800000;
 function resize(){
   stickMetrics();          // 旋转屏幕 / 换设备后，摇杆直径会跟着 --stick 变
-  DPR=Math.min(window.devicePixelRatio||1,2);
   VW=appEl.clientWidth||window.innerWidth;
   VH=appEl.clientHeight||window.innerHeight;
+  DPR=clamp(Math.sqrt(PIX_BUDGET/Math.max(1,VW*VH)),1,Math.min(window.devicePixelRatio||1,2));
   cv.width=Math.floor(VW*DPR);cv.height=Math.floor(VH*DPR);
   cv.style.width=VW+'px';cv.style.height=VH+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -335,9 +348,98 @@ function drawMiniMap(){
   ctx.restore();
 }
 
+/* =========================================================
+   【帧率 5/4】渲染节拍器：不再「每次 rAF 都画」
+   ---------------------------------------------------------
+   为什么要抽帧：屏幕 144Hz 时每帧只有 6.9ms 预算（120Hz 8.3ms、60Hz 16.7ms）。
+   画不完的时候浏览器会跳过若干个 vsync 才交下一帧，间隔于是变成
+   「等 2 个 vsync、等 3 个 vsync」交替出现 —— 眼睛看到的正是那种一顿一顿的卡。
+   与其贴着刷新率忽快忽慢，不如稳稳地每 2 个 vsync 出一帧：
+   144Hz 上就是 72fps，帧间隔永远一样，观感反而更顺。
+   档位只取 vsync 的整数倍，所以 144Hz → 144/72/48/36/24，120Hz → 120/60/40/30/24，
+   60Hz → 60/30/20/15 —— 任何屏幕上间隔都均匀。
+   （顺带解决一个老问题：144 除以 60 除不尽，硬塞 60fps 会 2 帧/3 帧交替。）
+   升降档看两件事：一帧的主线程耗时占了预算多少、以及帧有没有真的迟到。
+   ========================================================= */
+const PERF={
+  vs:7,                    // 一个 vsync 的毫秒数。开机先按最快的屏（144Hz）假设：
+                           //   vs 只会在窗口量完之后变小/变大，起点低才不会在
+                           //   头 1.5 秒里把「还没量准」当成「还没到点」而白掉帧
+  hz:0,                    // 实测屏幕刷新率（?dbg=1 角标要显示）
+  win:1e9,winHit:0,winN:0,winMs:0,winUp:0,  // 量 vsync 用的滑动窗口
+  multi:1,                 // 每几个 vsync 出一帧
+  maxMulti:1,              // 本屏允许的最低档（不低于 24fps）
+  last:0,                  // 上一帧的 rAF 时间戳（落在 vsync 网格上）
+  work:0,                  // 一帧主线程实际耗时（EMA，ms）
+  span:0,                  // 相邻两帧的真实间隔（ms）
+  drawn:0,n:0,miss:0,ticks:0,fast:0
+};
+/* 量屏幕节拍：一个窗口里最小的 rAF 间隔就是 vsync ——
+   慢帧只会让间隔变大、不会变小，所以最小值代表真实节拍。
+   窗口按「20 帧 且 至少 1.5 秒」关：机器越慢窗口越长，免得
+   弱机上量一次节拍要等十几秒（原来按 400 帧算，19fps 的机器要 21 秒）。
+   变快（系统从 60Hz 切回 144Hz）当场认；变慢要连着 3 个窗口都慢才认，
+   免得开局加载卡几下就把节拍记低了。
+   ⚠️ 两个防呆（踩过）：间隔小于 5ms 的不算数（240Hz 屏才会那么快，
+   而偶发的 3~4ms 抖动会把节拍记成 250Hz，整个档位表跟着崩：实测
+   一次误判就让渲染从 19fps 掉到 15fps）；而且这个最小值必须在一个窗口里
+   **出现两次以上**才采纳 —— 只出现一次的极小值是抖动，不是节拍。
+   没量准（hz=0）时不会升降档，游戏就照「每帧都画」跑，跟改之前一样。 */
+function paceProbe(dt){
+  if(dt<5)return;
+  if(dt<PERF.win){PERF.win=dt;PERF.winHit=1;}
+  else if(dt<PERF.win+1)PERF.winHit++;
+  PERF.winN++;PERF.winMs+=dt;
+  if(PERF.winN<20||PERF.winMs<1500)return;
+  PERF.winN=0;PERF.winMs=0;
+  const m=PERF.win,hit=PERF.winHit;PERF.win=1e9;PERF.winHit=0;
+  if(hit<2)return;
+  /* hz===0 表示这是量到的第一个窗口：直接采纳（开机那个 7ms 只是假设） */
+  if(m<PERF.vs||PERF.hz===0){PERF.vs=m;PERF.winUp=0;}
+  else if(m>PERF.vs*1.3){if(++PERF.winUp>=3){PERF.vs=m;PERF.winUp=0;}}
+  else PERF.winUp=0;
+  PERF.vs=clamp(PERF.vs,5,34);
+  PERF.hz=Math.round(1000/PERF.vs);
+  PERF.maxMulti=clamp(Math.floor(1000/(PERF.vs*24)),1,6);
+}
+/* 该不该画这一帧。判断用「隔了几个 vsync」而不是比毫秒：
+   rAF 时间戳本来就落在 vsync 网格上，取整之后即使 vsync 估偏 10~20%，
+   也不会被误判成「还差一点、再等一帧」而白掉一半帧。 */
+function paceDraw(now){
+  PERF.ticks++;
+  if(!PERF.last||panelOpen()||newsIsOpen()){PERF.last=now;PERF.fast=0;PERF.n=0;PERF.miss=0;return;}
+  if(Math.round((now-PERF.last)/PERF.vs)<PERF.multi)return;
+  PERF.span=now-PERF.last;
+  PERF.last=now;
+  const w0=performance.now();
+  draw();
+  const work=performance.now()-w0;
+  PERF.work=PERF.work?PERF.work*.85+work*.15:work;
+  PERF.drawn++;PERF.n++;
+  if(PERF.span>PERF.vs*PERF.multi*1.5)PERF.miss++;
+  /* 每 30 帧评一次档：
+     一帧耗时超过预算的 80%，或这批里有 1/4 的帧迟到 → 降一档；
+     连续 6 批（约 3 秒）都用不到 40% 的预算、一次没迟到 → 升一档。
+     节拍还没量准（hz=0）时不评：那会儿预算本身是假的，评了只会乱降档。 */
+  if(PERF.n>=30&&PERF.hz>0){
+    const budget=PERF.vs*PERF.multi;
+    const heavy=PERF.work>budget*.8, late=PERF.miss>PERF.n*.25;
+    if(PERF.multi<PERF.maxMulti&&(heavy||late)){PERF.multi++;PERF.fast=0;PERF.work=0;}
+    else if(PERF.multi>1){
+      /* 升档要连着 6 批都很闲（约 2~3 秒）：偶尔一批只是"不闲"就停表不计数，
+         真忙起来（>60% 预算）才把计数器清零 —— 免得刚升上去就又被压回来，
+         来回抖比一直低一档还难看。 */
+      if(PERF.work<budget*.4){if(++PERF.fast>=6){PERF.multi--;PERF.fast=0;}}
+      else if(PERF.work>budget*.6)PERF.fast=0;
+    }
+    PERF.n=0;PERF.miss=0;
+  }
+}
+
 function loop(now){
   const dt=Math.min(50,now-last);last=now;t+=dt;
   update(dt);
+  paceProbe(dt);
   /* 【帧率 1/3】面板 / 公告一开，地图就不用再画了。
      它被压在蒙层底下，玩家根本看不见，而每帧重画一次地图要花掉 5~6ms
      （实测：整帧画布开销里 90% 以上都在这里）。
@@ -345,8 +447,9 @@ function loop(now){
      合成器就得每帧重算一次全屏高斯模糊 —— 答题时的卡顿主要来自这一条。
      停画之后背景成了静止画面，模糊只算一次，帧率立刻回来。
      面板关掉后下一帧自然恢复重画，不需要额外触发；
-     update() 照常跑，所以 t 继续累加，动画不会跳帧。 */
-  if(!panelOpen()&&!newsIsOpen())draw();
+     update() 照常跑，所以 t 继续累加，动画不会跳帧。
+     这条规则和上面那三条一起落在 paceDraw() 里。 */
+  paceDraw(now);
   requestAnimationFrame(loop);
 }
 

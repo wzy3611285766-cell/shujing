@@ -13,6 +13,12 @@ import os
 import subprocess
 import sys
 
+# Windows 控制台默认 GBK：差异里带 emoji 直接 UnicodeEncodeError 崩掉（不改逻辑，只换编码）
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from manifest import BASELINE, PIECES  # noqa: E402
 

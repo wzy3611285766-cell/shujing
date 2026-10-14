@@ -3,10 +3,10 @@
   "version": "4.0.4",
   "released": "2026-10-13",
   "file": "index.html",
-  "src_sha256": "01dceba1c2890bf662b80fb19efc574e8f3d09bc09f5de45e26e71a2b984476a",
-  "bytes": 1909524,
-  "sha256": "cd08c980f411e53fd9b5f0e4bdd6452e8a3cb72b1df1a4ab963d96a2f77a36f2",
-  "built_at": "2026-10-13 23:55",
+  "src_sha256": "6aa4adea35664c5e600b2ea0cdd00694a7f2bb216ede364bad71c83d3609c15c",
+  "bytes": 1922606,
+  "sha256": "54dee2b2f672a5bb652ca04d2ba3b78b8fb5df65f4d3d02e88666c5274104170",
+  "built_at": "2026-10-14 22:23",
   "news_ver": "v4.0.3-1013",
   "news_hash": "7c2d9dccf7ce69df8f163a67e85b0dfdcf46ee11bb4db36b02805e1250dcb0e9"
 }

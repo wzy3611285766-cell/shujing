@@ -22,6 +22,12 @@ import sys
 import threading
 import time
 
+# Windows 控制台默认 GBK：结果里的 ✅/❌ 会直接 UnicodeEncodeError 崩掉（只换编码，不动逻辑）
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from manifest import PUBLISH  # noqa: E402
 
@@ -66,6 +72,36 @@ PROBE = r"""
     out.checks.切练枪世界 = safe('drillworld',function(){useWorld(DRILL);return WORLD_TITLE;});
     out.checks.切烽火世界 = safe('blazeworld',function(){useWorld(BLAZE);return WORLD_TITLE;});
     out.checks.切回闯关世界 = safe('advworld',function(){useWorld(ADV);return WORLD_TITLE;});
+    /* 四国并联：任意一国都要能直达，且落在它的出生域 —— 不许再出现"先通关上一国"的门槛 */
+    out.checks.四国直达 = safe('nations',function(){
+      useWorld(ADV);
+      try{panel.dataset.lock='0';}catch(e){}
+      closePanel();
+      var snd=state.sound;state.sound=false;      // 无手势环境别去创建 AudioContext（会进控制台）
+      var res=[];
+      try{
+        /* 从别国开始绕一圈，最后回到数学国：每一站都是"跨国切换"，
+           才验得到「落地自动点亮第一座塔」这条（本国之间不算切换，也不需要）。 */
+        NATIONS.slice(1).concat([NATIONS[0]]).forEach(function(n){
+          goNationStart(n.id);
+          if(state.nation!==n.id)throw new Error('没切到 '+n.name);
+          if(!walkable(state.x,state.y))throw new Error(n.name+' 的落点走不过去');
+          var reg=currentRegion(state.x,state.y);
+          if(!reg||reg.id!==n.regions[0].id)throw new Error(n.name+' 没落在出生域（'+(reg?reg.name:'地图外')+'）');
+          if(!state.totems[n.totems[0].id])throw new Error(n.name+' 落地后第一座塔没点亮（回不去）');
+          res.push(n.emoji+n.name);
+        });
+      }finally{
+        state.sound=snd;useNation('math');save();
+      }
+      showNationPortal();
+      var miss=NATIONS.filter(function(n){return !document.getElementById('go_'+n.id);});
+      var txt=panel.textContent||'';
+      var locked=/航路还没打通|未开辟|先通关/.test(txt);
+      closePanel();
+      if(miss.length)throw new Error('面板里缺「前往出生域」入口：'+miss.map(function(n){return n.name;}).join('、'));
+      if(locked)throw new Error('面板里还留着"先通关上一国"的锁');
+      return '四国都能直达出生域（'+res.join(' → ')+'）';});
     /* 练枪入口必须只有一个：顶栏（四个世界各数一遍）与 ☰ 菜单里都不许出现第二个 */
     out.checks.顶栏练枪入口 = safe('bar',function(){
       var worlds=[['闯关',ADV],['史诗',EPIC],['练枪场',DRILL],['烽火',BLAZE]],res=[];

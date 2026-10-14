@@ -455,8 +455,17 @@ function buildStatic(){
    scale(SCALE) + translate(-cam) —— 两边的落点完全一致，不会错位。 */
 function syncBgTransform(){
   if(!bgCv||staticLayer!==bgCv)return;
-  bgCv.style.transform='translate3d('+(-cam.x*SCALE).toFixed(2)+'px,'
-    +(-cam.y*SCALE).toFixed(2)+'px,0) scale('+SCALE+')';
+  /* 【帧率 6/4】位移吸附到整数设备像素。
+     这一层每帧都要被合成器重采样一遍：位移带小数时采样点永远落在纹素之间，
+     纹理在像素网格上逐帧「游走」，拖动时地形会持续发糊、闪。
+     吸附之后采样点正好落在纹素中心，最清晰也最省。
+     误差 ≤ 0.5 设备像素 = 0.25 CSS 像素，肉眼不可能看出来。
+     用的是真实 devicePixelRatio：DPR 那个变量是 #game 画布的（可能被降过级），
+     而 #bg 的缩放由 CSS 的 scale(SCALE) 交给合成器完成，走的是屏幕自己的网格。 */
+  const rd=window.devicePixelRatio||1;
+  const tx=(Math.round(-cam.x*SCALE*rd)/rd).toFixed(3);
+  const ty=(Math.round(-cam.y*SCALE*rd)/rd).toFixed(3);
+  bgCv.style.transform='translate3d('+tx+'px,'+ty+'px,0) scale('+SCALE+')';
 }
 function drawAdvWorld(c,rnd){
   // 海

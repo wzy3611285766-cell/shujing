@@ -46,8 +46,10 @@ function useNation(id){
   const reg=currentRegion(state.x,state.y);
   state.region=reg?reg.id:n.regions[0].id;
 }
-/* 完整切换流程：存盘 → 换图 → 重建 → 落镜头 */
-function switchNation(id){
+/* 完整切换流程：存盘 → 换图 → 重建 → 落镜头
+   atStart=true 时落点强制取该国的出生域（传送网络里「前往某国」就是这么用的）；
+   不传则沿用该国上次记下的坐标（从史诗模式切回闯关时用，见 switchMode）。 */
+function switchNation(id,atStart){
   if(panel&&panel.dataset.lock==='1'){toast('先把这道题做完');return;}
   if(CUR!==ADV)return;
   const n=NATION_OF[id];
@@ -68,6 +70,14 @@ function switchNation(id){
      坐标从存档里读回来，覆盖掉刚设好的落点 */
   useNation(id);
   healState();
+  /* 落点强制到出生域：useNation 会把该国上次的坐标读回来，这里要盖掉它 */
+  if(atStart){
+    const s=findSpawnIn(n.regions[0])||findSpawn();
+    state.x=s.x;state.y=s.y;
+    natPos()[n.id]={x:s.x,y:s.y};
+    const rg=currentRegion(state.x,state.y);
+    state.region=rg?rg.id:n.regions[0].id;
+  }
   resize();buildStatic();
   if(!walkable(state.x,state.y)){const p=findSpawn();state.x=p.x;state.y=p.y;savePos();}
   cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
@@ -85,15 +95,37 @@ function switchNation(id){
   SFX.unlock();
 }
 
-/* ---------------- 国度航路的开辟条件 ----------------
-   第一个国度默认开放；之后要通关上一国（拿齐它的全部徽章）才能开辟。
-   没有这条规则会形成死局：别国的传送塔必须"走过去"才会亮，
-   而传送网络又只能跳到已点亮的塔 —— 玩家永远出不了出生国。 */
-function nationUnlocked(n){
-  const i=NATIONS.indexOf(n);
-  if(i<=0)return true;
-  const pre=NATIONS[i-1];
-  return pre.regions.every(r=>!!state.badges[r.id]);
+/* ---------------- 四国并列：任意时间都能去任意一国 ----------------
+   四国之间没有任何先后依赖，也不再看「上一国通没通关」：
+   传送网络里每一国的「前往出生域」入口都常驻，落点就是该国的第一域。
+
+   为什么不会像以前那样"卡死在出生国"：去的路上不一定点得亮塔，
+   所以 switchNation 落地时会自动点亮该国第一座塔（见上面的注释），
+   保证玩家立刻能再切回来。以前那条「必须先拿齐上一国徽章」的规则，
+   就是为了绕开这个死局才加的 —— 现在死局在 switchNation 里解决了，
+   所以这条总开关可以彻底拿掉（nationUnlocked 已删除）。 */
+function goNationStart(id){
+  if(panel&&panel.dataset.lock==='1'){toast('先把这道题做完');return;}
+  if(CUR!==ADV)return;
+  const n=NATION_OF[id];if(!n)return;
+  closePanel();
+  if(n.id!==(CUR_NATION&&CUR_NATION.id)){
+    /* 跨国：走完整切换流程（它自己会存盘 / 重建 / 点亮落地国的第一座塔） */
+    switchNation(n.id,true);
+    return;
+  }
+  /* 本来就在这一国：只把人挪回出生域，地图不用重建 */
+  savePos();
+  const s=findSpawnIn(n.regions[0])||findSpawn();
+  state.x=s.x;state.y=s.y;
+  natPos()[n.id]={x:s.x,y:s.y};
+  const reg=currentRegion(state.x,state.y);
+  state.region=reg?reg.id:n.regions[0].id;
+  cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
+  cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));
+  save();updateHUD();SFX.unlock();
+  showBanner(n.emoji+' '+n.name,'出生域 · '+(n.regions[0].name||''));
+  flashQuest(true);
 }
 
 /* ---------------- 传送塔 ---------------- */
@@ -133,45 +165,47 @@ function goTotem(nid,tid){
 /* ---------------- 传送网络面板 ---------------- */
 function showNationPortal(){
   const cur=CUR_NATION||NATIONS[0];
-  const tl=n=>n.totems.map(t=>{
-    if(!totemOn(t.id))
-      return `<div class="menu-li" style="opacity:.42"><span class="e">🔒</span>
-        <span class="tx">未点亮<div class="d">走到${esc(t.name)}跟前即可解锁</div></span></div>`;
-    return `<button class="menu-li" id="tt_${t.id}"><span class="e">⛩️</span>
+  /* 已点亮的塔逐座列出来（可点传送）；没点亮的合并成一行"还有 N 座" ——
+     以前每座未点亮的塔都占一整行，四个国家铺开来十几行，翻半天才看得到别国，
+     而锁着的行本来就是点不动的。 */
+  const tl=n=>{
+    const lit=n.totems.filter(t=>totemOn(t.id));
+    const rows=lit.map(t=>`<button class="menu-li" id="tt_${t.id}"><span class="e">⛩️</span>
       <span class="tx">${esc(t.name)}${state.nation===n.id&&state.region===t.rid?' · 📍你在这里':''}
-        <div class="d">${esc((n.regions.find(v=>v.id===t.rid)||{}).name||'')} · 点击传送</div></span></button>`;
-  }).join('');
-  const others=NATIONS.filter(n=>n.id!==cur.id).map(n=>{
+        <div class="d">${esc((n.regions.find(v=>v.id===t.rid)||{}).name||'')} · 点击传送</div></span></button>`).join('');
+    const rest=n.totems.length-lit.length;
+    const more=rest?`<div class="menu-li" style="opacity:.42"><span class="e">🔒</span>
+      <span class="tx">还有 ${rest} 座未点亮<div class="d">走到${esc(n.name)}里的传送塔跟前即可解锁</div></span></div>`:'';
+    return rows+more;
+  };
+  /* 四国并列：每一国都常驻一个「前往出生域」入口，没有先后依赖也没有锁。
+     已点亮的塔照样列在下面，用来回到具体某一域（含本国，国内跳域也走这里）。 */
+  const sec=n=>{
     const on=n.totems.filter(t=>totemOn(t.id)).length;
     const bd=n.regions.filter(r=>state.badges[r.id]).length;
-    const open=nationUnlocked(n);
-    const pre=NATIONS[NATIONS.indexOf(n)-1]||NATIONS[0];
-    const preBd=pre.regions.filter(r=>state.badges[r.id]).length;
-    let body;
-    if(on)body=tl(n);
-    else if(open){
-      const been=bd>0||!!(state.pos&&state.pos[n.id]);
-      body=`<button class="menu-li" id="go_${n.id}"><span class="e">${been?'↩️':'🚀'}</span>
-      <span class="tx">${been?'回到':'开辟航路 · '}${esc(n.name)}<div class="d">落在该国的出生域，
-        ⛩️ 第一座传送塔会自动点亮，之后两国就能随时往返</div></span></button>`;
-    }
-    else body=`<div class="center" style="font-size:var(--fs-sm);color:#9cc0e0;padding:6px 2px;line-height:var(--lh-base)">
-      去 ${esc(n.name)} 的航路还没打通<br>先通关 <b style="color:${pre.color}">${esc(pre.name)}</b>：
-      拿齐 ${pre.regions.length} 枚徽章（现在 ${preBd} 枚）</div>`;
+    const here=n.id===cur.id;
+    const been=bd>0||on>0||!!(state.pos&&state.pos[n.id]);
+    const first=n.regions[0];
+    const go=`<button class="menu-li" id="go_${n.id}"><span class="e">${here?'🏠':(been?'↩️':'🚀')}</span>
+      <span class="tx">${here?'回到出生域':(been?'再次前往 ':'开辟航路 · ')+esc(n.name)}
+        <div class="d">落在 ${first.emoji}${esc(first.name)} 的出生点${here?'':' · ⛩️ 第一座传送塔会自动点亮'}</div>
+      </span></button>`;
+    /* 塔列表只在本国、或该国已经点亮过塔时才展开：
+       没去过的国度把 3~5 条"未点亮"全铺出来，四个国家就是十几个无关行，
+       面板会长到要滑半天才看得到别国 —— 而那些锁着的塔本来就点不动。 */
     return `<div class="nat-sec"><div class="nat-hd" style="color:${n.color}">${n.emoji} ${esc(n.name)}
-      <span style="font-weight:600;opacity:.8;font-size:var(--fs-xs)">🏅 ${bd}/${n.regions.length} · ⛩️ ${on}/${n.totems.length}${open?'':' · 🔒 未开辟'}</span></div>
-      <div class="menu-list">${body}</div></div>`;
-  }).join('');
+      <span style="font-weight:600;opacity:.8;font-size:var(--fs-xs)">🏅 ${bd}/${n.regions.length} · ⛩️ ${on}/${n.totems.length}${here?' · 本国':''}</span></div>
+      <div class="menu-list">${go}${(here||on)?tl(n):''}</div></div>`;
+  };
   openPanel(`
     <h2>⛩️ 传送网络</h2>
     <div class="sub">你现在在 <b style="color:${cur.color}">${cur.emoji} ${esc(cur.name)}</b> ·
       已点亮 ${cur.totems.filter(t=>totemOn(t.id)).length}/${cur.totems.length} 座塔</div>
-    <div class="nat-sec"><div class="nat-hd" style="color:${cur.color}">${cur.emoji} ${esc(cur.name)} · 本国</div>
-      <div class="menu-list">${tl(cur)}</div></div>
-    ${others}
+    ${sec(cur)}
+    ${NATIONS.filter(n=>n.id!==cur.id).map(sec).join('')}
     <div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin-top:10px;line-height:var(--lh-base)">
-      走到 ⛩️ 传送塔跟前会自动点亮，之后就能在四国之间任意往返<br>
-      通关一个国度（拿齐它的全部徽章），即可开辟通往下一个国度的航路
+      四个国度互不依赖：任意时间都能前往任意一国，落点都是该国的出生域<br>
+      走到 ⛩️ 传送塔跟前会自动点亮，之后还能跳到具体某一座塔
     </div>
     <div class="row"><button class="btn primary" id="ok">关闭</button></div>
   `);
@@ -180,10 +214,10 @@ function showNationPortal(){
     const b=$('tt_'+t.id);
     if(b)b.onclick=()=>{audioKick();goTotem(n.id,t.id);};
   }));
-  /* 「开辟航路」：第一次去某个国度，直接切过去落在它的出生域 */
+  /* 「前往出生域」：四国通用，本国也能用（等于回到本国的第一域） */
   NATIONS.forEach(n=>{
     const b=$('go_'+n.id);
-    if(b)b.onclick=()=>{audioKick();switchNation(n.id);};
+    if(b)b.onclick=()=>{audioKick();goNationStart(n.id);};
   });
 }
 /* ☰ 菜单与顶栏都走同一个入口 */
@@ -210,8 +244,9 @@ function questText(){
   }
   const next=REGIONS.find(r=>!state.badges[r.id]);
   if(next)return `已获${reg.name}徽章，前往${next.name}`;
-  const other=NATIONS.find(v=>v.id!==n.id&&v.regions.some(r=>!state.badges[r.id]));
-  if(other)return `${n.name}已全通！去 ⛩️ 传送塔，前往${other.emoji}${other.name}`;
+  /* 四国并列：本国全通后，其余三国没有先后之分，别只指一国 */
+  const other=NATIONS.some(v=>v.id!==n.id&&v.regions.some(r=>!state.badges[r.id]));
+  if(other)return `${n.name}已全通！⛩️ 传送网络可去其余三国任一`;
   return '十四域徽章集齐！你已走遍四国 🏆';
 }
 function findSpawn(){

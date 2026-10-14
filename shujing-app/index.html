@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>格物纪元 · 四国远征</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.0.4 · 2026-10-13 23:55 · 源码摘要 01dceba1 · 73 个模块 -->
+<!-- build: v4.0.4 · 2026-10-14 22:23 · 源码摘要 6aa4adea · 74 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -12684,8 +12684,17 @@ function buildStatic(){
    scale(SCALE) + translate(-cam) —— 两边的落点完全一致，不会错位。 */
 function syncBgTransform(){
   if(!bgCv||staticLayer!==bgCv)return;
-  bgCv.style.transform='translate3d('+(-cam.x*SCALE).toFixed(2)+'px,'
-    +(-cam.y*SCALE).toFixed(2)+'px,0) scale('+SCALE+')';
+  /* 【帧率 6/4】位移吸附到整数设备像素。
+     这一层每帧都要被合成器重采样一遍：位移带小数时采样点永远落在纹素之间，
+     纹理在像素网格上逐帧「游走」，拖动时地形会持续发糊、闪。
+     吸附之后采样点正好落在纹素中心，最清晰也最省。
+     误差 ≤ 0.5 设备像素 = 0.25 CSS 像素，肉眼不可能看出来。
+     用的是真实 devicePixelRatio：DPR 那个变量是 #game 画布的（可能被降过级），
+     而 #bg 的缩放由 CSS 的 scale(SCALE) 交给合成器完成，走的是屏幕自己的网格。 */
+  const rd=window.devicePixelRatio||1;
+  const tx=(Math.round(-cam.x*SCALE*rd)/rd).toFixed(3);
+  const ty=(Math.round(-cam.y*SCALE*rd)/rd).toFixed(3);
+  bgCv.style.transform='translate3d('+tx+'px,'+ty+'px,0) scale('+SCALE+')';
 }
 function drawAdvWorld(c,rnd){
   // 海
@@ -13081,11 +13090,24 @@ if(IS_PC){
   }
 }
 
+/* 【帧率 4/4】画布像素预算（单位 = CSS 像素 × DPR²，也就是后备画布的总像素数）。
+   以前写的是 DPR=min(devicePixelRatio,2)，这条上限其实只在高 dpr 的手机上生效：
+   手机要维持 393dp 左右的显示宽度，dpr 必然在 3.2 上下 → 被压到 2，
+   等于只用 62% 分辨率渲染 —— 这才是手机流畅的隐藏原因。
+   而 12.1 寸平板（2800px 宽 / 默认密度正好是 2）根本压不动：
+   后备画布 2800×1968 = 551 万像素，是手机的 4 倍，
+   偏偏 144Hz 每帧只有 6.9ms 预算（120Hz 是 8.3ms），拖着摇杆跑就是必然掉帧。
+   改成按预算反推：预算内一分不降（手机竖屏 138 万 / 横屏 160 万，照旧 dpr=2），
+   超了就按面积开方降 dpr —— 平板落到 dpr≈1.14、画布约 180 万像素，
+   主线程光栅化的活直接少掉 2/3。
+   画质代价很小：#game 上只有光晕、影子、圈、小地图这些没有细节的东西，
+   文字和 emoji 全在 DOM 实体层，不经过这张画布。 */
+const PIX_BUDGET=1800000;
 function resize(){
   stickMetrics();          // 旋转屏幕 / 换设备后，摇杆直径会跟着 --stick 变
-  DPR=Math.min(window.devicePixelRatio||1,2);
   VW=appEl.clientWidth||window.innerWidth;
   VH=appEl.clientHeight||window.innerHeight;
+  DPR=clamp(Math.sqrt(PIX_BUDGET/Math.max(1,VW*VH)),1,Math.min(window.devicePixelRatio||1,2));
   cv.width=Math.floor(VW*DPR);cv.height=Math.floor(VH*DPR);
   cv.style.width=VW+'px';cv.style.height=VH+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -13394,9 +13416,98 @@ function drawMiniMap(){
   ctx.restore();
 }
 
+/* =========================================================
+   【帧率 5/4】渲染节拍器：不再「每次 rAF 都画」
+   ---------------------------------------------------------
+   为什么要抽帧：屏幕 144Hz 时每帧只有 6.9ms 预算（120Hz 8.3ms、60Hz 16.7ms）。
+   画不完的时候浏览器会跳过若干个 vsync 才交下一帧，间隔于是变成
+   「等 2 个 vsync、等 3 个 vsync」交替出现 —— 眼睛看到的正是那种一顿一顿的卡。
+   与其贴着刷新率忽快忽慢，不如稳稳地每 2 个 vsync 出一帧：
+   144Hz 上就是 72fps，帧间隔永远一样，观感反而更顺。
+   档位只取 vsync 的整数倍，所以 144Hz → 144/72/48/36/24，120Hz → 120/60/40/30/24，
+   60Hz → 60/30/20/15 —— 任何屏幕上间隔都均匀。
+   （顺带解决一个老问题：144 除以 60 除不尽，硬塞 60fps 会 2 帧/3 帧交替。）
+   升降档看两件事：一帧的主线程耗时占了预算多少、以及帧有没有真的迟到。
+   ========================================================= */
+const PERF={
+  vs:7,                    // 一个 vsync 的毫秒数。开机先按最快的屏（144Hz）假设：
+                           //   vs 只会在窗口量完之后变小/变大，起点低才不会在
+                           //   头 1.5 秒里把「还没量准」当成「还没到点」而白掉帧
+  hz:0,                    // 实测屏幕刷新率（?dbg=1 角标要显示）
+  win:1e9,winHit:0,winN:0,winMs:0,winUp:0,  // 量 vsync 用的滑动窗口
+  multi:1,                 // 每几个 vsync 出一帧
+  maxMulti:1,              // 本屏允许的最低档（不低于 24fps）
+  last:0,                  // 上一帧的 rAF 时间戳（落在 vsync 网格上）
+  work:0,                  // 一帧主线程实际耗时（EMA，ms）
+  span:0,                  // 相邻两帧的真实间隔（ms）
+  drawn:0,n:0,miss:0,ticks:0,fast:0
+};
+/* 量屏幕节拍：一个窗口里最小的 rAF 间隔就是 vsync ——
+   慢帧只会让间隔变大、不会变小，所以最小值代表真实节拍。
+   窗口按「20 帧 且 至少 1.5 秒」关：机器越慢窗口越长，免得
+   弱机上量一次节拍要等十几秒（原来按 400 帧算，19fps 的机器要 21 秒）。
+   变快（系统从 60Hz 切回 144Hz）当场认；变慢要连着 3 个窗口都慢才认，
+   免得开局加载卡几下就把节拍记低了。
+   ⚠️ 两个防呆（踩过）：间隔小于 5ms 的不算数（240Hz 屏才会那么快，
+   而偶发的 3~4ms 抖动会把节拍记成 250Hz，整个档位表跟着崩：实测
+   一次误判就让渲染从 19fps 掉到 15fps）；而且这个最小值必须在一个窗口里
+   **出现两次以上**才采纳 —— 只出现一次的极小值是抖动，不是节拍。
+   没量准（hz=0）时不会升降档，游戏就照「每帧都画」跑，跟改之前一样。 */
+function paceProbe(dt){
+  if(dt<5)return;
+  if(dt<PERF.win){PERF.win=dt;PERF.winHit=1;}
+  else if(dt<PERF.win+1)PERF.winHit++;
+  PERF.winN++;PERF.winMs+=dt;
+  if(PERF.winN<20||PERF.winMs<1500)return;
+  PERF.winN=0;PERF.winMs=0;
+  const m=PERF.win,hit=PERF.winHit;PERF.win=1e9;PERF.winHit=0;
+  if(hit<2)return;
+  /* hz===0 表示这是量到的第一个窗口：直接采纳（开机那个 7ms 只是假设） */
+  if(m<PERF.vs||PERF.hz===0){PERF.vs=m;PERF.winUp=0;}
+  else if(m>PERF.vs*1.3){if(++PERF.winUp>=3){PERF.vs=m;PERF.winUp=0;}}
+  else PERF.winUp=0;
+  PERF.vs=clamp(PERF.vs,5,34);
+  PERF.hz=Math.round(1000/PERF.vs);
+  PERF.maxMulti=clamp(Math.floor(1000/(PERF.vs*24)),1,6);
+}
+/* 该不该画这一帧。判断用「隔了几个 vsync」而不是比毫秒：
+   rAF 时间戳本来就落在 vsync 网格上，取整之后即使 vsync 估偏 10~20%，
+   也不会被误判成「还差一点、再等一帧」而白掉一半帧。 */
+function paceDraw(now){
+  PERF.ticks++;
+  if(!PERF.last||panelOpen()||newsIsOpen()){PERF.last=now;PERF.fast=0;PERF.n=0;PERF.miss=0;return;}
+  if(Math.round((now-PERF.last)/PERF.vs)<PERF.multi)return;
+  PERF.span=now-PERF.last;
+  PERF.last=now;
+  const w0=performance.now();
+  draw();
+  const work=performance.now()-w0;
+  PERF.work=PERF.work?PERF.work*.85+work*.15:work;
+  PERF.drawn++;PERF.n++;
+  if(PERF.span>PERF.vs*PERF.multi*1.5)PERF.miss++;
+  /* 每 30 帧评一次档：
+     一帧耗时超过预算的 80%，或这批里有 1/4 的帧迟到 → 降一档；
+     连续 6 批（约 3 秒）都用不到 40% 的预算、一次没迟到 → 升一档。
+     节拍还没量准（hz=0）时不评：那会儿预算本身是假的，评了只会乱降档。 */
+  if(PERF.n>=30&&PERF.hz>0){
+    const budget=PERF.vs*PERF.multi;
+    const heavy=PERF.work>budget*.8, late=PERF.miss>PERF.n*.25;
+    if(PERF.multi<PERF.maxMulti&&(heavy||late)){PERF.multi++;PERF.fast=0;PERF.work=0;}
+    else if(PERF.multi>1){
+      /* 升档要连着 6 批都很闲（约 2~3 秒）：偶尔一批只是"不闲"就停表不计数，
+         真忙起来（>60% 预算）才把计数器清零 —— 免得刚升上去就又被压回来，
+         来回抖比一直低一档还难看。 */
+      if(PERF.work<budget*.4){if(++PERF.fast>=6){PERF.multi--;PERF.fast=0;}}
+      else if(PERF.work>budget*.6)PERF.fast=0;
+    }
+    PERF.n=0;PERF.miss=0;
+  }
+}
+
 function loop(now){
   const dt=Math.min(50,now-last);last=now;t+=dt;
   update(dt);
+  paceProbe(dt);
   /* 【帧率 1/3】面板 / 公告一开，地图就不用再画了。
      它被压在蒙层底下，玩家根本看不见，而每帧重画一次地图要花掉 5~6ms
      （实测：整帧画布开销里 90% 以上都在这里）。
@@ -13404,8 +13515,9 @@ function loop(now){
      合成器就得每帧重算一次全屏高斯模糊 —— 答题时的卡顿主要来自这一条。
      停画之后背景成了静止画面，模糊只算一次，帧率立刻回来。
      面板关掉后下一帧自然恢复重画，不需要额外触发；
-     update() 照常跑，所以 t 继续累加，动画不会跳帧。 */
-  if(!panelOpen()&&!newsIsOpen())draw();
+     update() 照常跑，所以 t 继续累加，动画不会跳帧。
+     这条规则和上面那三条一起落在 paceDraw() 里。 */
+  paceDraw(now);
   requestAnimationFrame(loop);
 }
 
@@ -19553,7 +19665,7 @@ function showMenu(){
       <button class="menu-li" id="mFormula"><span class="e">📐</span>
         <span class="tx">公式速查<div class="d">十四个域的核心公式，考前扫一眼</div></span></button>
       ${ep?'':`<button class="menu-li" id="mTeleport"><span class="e">🌀</span>
-        <span class="tx">传送阵<div class="d">在四国之间任意往返，也能跳到本国已开通的域</div></span></button>`}
+        <span class="tx">传送阵<div class="d">四国并列，随时可去任意一国 · 也能跳到该国已点亮的传送塔</div></span></button>`}
       <button class="menu-li" id="mGoal"><span class="e">🎯</span>
         <span class="tx">当前目标<div class="d">把任务条重新叫出来</div></span></button>
       <button class="menu-li" id="mAcct"><span class="e">☁️</span>
@@ -21406,8 +21518,7 @@ function maybeIntro(delay){
     openPanel(CUR===EPIC?epicIntroHtml():`
       <h2>${WORLD_TITLE}</h2>
       <div class="sub">${WORLD_SUB}</div>
-      <div class="it-list"><div class="il">📐 <b style="color:#9db4ff">数理群岛</b> · 数学　⚡ <b style="color:#ffd76a">力理亚</b> · 物理</div><div class="il">🔥 <b style="color:#ffb072">嬗变利亚</b> · 化学　🌿 <b style="color:#84e3a6">生衍利亚</b> · 生物</div><div class="il"><span style="color:#9cc0e0;font-size:var(--fs-sm)">四个国度<b>各有一张独立地图</b>，各含 3~5 个域，共十四域、42 只精灵</span></div><div class="il">⛩️ <b>传送塔</b>：每域一座，走过去自动点亮，之后可在四国之间任意往返</div><div class="il">🕹️ <b>移动</b>：在地图上<b>任意位置按住拖动</b>，摇杆会出现在你的手指下</div><div class="il">🗿 <b>石碑</b>：靠近后点右下角按钮，答题换结晶</div><div class="il">✨ <b>精灵</b>：答对 2/3 题即可收服进图鉴（四国共 42 只，本国 ${SPIRITS.length} 只）</div><div class="il">🛡️ <b>守护者</b>：连答 5 道挑战题（错≤1）拿徽章、开桥</div><div class="il">💎 <b>结晶</b>：散落各处，走过去自动捡；商行可换道具</div><div class="il">📕 <b>错题中心</b>：答错的题自动收录，按熟炼度排复习日程 —— 到期就练，连对 5 次毕业</div><div class="il">📈 <b>三档难度</b>：普通 → 中档 → 高考，连对 2 题升档、错 2 题降档</div><div class="il">🆕 <b>新功能</b>（都在 ☰ 菜单）：🎯 每日一练 · 📊 学习报告 · 📐 公式速查 · 🔭 引路标 · 🌀 传送网络</div><div class="il">🌍 <b>换国度</b>：点顶部区域名，或走近 ⛩️ 传送塔，都能打开传送网络；
-      通关一国（拿齐它的徽章）后，就能开辟去往下一国的航路</div><div class="il">🔀 <b>切模式</b>：顶部「📜 史诗」可去科学编年史（四科按时间混排），进度互不影响</div><div class="il">💾 <b>存档</b>：进度自动存在本机；换设备/清缓存前，先到「💾 存档」导出存档码</div></div>
+      <div class="it-list"><div class="il">📐 <b style="color:#9db4ff">数理群岛</b> · 数学　⚡ <b style="color:#ffd76a">力理亚</b> · 物理</div><div class="il">🔥 <b style="color:#ffb072">嬗变利亚</b> · 化学　🌿 <b style="color:#84e3a6">生衍利亚</b> · 生物</div><div class="il"><span style="color:#9cc0e0;font-size:var(--fs-sm)">四个国度<b>各有一张独立地图</b>，各含 3~5 个域，共十四域、42 只精灵</span></div><div class="il">⛩️ <b>传送塔</b>：每域一座，走过去自动点亮，之后可在四国之间任意往返</div><div class="il">🕹️ <b>移动</b>：在地图上<b>任意位置按住拖动</b>，摇杆会出现在你的手指下</div><div class="il">🗿 <b>石碑</b>：靠近后点右下角按钮，答题换结晶</div><div class="il">✨ <b>精灵</b>：答对 2/3 题即可收服进图鉴（四国共 42 只，本国 ${SPIRITS.length} 只）</div><div class="il">🛡️ <b>守护者</b>：连答 5 道挑战题（错≤1）拿徽章、开桥</div><div class="il">💎 <b>结晶</b>：散落各处，走过去自动捡；商行可换道具</div><div class="il">📕 <b>错题中心</b>：答错的题自动收录，按熟炼度排复习日程 —— 到期就练，连对 5 次毕业</div><div class="il">📈 <b>三档难度</b>：普通 → 中档 → 高考，连对 2 题升档、错 2 题降档</div><div class="il">🆕 <b>新功能</b>（都在 ☰ 菜单）：🎯 每日一练 · 📊 学习报告 · 📐 公式速查 · 🔭 引路标 · 🌀 传送网络</div><div class="il">🌍 <b>换国度</b>：点顶部区域名，或走近 ⛩️ 传送塔，都能打开传送网络；四国<b>并列互不依赖</b>，任意时间都能前往任意一国（落在该国的出生域）</div><div class="il">🔀 <b>切模式</b>：顶部「📜 史诗」可去科学编年史（四科按时间混排），进度互不影响</div><div class="il">💾 <b>存档</b>：进度自动存在本机；换设备/清缓存前，先到「💾 存档」导出存档码</div></div>
       <div class="row"><button class="btn primary" id="go">开始冒险</button></div>
     `);
     introShowing=false;
@@ -21543,8 +21654,10 @@ function useNation(id){
   const reg=currentRegion(state.x,state.y);
   state.region=reg?reg.id:n.regions[0].id;
 }
-/* 完整切换流程：存盘 → 换图 → 重建 → 落镜头 */
-function switchNation(id){
+/* 完整切换流程：存盘 → 换图 → 重建 → 落镜头
+   atStart=true 时落点强制取该国的出生域（传送网络里「前往某国」就是这么用的）；
+   不传则沿用该国上次记下的坐标（从史诗模式切回闯关时用，见 switchMode）。 */
+function switchNation(id,atStart){
   if(panel&&panel.dataset.lock==='1'){toast('先把这道题做完');return;}
   if(CUR!==ADV)return;
   const n=NATION_OF[id];
@@ -21565,6 +21678,14 @@ function switchNation(id){
      坐标从存档里读回来，覆盖掉刚设好的落点 */
   useNation(id);
   healState();
+  /* 落点强制到出生域：useNation 会把该国上次的坐标读回来，这里要盖掉它 */
+  if(atStart){
+    const s=findSpawnIn(n.regions[0])||findSpawn();
+    state.x=s.x;state.y=s.y;
+    natPos()[n.id]={x:s.x,y:s.y};
+    const rg=currentRegion(state.x,state.y);
+    state.region=rg?rg.id:n.regions[0].id;
+  }
   resize();buildStatic();
   if(!walkable(state.x,state.y)){const p=findSpawn();state.x=p.x;state.y=p.y;savePos();}
   cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
@@ -21582,15 +21703,37 @@ function switchNation(id){
   SFX.unlock();
 }
 
-/* ---------------- 国度航路的开辟条件 ----------------
-   第一个国度默认开放；之后要通关上一国（拿齐它的全部徽章）才能开辟。
-   没有这条规则会形成死局：别国的传送塔必须"走过去"才会亮，
-   而传送网络又只能跳到已点亮的塔 —— 玩家永远出不了出生国。 */
-function nationUnlocked(n){
-  const i=NATIONS.indexOf(n);
-  if(i<=0)return true;
-  const pre=NATIONS[i-1];
-  return pre.regions.every(r=>!!state.badges[r.id]);
+/* ---------------- 四国并列：任意时间都能去任意一国 ----------------
+   四国之间没有任何先后依赖，也不再看「上一国通没通关」：
+   传送网络里每一国的「前往出生域」入口都常驻，落点就是该国的第一域。
+
+   为什么不会像以前那样"卡死在出生国"：去的路上不一定点得亮塔，
+   所以 switchNation 落地时会自动点亮该国第一座塔（见上面的注释），
+   保证玩家立刻能再切回来。以前那条「必须先拿齐上一国徽章」的规则，
+   就是为了绕开这个死局才加的 —— 现在死局在 switchNation 里解决了，
+   所以这条总开关可以彻底拿掉（nationUnlocked 已删除）。 */
+function goNationStart(id){
+  if(panel&&panel.dataset.lock==='1'){toast('先把这道题做完');return;}
+  if(CUR!==ADV)return;
+  const n=NATION_OF[id];if(!n)return;
+  closePanel();
+  if(n.id!==(CUR_NATION&&CUR_NATION.id)){
+    /* 跨国：走完整切换流程（它自己会存盘 / 重建 / 点亮落地国的第一座塔） */
+    switchNation(n.id,true);
+    return;
+  }
+  /* 本来就在这一国：只把人挪回出生域，地图不用重建 */
+  savePos();
+  const s=findSpawnIn(n.regions[0])||findSpawn();
+  state.x=s.x;state.y=s.y;
+  natPos()[n.id]={x:s.x,y:s.y};
+  const reg=currentRegion(state.x,state.y);
+  state.region=reg?reg.id:n.regions[0].id;
+  cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
+  cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));
+  save();updateHUD();SFX.unlock();
+  showBanner(n.emoji+' '+n.name,'出生域 · '+(n.regions[0].name||''));
+  flashQuest(true);
 }
 
 /* ---------------- 传送塔 ---------------- */
@@ -21630,45 +21773,47 @@ function goTotem(nid,tid){
 /* ---------------- 传送网络面板 ---------------- */
 function showNationPortal(){
   const cur=CUR_NATION||NATIONS[0];
-  const tl=n=>n.totems.map(t=>{
-    if(!totemOn(t.id))
-      return `<div class="menu-li" style="opacity:.42"><span class="e">🔒</span>
-        <span class="tx">未点亮<div class="d">走到${esc(t.name)}跟前即可解锁</div></span></div>`;
-    return `<button class="menu-li" id="tt_${t.id}"><span class="e">⛩️</span>
+  /* 已点亮的塔逐座列出来（可点传送）；没点亮的合并成一行"还有 N 座" ——
+     以前每座未点亮的塔都占一整行，四个国家铺开来十几行，翻半天才看得到别国，
+     而锁着的行本来就是点不动的。 */
+  const tl=n=>{
+    const lit=n.totems.filter(t=>totemOn(t.id));
+    const rows=lit.map(t=>`<button class="menu-li" id="tt_${t.id}"><span class="e">⛩️</span>
       <span class="tx">${esc(t.name)}${state.nation===n.id&&state.region===t.rid?' · 📍你在这里':''}
-        <div class="d">${esc((n.regions.find(v=>v.id===t.rid)||{}).name||'')} · 点击传送</div></span></button>`;
-  }).join('');
-  const others=NATIONS.filter(n=>n.id!==cur.id).map(n=>{
+        <div class="d">${esc((n.regions.find(v=>v.id===t.rid)||{}).name||'')} · 点击传送</div></span></button>`).join('');
+    const rest=n.totems.length-lit.length;
+    const more=rest?`<div class="menu-li" style="opacity:.42"><span class="e">🔒</span>
+      <span class="tx">还有 ${rest} 座未点亮<div class="d">走到${esc(n.name)}里的传送塔跟前即可解锁</div></span></div>`:'';
+    return rows+more;
+  };
+  /* 四国并列：每一国都常驻一个「前往出生域」入口，没有先后依赖也没有锁。
+     已点亮的塔照样列在下面，用来回到具体某一域（含本国，国内跳域也走这里）。 */
+  const sec=n=>{
     const on=n.totems.filter(t=>totemOn(t.id)).length;
     const bd=n.regions.filter(r=>state.badges[r.id]).length;
-    const open=nationUnlocked(n);
-    const pre=NATIONS[NATIONS.indexOf(n)-1]||NATIONS[0];
-    const preBd=pre.regions.filter(r=>state.badges[r.id]).length;
-    let body;
-    if(on)body=tl(n);
-    else if(open){
-      const been=bd>0||!!(state.pos&&state.pos[n.id]);
-      body=`<button class="menu-li" id="go_${n.id}"><span class="e">${been?'↩️':'🚀'}</span>
-      <span class="tx">${been?'回到':'开辟航路 · '}${esc(n.name)}<div class="d">落在该国的出生域，
-        ⛩️ 第一座传送塔会自动点亮，之后两国就能随时往返</div></span></button>`;
-    }
-    else body=`<div class="center" style="font-size:var(--fs-sm);color:#9cc0e0;padding:6px 2px;line-height:var(--lh-base)">
-      去 ${esc(n.name)} 的航路还没打通<br>先通关 <b style="color:${pre.color}">${esc(pre.name)}</b>：
-      拿齐 ${pre.regions.length} 枚徽章（现在 ${preBd} 枚）</div>`;
+    const here=n.id===cur.id;
+    const been=bd>0||on>0||!!(state.pos&&state.pos[n.id]);
+    const first=n.regions[0];
+    const go=`<button class="menu-li" id="go_${n.id}"><span class="e">${here?'🏠':(been?'↩️':'🚀')}</span>
+      <span class="tx">${here?'回到出生域':(been?'再次前往 ':'开辟航路 · ')+esc(n.name)}
+        <div class="d">落在 ${first.emoji}${esc(first.name)} 的出生点${here?'':' · ⛩️ 第一座传送塔会自动点亮'}</div>
+      </span></button>`;
+    /* 塔列表只在本国、或该国已经点亮过塔时才展开：
+       没去过的国度把 3~5 条"未点亮"全铺出来，四个国家就是十几个无关行，
+       面板会长到要滑半天才看得到别国 —— 而那些锁着的塔本来就点不动。 */
     return `<div class="nat-sec"><div class="nat-hd" style="color:${n.color}">${n.emoji} ${esc(n.name)}
-      <span style="font-weight:600;opacity:.8;font-size:var(--fs-xs)">🏅 ${bd}/${n.regions.length} · ⛩️ ${on}/${n.totems.length}${open?'':' · 🔒 未开辟'}</span></div>
-      <div class="menu-list">${body}</div></div>`;
-  }).join('');
+      <span style="font-weight:600;opacity:.8;font-size:var(--fs-xs)">🏅 ${bd}/${n.regions.length} · ⛩️ ${on}/${n.totems.length}${here?' · 本国':''}</span></div>
+      <div class="menu-list">${go}${(here||on)?tl(n):''}</div></div>`;
+  };
   openPanel(`
     <h2>⛩️ 传送网络</h2>
     <div class="sub">你现在在 <b style="color:${cur.color}">${cur.emoji} ${esc(cur.name)}</b> ·
       已点亮 ${cur.totems.filter(t=>totemOn(t.id)).length}/${cur.totems.length} 座塔</div>
-    <div class="nat-sec"><div class="nat-hd" style="color:${cur.color}">${cur.emoji} ${esc(cur.name)} · 本国</div>
-      <div class="menu-list">${tl(cur)}</div></div>
-    ${others}
+    ${sec(cur)}
+    ${NATIONS.filter(n=>n.id!==cur.id).map(sec).join('')}
     <div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin-top:10px;line-height:var(--lh-base)">
-      走到 ⛩️ 传送塔跟前会自动点亮，之后就能在四国之间任意往返<br>
-      通关一个国度（拿齐它的全部徽章），即可开辟通往下一个国度的航路
+      四个国度互不依赖：任意时间都能前往任意一国，落点都是该国的出生域<br>
+      走到 ⛩️ 传送塔跟前会自动点亮，之后还能跳到具体某一座塔
     </div>
     <div class="row"><button class="btn primary" id="ok">关闭</button></div>
   `);
@@ -21677,10 +21822,10 @@ function showNationPortal(){
     const b=$('tt_'+t.id);
     if(b)b.onclick=()=>{audioKick();goTotem(n.id,t.id);};
   }));
-  /* 「开辟航路」：第一次去某个国度，直接切过去落在它的出生域 */
+  /* 「前往出生域」：四国通用，本国也能用（等于回到本国的第一域） */
   NATIONS.forEach(n=>{
     const b=$('go_'+n.id);
-    if(b)b.onclick=()=>{audioKick();switchNation(n.id);};
+    if(b)b.onclick=()=>{audioKick();goNationStart(n.id);};
   });
 }
 /* ☰ 菜单与顶栏都走同一个入口 */
@@ -21707,8 +21852,9 @@ function questText(){
   }
   const next=REGIONS.find(r=>!state.badges[r.id]);
   if(next)return `已获${reg.name}徽章，前往${next.name}`;
-  const other=NATIONS.find(v=>v.id!==n.id&&v.regions.some(r=>!state.badges[r.id]));
-  if(other)return `${n.name}已全通！去 ⛩️ 传送塔，前往${other.emoji}${other.name}`;
+  /* 四国并列：本国全通后，其余三国没有先后之分，别只指一国 */
+  const other=NATIONS.some(v=>v.id!==n.id&&v.regions.some(r=>!state.badges[r.id]));
+  if(other)return `${n.name}已全通！⛩️ 传送网络可去其余三国任一`;
   return '十四域徽章集齐！你已走遍四国 🏆';
 }
 function findSpawn(){
@@ -26112,7 +26258,7 @@ function showMenu(){
       ${IS_PC?`<button class="menu-li" id="mKeys"><span class="e">⌨️</span>
         <span class="tx">电脑端键位<div class="d">WASD 移动 · Shift 疾跑 · 点地图走过去 · E 互动 · 1~4 选选项</div></span></button>`:''}
       ${!bz&&!ep&&!dr?`<button class="menu-li" id="mTeleport"><span class="e">🌀</span>
-        <span class="tx">传送阵<div class="d">在四国之间任意往返，也能跳到本国已开通的域</div></span></button>`:''}
+        <span class="tx">传送阵<div class="d">四国并列，随时可去任意一国 · 也能跳到该国已点亮的传送塔</div></span></button>`:''}
       <button class="menu-li" id="mGoal"><span class="e">🎯</span>
         <span class="tx">当前目标<div class="d">把任务条重新叫出来</div></span></button>
       <button class="menu-li" id="mAcct"><span class="e">☁️</span>
@@ -27075,6 +27221,64 @@ const BUILD_VER='4.0.4';
   };
   /* 别和开场的公告、首次说明抢屏幕：等 5 秒再说 */
   setTimeout(check,5000);
+})();
+/* =========================================================
+   调试角标（URL 带 ?dbg=1 才出现）
+   ---------------------------------------------------------
+   实机上排查「为什么这台设备卡」的第一现场：平板、手机浏览器里没有 devtools，
+   看不到 devicePixelRatio、后备画布多大、一帧到底花了几毫秒。
+   这个角标把这几个数直接摆到屏幕上，一眼就能分辨是
+   「每帧超预算」（该降分辨率）还是「被系统/浏览器限了刷新率」（该去改设置）。
+
+   只在 ?dbg=1 时创建，正常玩家什么都看不到：
+   元素和样式都在这里从 JS 注入，不占 HTML / CSS 模块，不要了整块删掉即可。
+
+   读数说明（配合 src/js/36_loop.js 里的 PERF）：
+     屏 1400×984 dpr2  —— CSS 视口 · 设备像素比
+     画布 1600×1125    —— 后备画布实际像素 = 每帧要光栅化的量
+     节拍 144Hz 抽2    —— 实测 rAF 节拍 · 每几个 vsync 出一帧。
+                          注意它是「实测到的最小帧间隔」：屏幕是 120/144Hz
+                          但机器跟不上时，这里会读到 30/60Hz 这种非标准值，
+                          角标会打个问号 —— 那不是屏幕变慢了，是这台机器跑不满。
+     渲染 71.6fps      —— 真正 draw() 的频率
+     rAF 72fps         —— 浏览器回调频率（明显低于「节拍」就是主线程被拖住了）
+     每帧 8.4ms/13.9ms —— 主线程耗时 / 这一档的预算，超了就该降档
+     迟到 3/30         —— 本批评里迟到的帧数
+   ========================================================= */
+(function(){
+  let on=false;
+  try{on=new URLSearchParams(location.search).get('dbg')==='1';}catch(e){}
+  if(!on)return;
+  const st=document.createElement('style');
+  st.textContent='#dbg{position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:34;'+
+    'pointer-events:none;font:600 10px/1.5 ui-monospace,Consolas,monospace;white-space:pre;'+
+    'color:#dff0ff;background:rgba(4,12,24,.66);border:1px solid rgba(255,255,255,.16);'+
+    'border-radius:8px;padding:5px 7px}';
+  document.head.appendChild(st);
+  const el=document.createElement('div');
+  el.id='dbg';
+  appEl.appendChild(el);
+  /* 半秒刷一次就够了：角标自己每帧写 DOM 会反过来影响要测的东西 */
+  let t0=performance.now(),d0=PERF.drawn,k0=PERF.ticks;
+  setInterval(function(){
+    const now=performance.now(),ms=now-t0;t0=now;
+    const round1=v=>Math.round(v*10)/10;
+    const fps=round1((PERF.drawn-d0)*1000/ms);
+    const raf=round1((PERF.ticks-k0)*1000/ms);
+    d0=PERF.drawn;k0=PERF.ticks;
+    /* 节拍不是 60/90/120/144/165 这种常见值时打个问号：
+       那是「这台机器跑不满屏幕」，不是「屏幕就这么慢」——
+       光看数字容易得出相反结论。 */
+    const odd=PERF.hz&&[50,60,90,120,144,165].indexOf(PERF.hz)<0;
+    el.textContent=
+      '屏 '+VW+'×'+VH+' dpr'+(window.devicePixelRatio||1)+'\n'+
+      '画布 '+cv.width+'×'+cv.height+'\n'+
+      '节拍 '+(PERF.hz||'?')+'Hz'+(odd?'?':'')+' 抽'+PERF.multi+'\n'+
+      '渲染 '+fps+'fps rAF '+raf+'\n'+
+      '每帧 '+round1(PERF.work)+'ms/预算 '+round1(PERF.vs*PERF.multi)+'ms\n'+
+      '迟到 '+PERF.miss+'/'+PERF.n+' 缩放'+SCALE.toFixed(3)+'\n'+
+      (panelOpen()?'面板开':'面板关')+(IS_PC?' · PC':'');
+  },500);
 })();
 </script>
 </body>

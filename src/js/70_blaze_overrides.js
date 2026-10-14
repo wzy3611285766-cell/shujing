@@ -289,7 +289,7 @@ function showMenu(){
       ${IS_PC?`<button class="menu-li" id="mKeys"><span class="e">⌨️</span>
         <span class="tx">电脑端键位<div class="d">WASD 移动 · Shift 疾跑 · 点地图走过去 · E 互动 · 1~4 选选项</div></span></button>`:''}
       ${!bz&&!ep&&!dr?`<button class="menu-li" id="mTeleport"><span class="e">🌀</span>
-        <span class="tx">传送阵<div class="d">在四国之间任意往返，也能跳到本国已开通的域</div></span></button>`:''}
+        <span class="tx">传送阵<div class="d">四国并列，随时可去任意一国 · 也能跳到该国已点亮的传送塔</div></span></button>`:''}
       <button class="menu-li" id="mGoal"><span class="e">🎯</span>
         <span class="tx">当前目标<div class="d">把任务条重新叫出来</div></span></button>
       <button class="menu-li" id="mAcct"><span class="e">☁️</span>

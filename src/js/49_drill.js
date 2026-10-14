@@ -1098,7 +1098,7 @@ function showMenu(){
       <button class="menu-li" id="mFormula"><span class="e">📐</span>
         <span class="tx">公式速查<div class="d">十四个域的核心公式，考前扫一眼</div></span></button>
       ${ep?'':`<button class="menu-li" id="mTeleport"><span class="e">🌀</span>
-        <span class="tx">传送阵<div class="d">在四国之间任意往返，也能跳到本国已开通的域</div></span></button>`}
+        <span class="tx">传送阵<div class="d">四国并列，随时可去任意一国 · 也能跳到该国已点亮的传送塔</div></span></button>`}
       <button class="menu-li" id="mGoal"><span class="e">🎯</span>
         <span class="tx">当前目标<div class="d">把任务条重新叫出来</div></span></button>
       <button class="menu-li" id="mAcct"><span class="e">☁️</span>
