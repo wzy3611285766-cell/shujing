@@ -11,3 +11,7 @@ report_shots*/
 # 别的杂项
 ref_page/
 *.log
+
+# Python 字节码（tools/daily.py 会把 check / news / shots 当模块 import）
+__pycache__/
+*.pyc

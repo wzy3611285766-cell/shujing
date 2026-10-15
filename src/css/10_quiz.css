@@ -78,7 +78,10 @@
 .news-li .e{flex:none;font-size:var(--fs-lg);line-height:1.25}
 .news-li b{color:#fff;font-weight:700}
 
-/* 一键全屏：金色主按钮，和游戏里其它 primary 一个语言 */
+/* 全屏：4.0.6 把按钮搬进 ☰ 菜单、公告里只留"各平台怎么开"的说明；
+   4.0.10 又把按钮**请回公告**（用户反馈：全屏是必需功能，藏在菜单里很多人
+   一辈子发现不了）。所以这里是"按钮 + 怎么开"整块，两处入口并存 ——
+   菜单那份是给老手的，公告这份是给还没发现它的人的。 */
 .fs-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;
   border:none;border-radius:14px;cursor:pointer;isolation:isolate;
   padding:clamp(10px,calc(var(--vmin) * .0385),14px) 16px;
@@ -88,7 +91,6 @@
              0 8px 22px -8px rgba(245,159,43,.75);
   transition:transform .12s ease-out,filter .15s;margin-bottom:9px}
 .fs-btn:active{transform:scale(.975);filter:brightness(.96)}
-.fs-btn-e{font-size:1.15em;line-height:1}
 .fs-tips{display:block}
 .fs-tip{display:flex;gap:9px;align-items:baseline;
   padding:6px 2px;font-size:var(--fs-xs);color:#9cc0e0;line-height:1.6;
@@ -134,6 +136,13 @@
 @keyframes pop{from{transform:scale(.86);opacity:0}to{transform:scale(1);opacity:1}}
 .panel h2{color:#fff;font-size:var(--fs-2xl);margin-bottom:4px;text-align:center;line-height:1.35}
 .panel .sub{color:#9cc0e0;font-size:var(--fs-sm);text-align:center;margin-bottom:14px;line-height:1.5}
+/* 版本小标签：挂在 ☰ 菜单标题那一行的副标题后面。
+   以前只有"有新版本"那条通知栏才会提到版本号，平时玩家根本不知道自己跑的是哪一版 ——
+   报 bug 时第一句就是"你是哪一版"，没处可查。 */
+.ver-tag{display:inline-block;margin-left:7px;padding:1px 8px;border-radius:999px;
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);
+  color:#9cc0e0;font-size:var(--fs-2xs);font-weight:700;letter-spacing:.4px;
+  vertical-align:middle;white-space:nowrap}
 .qtag{display:inline-block;background:rgba(255,215,106,.16);color:#ffd76a;
   border:1px solid rgba(255,215,106,.35);border-radius:999px;padding:3px 11px;
   font-size:var(--fs-xs);font-weight:700;margin-bottom:12px}

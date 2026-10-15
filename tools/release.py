@@ -86,14 +86,15 @@ def main():
     print("③ 归档 + 写日志")
     print("=" * 72)
 
-    # 发版防呆：公告内容变了却没升 NEWS_VER → 老玩家永远看不到这条公告
+    # 公告：已读位现在由构建期按公告内容自动生成（tools/news.py），
+    # "改了公告忘升 NEWS_VER、老玩家看不到"那个老坑从机制上没了，
+    # 所以这里不再告警，只把这次公告到底变没变说清楚。
     new_meta = json.load(open(os.path.join(ROOT, "shujing-app", "version.json"), encoding="utf-8"))
     nv, nh = new_meta.get("news_ver", ""), new_meta.get("news_hash", "")
-    if prev_news[0] and nh != prev_news[0] and nv == prev_news[1]:
-        print("⚠️  公告内容改过了，但 NEWS_VER 还是 %s —— 老玩家那边弹不出这条公告！" % nv)
-        print("    去 src/js/55_boot_news.js 把 NEWS_VER 改掉（建议 'v%s-月日'），再跑一次本命令。" % new_ver)
-    elif nh != prev_news[0]:
-        print("公告已更新：NEWS_VER %s → %s" % (prev_news[1] or "（无）", nv))
+    if nh != prev_news[0]:
+        print("公告已更新：%s → %s（玩家下次打开会重新看到这条）" % (prev_news[1] or "（无）", nv))
+    else:
+        print("公告未变：%s（玩家不会重复看到同一条）" % nv)
     meta["news_ver"], meta["news_hash"] = nv, nh
     open(VERSION_FILE, "w", encoding="utf-8", newline="\n").write(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
@@ -120,10 +121,11 @@ def main():
     print("=" * 72)
     print("  shujing-app/index.html      %.2f MB" % (len(data) / 1048576.0))
     print("  shujing-app/version.json    版本 %s" % new_ver)
-    print("  玩家那边：下次打开会自动发现新版并提示刷新；旧存档（本机存档 / 存档码）不受影响。")
-    print("  要发公告：改 src/10_body.html 里 #news 那段文字，并把 src/js/55_boot_news.js 的")
-    print("            NEWS_VER 改成新值（建议 'v%s-月日'）—— 只改文字不升它，老玩家看不到公告，" % new_ver)
-    print("            本脚本会当场告警；只升它不改文字，则会白白重弹一遍旧公告。")
+    print("  玩家那边：下次打开会自动发现新版并提示刷新（顶部还会列出本次更新要点）；")
+    print("            旧存档（本机存档 / 存档码）不受影响。")
+    print("  要发公告：在 news.json 的 entries 最上面加一条（版本 / 标题 / 要点），")
+    print("            再跑一次本命令即可 —— 公告内容和 NEWS_VER 都是构建期自动生成的，")
+    print("            不用（也不该）再去改 55_boot_news.js 里的常量。")
     return 0
 
 

@@ -1,0 +1,159 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数境169 · 每日巡检 2026-10-15</title><style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6f9;color:#1a2530;
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.7}
+.wrap{max-width:1000px;margin:0 auto;padding:26px 20px 60px}
+header{background:#0f2233;color:#fff;border-radius:18px;padding:24px 24px 20px;margin-bottom:20px}
+header .k{font-size:12px;letter-spacing:2px;color:#7ee0ff;font-weight:700}
+header h1{margin:6px 0 8px;font-size:25px}
+header p{margin:0;color:#b8cfe4;font-size:13.5px}
+.pill{display:inline-block;margin:10px 6px 0 0;padding:3px 11px;border-radius:999px;
+  background:rgba(126,224,255,.14);border:1px solid rgba(126,224,255,.35);
+  color:#9ee6ff;font-size:12px;font-weight:700}
+.pill.bad{background:rgba(255,120,110,.16);border-color:rgba(255,120,110,.45);color:#ffb3ac}
+h2{font-size:18px;margin:28px 0 12px;padding-left:11px;border-left:4px solid #2f6fd0}
+.card{background:#fff;border:1px solid #e0e7ef;border-radius:14px;padding:16px 18px;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:8px 9px;border-bottom:1px solid #edf1f6;text-align:left;vertical-align:top}
+th{background:#f7fafc;font-weight:700;font-size:12.5px;color:#5b6b7c}
+.ok{color:#2c9c5a;font-weight:700}
+.no{color:#d3452f;font-weight:700}
+code{background:#f0f4f8;border-radius:5px;padding:1px 5px;font-size:12.5px;
+  font-family:ui-monospace,Consolas,monospace;color:#25405c}
+pre{background:#0f2233;color:#cfe6ff;border-radius:11px;padding:12px 14px;overflow:auto;
+  font-size:12px;line-height:1.5;max-height:340px}
+.sug{border:1px solid #e6edf4;border-radius:12px;padding:13px 15px;margin:10px 0;background:#fbfdff}
+.sug .n{display:inline-block;min-width:2.6em;padding:1px 8px;border-radius:999px;margin-right:8px;
+  background:#2f6fd0;color:#fff;font-size:12px;font-weight:700}
+.sug.auto .n{background:#d99607}
+.sug.auto{background:#fffaf0;border-color:#f2e2c4}
+.sug b{color:#0d5c8c}
+.sug .why{margin:6px 0 4px;font-size:13.5px;color:#33475c}
+.sug .meta{font-size:12px;color:#7d94ab}
+.note{background:#f0faf3;border-left:4px solid #2c9c5a;padding:11px 14px;border-radius:0 10px 10px 0;
+  font-size:13.5px;margin:12px 0}
+.note.bad{background:#fff2f0;border-left-color:#d3452f}
+footer{margin-top:30px;color:#7d94ab;font-size:12px;text-align:center}
+</style></head><body><div class="wrap"><header><div class="k">SHUJING · DAILY HEALTH CHECK</div>
+<h1>每日巡检 · 2026-10-15</h1>
+<p>一条命令跑完四步体检：构建 → 骨架比对 → 无头浏览器真跑一遍 → 静态体检。下面是今天的结果，以及一份可以挑着做的改进建议清单。</p>
+<span class="pill">版本 v4.0.10</span>
+<span class="pill">耗时 7s</span>
+<span class="pill">体检 4 步全过</span>
+<span class="pill">建议 13 条待选</span>
+</header>
+<div class="note">✅ <b>体检全过</b>：构建、公告同源、骨架比对、无头浏览器冒烟、静态体检 —— 没有需要马上动手的问题。下面那 13 条建议，挑一条回「做 #编号」我就开工。</div>
+<h2>一、四步体检</h2><div class="card"><table><tr><th>步骤</th><th>结果</th><th>详情</th></tr>
+<tr><td>① 构建 + 公告同源</td><td class="ok">✅</td><td>版本 v4.0.10 · 模块 74 个 · 1939763 字节 (1.85 MB) · sha256 434bb5a9e12a4ab0 · 公告 v4.0.10 · NEWS_VER v4.0.10-eeafdffa（内容摘要，改公告就会变）</td></tr>
+<tr><td>② 骨架比对（对比拆分前基线）</td><td class="ok">✅</td><td>产物 +13897 字节 · 基线独有 125 行 / 产物独有 376 行（相对基线累计改动）</td></tr>
+<tr><td>③ 无头浏览器冒烟（file:// + http:// 各一遍）</td><td class="ok">✅</td><td>81 项通过 / 0 项失败 · 耗时 7s</td></tr>
+<tr><td>④ 静态体检</td><td class="ok">✅</td><td>7 项检查 · 0 项未过</td></tr>
+</table></div>
+<h2>二、静态体检明细</h2><div class="card"><table><tr><th>检查项</th><th></th><th>结果</th></tr>
+<tr><td>模块换行符（CRLF 约定 · 74 个模块）</td><td class="ok">✅</td><td>全部合规</td></tr>
+<tr><td>版本号三处一致（version.json / 产物 / 公告）</td><td class="ok">✅</td><td>v4.0.10 · NEWS_VER v4.0.10-eeafdffa</td></tr>
+<tr><td>更新日志首条 = 当前版本</td><td class="ok">✅</td><td>CHANGELOG 顶上就是 v4.0.10（版本谱系与涨号规则也写在开头）</td></tr>
+<tr><td>releases/ 里有当前版本的归档</td><td class="ok">✅</td><td>已归档，可随时回退</td></tr>
+<tr><td>DOM 引用不悬空（202 处 $('id')）</td><td class="ok">✅</td><td>全部有着落</td></tr>
+<tr><td>待办标记（TODO / FIXME）</td><td class="ok">✅</td><td>0 处（无）</td></tr>
+<tr><td>汇报页无外链（图片全内联）</td><td class="ok">✅</td><td>汇报页自查：全部通过 ✅</td></tr>
+</table></div>
+<h2>三、冒烟明细（游戏里真跑一遍）</h2><div class="card"><pre>  ✅ 构建版本         4.0.10
+  ✅ 题目生成器        572
+  ✅ 国度           5
+  ✅ 精灵           15
+  ✅ 自检问题数        0
+  ✅ 存档往返         一致
+  ✅ 史诗卷宗         86
+  ✅ 画布           2400x1900
+  ✅ 切史诗世界        格物纪元 · 科学编年史
+  ✅ 切练枪世界        格物纪元 · 练枪场
+  ✅ 切烽火世界        格物纪元 · 烽火地带
+  ✅ 切回闯关世界       数理群岛
+  ✅ 四国直达         四国都能直达出生域（⚡力理亚 → 🔥嬗变利亚 → 🌿生衍利亚 → 📐数理群岛）
+  ✅ 顶栏练枪入口       四个世界各 1 个（闯关=1 · 史诗=1 · 练枪场=1 · 烽火=1）
+  ✅ 菜单练枪入口       菜单里 1 个（练枪场 · 压轴专训）
+  ✅ 更新公告         v4.0.10-eeafdffa · 全屏按钮回到更新公告里：一次更新，一次提醒
+  ✅ 全屏入口         ☰ #mFs · 公告 #newsFs · 通知栏 #upFs（三处都在、都绑了行为）· 平台说明 5 条
+  ✅ 云端对账决策       9 组对账场景 + 防重载模拟全部通过
+  ✅ 账号与同步        本地地址：按设计提示不支持登录（线上域名下才可用）
+  ✅ 存档面板         开合正常
+  ✅ 菜单版本号        v4.0.10（与 BUILD_VER 一致）
+  ✅ 错题回流内核       新收 / 打回第一天（box 3→0 · badN+1）/ 从已掌握拉回 —— 三种都对
+  ✅ 练枪结算重做       🔁 趁热重做刚错的 1 题 → 面板「🔁 重做刚错的题」4 个选项
+  ✅ 首访说明只弹一次     新玩家只弹教学（公告记已读）· 点掉即写已读位 · 重开不再弹 · 老玩家不弹教学
+  ✅ 控制台错误        无
+  ✅ 构建版本         4.0.10
+  ✅ 题目生成器        572
+  ✅ 国度           5
+  ✅ 精灵           15
+  ✅ 自检问题数        0
+  ✅ 存档往返         一致
+  ✅ 史诗卷宗         86
+  ✅ 画布           2400x1900
+  ✅ 切史诗世界        格物纪元 · 科学编年史
+  ✅ 切练枪世界        格物纪元 · 练枪场
+  ✅ 切烽火世界        格物纪元 · 烽火地带
+  ✅ 切回闯关世界       数理群岛
+  ✅ 四国直达         四国都能直达出生域（⚡力理亚 → 🔥嬗变利亚 → 🌿生衍利亚 → 📐数理群岛）
+  ✅ 顶栏练枪入口       四个世界各 1 个（闯关=1 · 史诗=1 · 练枪场=1 · 烽火=1）
+  ✅ 菜单练枪入口       菜单里 1 个（练枪场 · 压轴专训）
+  ✅ 更新公告         v4.0.10-eeafdffa · 全屏按钮回到更新公告里：一次更新，一次提醒
+  ✅ 全屏入口         ☰ #mFs · 公告 #newsFs · 通知栏 #upFs（三处都在、都绑了行为）· 平台说明 5 条
+  ✅ 云端对账决策       9 组对账场景 + 防重载模拟全部通过
+  ✅ 账号与同步        本地地址：按设计提示不支持登录（线上域名下才可用）
+  ✅ 存档面板         开合正常
+  ✅ 菜单版本号        v4.0.10（与 BUILD_VER 一致）
+  ✅ 错题回流内核       新收 / 打回第一天（box 3→0 · badN+1）/ 从已掌握拉回 —— 三种都对
+  ✅ 练枪结算重做       🔁 趁热重做刚错的 1 题 → 面板「🔁 重做刚错的题」4 个选项
+  ✅ 读到版本文件       {"name":"格物纪元·四国远征","version":"9.9.9","relea…
+  ✅ 首访说明只弹一次     新玩家只弹教学（公告记已读）· 点掉即写已读位 · 重开不再弹 · 老玩家不弹教学
+  ✅ 更新推送         已提示刷新
+  ✅ 新版本通知栏       4 条要点 · --upH 128px
+  ✅ 控制台错误        无
+  ✅ 构建版本         4.0.10
+  ✅ 题目生成器        572
+  ✅ 国度           5
+  ✅ 精灵           15
+  ✅ 自检问题数        0
+  ✅ 存档往返         一致
+  ✅ 史诗卷宗         86
+  ✅ 画布           2400x1900
+  ✅ 切史诗世界        格物纪元 · 科学编年史
+  ✅ 切练枪世界        格物纪元 · 练枪场
+  ✅ 切烽火世界        格物纪元 · 烽火地带
+  ✅ 切回闯关世界       数理群岛
+  ✅ 四国直达         四国都能直达出生域（⚡力理亚 → 🔥嬗变利亚 → 🌿生衍利亚 → 📐数理群岛）
+  ✅ 顶栏练枪入口       四个世界各 1 个（闯关=1 · 史诗=1 · 练枪场=1 · 烽火=1）
+  ✅ 菜单练枪入口       菜单里 1 个（练枪场 · 压轴专训）
+  ✅ 更新公告         v4.0.10-eeafdffa · 全屏按钮回到更新公告里：一次更新，一次提醒
+  ✅ 全屏入口         ☰ #mFs · 公告 #newsFs · 通知栏 #upFs（三处都在、都绑了行为）· 平台说明 5 条
+  ✅ 云端对账决策       9 组对账场景 + 防重载模拟全部通过
+  ✅ 账号与同步        本地地址：按设计提示不支持登录（线上域名下才可用）
+  ✅ 存档面板         开合正常
+  ✅ 菜单版本号        v4.0.10（与 BUILD_VER 一致）
+  ✅ 错题回流内核       新收 / 打回第一天（box 3→0 · badN+1）/ 从已掌握拉回 —— 三种都对
+  ✅ 练枪结算重做       🔁 趁热重做刚错的 1 题 → 面板「🔁 重做刚错的题」4 个选项
+  ✅ 读到版本文件       {"name":"格物纪元·四国远征","version":"4.0.10","rele…
+  ✅ 首访说明只弹一次     新玩家只弹教学（公告记已读）· 点掉即写已读位 · 重开不再弹 · 老玩家不弹教学
+  ✅ 更新推送         不提示（版本一致）
+  ✅ 新版本通知栏       不显示（版本一致）
+  ✅ 控制台错误        无
+冒烟通过</pre></div>
+<h2>四、改进建议（挑一条告诉我编号就行）</h2>
+<div class="card"><p style="font-size:13.5px;color:#5b6b7c;margin:0">黄色编号是<b>今天体检顺手看出来的观察项</b>（多半是这一天新冒出来的），蓝色编号是<b>积累的功能建议</b>。你回一句「做 #3」，我就按第 3 条往下做：改代码 → 跑回归 → 发版 → 出汇报页 → 公告自动同步给玩家。</p></div>
+<div class="sug"><span class="n">#1</span><b>☰ 菜单加搜索 / 筛选框</b><div class="why">功能项已经 20+ 条（含四个世界的入口），手机上要滚两三屏才找得到「公式速查」。给菜单加一个输入框，边打边筛。</div><div class="meta">改动量：小 · 落点：<code>src/js/70_blaze_overrides.js（showMenu）</code></div></div>
+<div class="sug"><span class="n">#2</span><b>进游戏时给一句「今天练这个」</b><div class="why">学习报告要玩家自己点开看，看完还得自己决定练什么。把已有统计（薄弱知识点 + 到期错题）压成一句话，进场时闪一下，点一下直接开练。</div><div class="meta">改动量：中 · 落点：<code>src/js/46_report_index.js + 顶栏任务条</code></div></div>
+<div class="sug"><span class="n">#3</span><b>错题本按「八种思路题型」筛选</b><div class="why">题库早就给每题挂了思路题型徽章（转化 / 定位 / 多解…），但错题本只能按科目筛 —— 想专门补「防坑」这一型做不到。</div><div class="meta">改动量：小 · 落点：<code>src/js/44_wrongbook_core.js</code></div></div>
+<div class="sug"><span class="n">#4</span><b>游戏内「反馈箱」：把 bug 与建议写在本机</b><div class="why">玩家发现问题时正在游戏里，切出去写反馈基本等于不会写。给一个入口，写两行、存本机，导出成一个文件交给维护方。</div><div class="meta">改动量：中 · 落点：<code>src/js/55_boot_news.js（☰ 菜单）+ 新增模块</code></div></div>
+<div class="sug"><span class="n">#5</span><b>通知栏加「稍后再提醒」</b><div class="why">现在只有「立即刷新」和「✕ 本次不再提醒」。中间那一档最常用：这局先打完，下次进来再说。</div><div class="meta">改动量：小 · 落点：<code>src/js/73_version.js</code></div></div>
+<div class="sug"><span class="n">#6</span><b>图鉴里未收服的精灵写清「在哪一域能遇到」</b><div class="why">未收服只有锁形剪影，玩家不知道去哪儿找。42 只精灵分散在四国十四域，写清域名叫「收集」变得可行。</div><div class="meta">改动量：小 · 落点：<code>src/js/（图鉴渲染）</code></div></div>
+<div class="sug"><span class="n">#7</span><b>学习报告加近 7 天正确率趋势</b><div class="why">现在只有分布（各域 / 各知识点），看得到短板看不到进步。「这周比上周好了没」比「哪个域最差」更能留住人。</div><div class="meta">改动量：中 · 落点：<code>src/js/46_report_index.js</code></div></div>
+<div class="sug"><span class="n">#8</span><b>烽火阵亡结算里列出「本局答错的题」</b><div class="why">烽火一局几十道题，打崩了只记得「刚才有一题不会」。结算页把答错的题捞出来，一键进错题本。</div><div class="meta">改动量：小 · 落点：<code>src/js/64_blaze_deploy.js</code></div></div>
+<div class="sug"><span class="n">#9</span><b>存档面板显示最近一次云同步的时间与结果</b><div class="why">云对账现在是后台悄悄做的，玩家不知道自己的进度到底有没有上去过 —— v4.0.4 那个「卡在载入中」的事故就是因为看不见。</div><div class="meta">改动量：小 · 落点：<code>src/js/72_cloud_save.js</code></div></div>
+<div class="sug"><span class="n">#10</span><b>答题面板加「跳过本题」</b><div class="why">卡住的题只能乱选一个（会拉低正确率、还会被记进错题）。给一个明确跳过：计入练习数、不计对错，但进错题本下一轮再来。</div><div class="meta">改动量：小 · 落点：<code>src/js/38_session.js</code></div></div>
+<div class="sug"><span class="n">#11</span><b>平板横屏再压一档题面排版</b><div class="why">v4.0.5 之后帧率已经不是瓶颈，下一个体感短板是横屏短高度下攻坚题的选项会被顶出首屏。</div><div class="meta">改动量：中 · 落点：<code>src/css/10_quiz.css + src/js/38_session.js</code></div></div>
+<div class="sug"><span class="n">#12</span><b>清理被覆盖的同名函数（28 处，多国改造后遗留）</b><div class="why">巡检每天都在报：同名函数定义了不止一次，后一份生效、前一份是死代码 —— 改错文件等于没改。最典型的是 addStele / addSpirit / addGuard / addHermit：10_bank_skeleton.js 里那份往全局 SPOTS 里塞，11_world.js 里那份往 CUR_BUILD.spots 里塞，内容模块真正调到的是后者，前者是四国改造前的旧接口。4.0.9 那个「每次都弹教学」的 bug 就是同一类问题（maybeIntro 两份，覆盖的那份漏了写入），不清理还会再踩。</div><div class="meta">改动量：中 · 落点：<code>src/js/10_bank_skeleton.js 与 11_world.js 等（删不生效的那份，或改名 + 加注释说明）</code></div></div>
+<div class="sug auto"><span class="n">#A1</span><b>有 28 个同名函数被定义了不止一次</b><div class="why">addStele（10_bank_skeleton.js、11_world.js）；addSpirit（10_bank_skeleton.js、11_world.js）；addGuard（10_bank_skeleton.js、11_world.js）；addHermit（10_bank_skeleton.js、11_world.js） —— 后一份生效、前一份是死代码，改错文件等于没改。</div><div class="meta">改动量：小 · 落点：<code>src/js/（删掉不生效的那一份，或加注释说明为何覆盖）</code></div></div>
+<div class="card"><b>已经做完的（进 changelog 了）</b><ul style="margin:8px 0 0;padding-left:20px"><li>练枪错题回流：又错一次真的记账（打回第一天）+ 收工趁热重做刚错的题 <span style="color:#7d94ab">· v4.0.7</span></li><li>更新公告自动化（内容与已读位同源） <span style="color:#7d94ab">· v4.0.6</span></li><li>全屏按钮独立成 ☰ 菜单里的一行 <span style="color:#7d94ab">· v4.0.6</span></li></ul></div>
+<footer>由 tools/daily.py 生成 · 2026-10-15 13:43 · 机器可读结果在 汇报/巡检/latest.json</footer></div></body></html>

@@ -67,6 +67,39 @@ function wbAdd(it){
   }
   return true;
 }
+/* 按题干找一条：本子里 / 归档区里。用题干当主键是全工程一贯的做法 */
+function wbFind(text){
+  const t=String(text);
+  return (state.wrongBook||[]).filter(w=>w.text===t)[0]||null;
+}
+function wbFindDone(text){
+  const t=String(text);
+  return (state.wrongDone||[]).filter(w=>w.text===t)[0]||null;
+}
+/* 练习模式（练枪场 / 闯关）答错，一步到位：新收 / 拉回 / 打回第一天。
+   ------------------------------------------------------------
+   以前这些模式只调 wbAdd()，而它碰到"题干已经在本子里"会直接返回 false
+   —— 于是「又错一次」这件事被整个丢掉：熟炼度不掉、badN 不涨、复习日不重排。
+   结果就是：连着三天在练枪场错同一道题，本子里那条还安安稳稳写着
+   「熟炼度 3 星 · 4 天后再见」，而错题分析里按 badN 排的「最薄弱」
+   永远看不见练习场上犯的错 —— 恰恰是练得最多的地方。
+   返回 'new' 新收 | 'down' 打回第一天 | 'back' 从「已掌握」拉回 | 'full' 本子满了 */
+function wbMiss(it){
+  if(!it||!it.text)return 'full';
+  const hit=wbFind(it.text);
+  if(hit){wbGrade(hit,false);return 'down';}
+  const old=wbFindDone(it.text);
+  if(old){wbRestore(old);wbGrade(old,false);return 'back';}
+  if(state.wrongBook.length>=WRONG_CAP)return 'full';
+  return wbAdd(it)?'new':'full';
+}
+/* 把 wbMiss 的结果说成人话。各模式共用一套说法，别一个地方一个口径 */
+function wbMissWord(kind){
+  if(kind==='new')return '已收进错题本，明天再考你一次';
+  if(kind==='down')return '这题本来就在本子里 —— 又错一次，熟炼度打回第一天';
+  if(kind==='back')return '这题你已经掌握过了 —— 又错了，已从「已掌握」拉回来重学';
+  return '错题本满了（'+WRONG_CAP+' 题）没存下 —— 去「错题本」删几道吧';
+}
 /* 判一次复习结果：答对升一星，满星毕业；答错打回第一天。
    返回 'up' 升级 / 'down' 打回 / 'done' 毕业 / 'back' 从归档区拉回 / 'none' 不在本子里 */
 function wbGrade(w,ok){

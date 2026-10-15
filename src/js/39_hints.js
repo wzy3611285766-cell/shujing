@@ -363,10 +363,14 @@ function session(cfg){
       SFX.wrong();
       fb.className='no';
       fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`;
-      // 错题本（容量见 WRONG_CAP，1.5.15 起 30 → 200）
-      if(wbAdd({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,opts:q.opts.slice(),
-        rid:curRid,subject:subjOfRid(curRid),src2:'闯关'}))
-        toast('📕 已收进错题本 · 明天再考你一次');
+      /* 错题本（容量见 WRONG_CAP，1.5.15 起 30 → 200）。
+         走 wbMiss 而不是 wbAdd：题已经在本子里时也要把"又错一次"记下来，
+         否则推图时反复错的题在错题分析里一次都不算数。 */
+      const kind=wbMiss({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,opts:q.opts.slice(),
+        rid:curRid,subject:subjOfRid(curRid),src2:'闯关'});
+      if(kind==='down')
+        fb.innerHTML+='<div class="exp">📕 这题又错了一次 · 熟炼度打回第一天</div>';
+      else if(kind==='new'||kind==='back')toast('📕 '+wbMissWord(kind));
       state.wrongBook=state.wrongBook.slice(0,WRONG_CAP);
     }
     /* 思路灵：独立答对才觉醒 / 涨羁绊（看了提示这题不计） */

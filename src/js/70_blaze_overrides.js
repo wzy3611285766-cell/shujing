@@ -218,6 +218,11 @@ function resetBlazeState(){
 function showMenu(){
   const ep=CUR===EPIC, bz=CUR===BLAZE, dr=CUR===DRILL;
   const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'格物纪元 · 四国远征'));
+  /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
+     平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
+     没经过构建（__BUILD_VER__ 占位）时不显示，免得把占位符贴到界面上。 */
+  const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
+    ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
      在史诗模式想回闯关得点两次，很容易点错 */
   const worlds=[
@@ -242,6 +247,8 @@ function showMenu(){
                 :'精灵 '+SPIRITS.filter(v=>state.caught[v.id]).length+'/'+SPIRITS.length
                  +' 已收服 · 徽章 '+Object.keys(state.badges).length+'/'+REGIONS.length);
   const sndTxt=state.sound?'🔊 音效：开':'🔇 音效：关';
+  /* 全屏开关的当前状态：读它来决定菜单里那颗按钮写"全屏"还是"退出全屏" */
+  const fsOn=(typeof fullscreenOn==='function')&&fullscreenOn();
   /* 错题中心那一项的 HTML：有到期题时**排到菜单最上面**。
      原因见 updateWbBadge 的注释 —— 顶栏 ☰ 顶着「4」，点开菜单却要
      滚动半屏才在功能列表里找到「错题中心」，红点照样是悬空的。
@@ -255,7 +262,7 @@ function showMenu(){
 
   openPanel(`
     <h2>☰ 菜单</h2>
-    <div class="sub">${head}</div>
+    <div class="sub">${head}${verTag}</div>
     ${showWb&&dueN?`<div class="menu-list" style="margin-bottom:12px">${mWbHtml}</div>`:''}
     <div class="sub" style="text-align:left;margin:2px 0 8px">切换世界（四个模式进度分开存）</div>
     <div class="menu-list" style="margin-bottom:14px">${wlist}</div>
@@ -297,9 +304,13 @@ function showMenu(){
       <button class="menu-li" id="mSave"><span class="e">💾</span>
         <span class="tx">存档管理<div class="d">导出 / 导入存档码 · 清档重开</div></span></button>
       <button class="menu-li" id="mNews"><span class="e">📣</span>
-        <span class="tx">更新公告<div class="d">练枪入口合一 · 旧版会提醒刷新 · 一键全屏怎么开</div></span></button>
+        <span class="tx">更新公告${verTag}<div class="d">本版改了哪几件事 · 旧版会顶出通知栏 · 各平台怎么开全屏</div></span></button>
       <button class="menu-li" id="mSound"><span class="e">${state.sound?'🔊':'🔇'}</span>
         <span class="tx">${sndTxt}<div class="d">答题与拾取的提示音</div></span></button>
+      <button class="menu-li" id="mFs"><span class="e">${fsOn?'🗗':'⛶'}</span>
+        <span class="tx">${fsOn?'退出全屏':'⛶ 全屏'}<div class="d">${fsOn
+          ?'回到窗口模式 · 也可以按 F11（Mac 是 ⌃⌘F）'
+          :'铺满整屏、去掉地址栏 · iPhone 请从「添加到主屏幕」的图标进（Safari 不给网页全屏）'}</div></span></button>
     </div>
     <div class="row"><button class="btn primary" id="ok">关闭</button></div>
   `);
@@ -343,6 +354,24 @@ function showMenu(){
      看完照样记成看过（下次进场不再自动弹） */
   if(mn)mn.onclick=()=>{closePanel();audioKick();setTimeout(showNews,90);};
   $('mSound').onclick=()=>{closePanel();$('btnSound').onclick();setTimeout(showMenu,60);};
+  const mfs=$('mFs');
+  /* ⛶ 全屏（4.0.6 从更新公告里搬出来的独立入口）：
+     点一下就切，切完把菜单重开一遍 —— 按钮上写着"全屏 / 退出全屏"，
+     状态得是切换后的，不然玩家不知道自己到底在不在全屏。
+     iPhone Safari 没有网页全屏 API，toggleFullscreen() 会返回 false，
+     这里按平台给一条能走通的替代路径。 */
+  if(mfs)mfs.onclick=()=>{
+    const wasOn=fullscreenOn();
+    closePanel();
+    if(!toggleFullscreen()){
+      toast('这个浏览器不给网页全屏 —— iOS 请从「添加到主屏幕」的图标进；'+
+            '电脑按 F11 · 安卓 Chrome 右上角 ⋮');
+      return;
+    }
+    audioKick();
+    toast(wasOn?'已退出全屏':'已全屏 · 再点一次「退出全屏」回来');
+    setTimeout(showMenu,140);
+  };
 }
 
 /* =========================================================

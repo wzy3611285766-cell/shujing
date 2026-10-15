@@ -21,6 +21,12 @@ import sys
 import urllib.error
 import urllib.request
 
+# Windows 控制台默认 GBK：✅/❌ 直接 UnicodeEncodeError 崩掉（只换编码，不动逻辑）
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_URL = "https://shujing.app.workbuddy.host/"
 CHROME_CANDIDATES = [

@@ -53,7 +53,8 @@ function measureTopbar(){
   if(!h||Math.abs(h-questTopH)<1)return;
   questTopH=h;
   document.documentElement.style.setProperty('--topH',h+'px');
-  const q=$('quest');if(q)q.style.top='calc(var(--safeT) + '+h+'px + 6px)';
+  /* 也要让开顶部那条"新版本通知栏"（--upH，没有它时是 0） */
+  const q=$('quest');if(q)q.style.top='calc(var(--safeT) + var(--upH) + '+h+'px + 6px)';
 }
 if(window.ResizeObserver&&document.getElementById('topbar')){
   try{new ResizeObserver(measureTopbar).observe(document.getElementById('topbar'));}catch(e){}

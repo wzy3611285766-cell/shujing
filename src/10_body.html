@@ -14,6 +14,22 @@
   <div id="ents"></div>
   <div id="fx"></div>
 
+  <!-- ============ 新版本通知栏（4.0.6）============
+       玩家手里那份是缓存里的旧版时，光弹一句"刷新一下"等于没说 ——
+       这里把 version.json 里带回来的「本次更新要点」直接铺开，
+       让他先看清新版改了什么，再决定刷不刷新。
+       平时 hidden，由 src/js/73_version.js 在真检测到新版时才挂出来。 -->
+  <div id="upbar" role="status" aria-live="polite" hidden>
+    <span class="up-ico">🛎️</span>
+    <div class="up-tx">
+      <b id="upTitle"></b>
+      <div class="up-list" id="upList"></div>
+    </div>
+    <button class="up-fs" id="upFs" aria-label="全屏 / 退出全屏">⛶ 全屏</button>
+    <button class="up-go" id="upGo">立即刷新</button>
+    <button class="up-x" id="upX" aria-label="这次不提醒">✕</button>
+  </div>
+
   <div id="topbar">
     <div class="chip" id="regionChip">📍 <span class="txt">——</span></div>
     <div class="chip small" id="diffChip"><span class="txt">基础题</span></div>
@@ -48,51 +64,12 @@
   <!-- ============ 活动公告（版本更新）============
        大型游戏进场那张"活动弹窗"：全屏遮罩 + 中央卡片，点右上角 ✕ 才关。
        刻意不绑遮罩点击 —— 公告就是要点掉它才算看过。
-       内容写死在 HTML 里，JS 只负责显示/隐藏与"是否看过"的记录。 -->
+       卡片内容不写死在这里：构建时由 tools/build.py 从 news.json 渲染，
+       连"已读位" NEWS_VER 也一起生成（内容改了必重弹，不会再漏）。
+       要改公告：改 news.json 顶上加一条，然后 python tools/build.py。 -->
   <div id="news" role="dialog" aria-modal="true" aria-label="版本更新公告">
-    <div class="news-card">
-      <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
-
-      <div class="news-hero">
-        <span class="news-badge">📣 版本更新</span>
-        <div class="news-title">练枪入口合一 + 自动提醒新版本</div>
-        <div class="news-sub">顶栏不再出现两颗一模一样的 🎯 —— 想练哪科，一颗键直达</div>
-      </div>
-
-      <div class="news-body">
-        <div class="news-sec">
-          <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">🎯</span><span>
-            <b>练枪只剩一个入口</b>：顶栏常驻的「<b>🎯 练枪</b>」，闯关 / 史诗 / 烽火里都能直接点开练</span></div>
-          <div class="news-li"><span class="e">🧭</span><span>
-            <b>烽火那颗模式键改回「⚔️ 闯关」</b>：以前它也叫「练枪场」，两颗键长得一样、
-            点下去还是同一个地方，容易点错</span></div>
-          <div class="news-li"><span class="e">📋</span><span>
-            <b>菜单里的练枪场合并成一条</b>（在 ☰ → 切换世界 里），
-            下面直接写着已经练过多少题</span></div>
-          <div class="news-li"><span class="e">🔄</span><span>
-            <b>打开旧版会提醒刷新</b>：新版上线后，你屏幕上那份旧页面会自己说一句 ——
-            <b>不用清缓存</b>，刷新一下就拿到最新版</span></div>
-        </div>
-
-        <div class="news-sec">
-          <div class="news-sec-h">怎么开全屏</div>
-          <button class="fs-btn" id="newsFs">
-            <span class="fs-btn-e">⛶</span><span>一键全屏</span>
-          </button>
-          <div class="fs-tips">
-            <div class="fs-tip"><span class="k">💻 电脑</span><span>按 <b>F11</b>（Mac 是 <b>⌃⌘F</b>），再按一次退出</span></div>
-            <div class="fs-tip"><span class="k">📱 iPhone</span><span>Safari 底部「分享」→「<b>添加到主屏幕</b>」，从桌面图标打开即全屏，没有地址栏</span></div>
-            <div class="fs-tip"><span class="k">🤖 安卓</span><span>Chrome 右上角 <b>⋮</b> →「<b>添加到主屏幕</b>」，同样从图标进</span></div>
-            <div class="fs-tip"><span class="k">💬 微信</span><span>右上角 <b>⋯</b> →「<b>在浏览器打开</b>」，再照上面的做</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="news-foot">
-        <button class="btn primary" id="newsOk">知道了，开玩 →</button>
-      </div>
-    </div>
+<!-- NEWS-CARD-START · 标记区内由构建期生成，别手改（下次构建会被覆盖） -->
+<!-- NEWS-CARD-END -->
   </div>
 </div>
 

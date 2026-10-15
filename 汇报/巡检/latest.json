@@ -1,0 +1,161 @@
+{
+  "date": "2026-10-15",
+  "version": "4.0.10",
+  "seconds": 7.2,
+  "ok": true,
+  "steps": [
+    {
+      "name": "① 构建 + 公告同源",
+      "ok": true,
+      "detail": "版本 v4.0.10 · 模块 74 个 · 1939763 字节 (1.85 MB) · sha256 434bb5a9e12a4ab0 · 公告 v4.0.10 · NEWS_VER v4.0.10-eeafdffa（内容摘要，改公告就会变）"
+    },
+    {
+      "name": "② 骨架比对（对比拆分前基线）",
+      "ok": true,
+      "detail": "产物 +13897 字节 · 基线独有 125 行 / 产物独有 376 行（相对基线累计改动）"
+    },
+    {
+      "name": "③ 无头浏览器冒烟（file:// + http:// 各一遍）",
+      "ok": true,
+      "detail": "81 项通过 / 0 项失败 · 耗时 7s"
+    },
+    {
+      "name": "④ 静态体检",
+      "ok": true,
+      "detail": "7 项检查 · 0 项未过"
+    }
+  ],
+  "health": [
+    {
+      "item": "模块换行符（CRLF 约定 · 74 个模块）",
+      "ok": true,
+      "detail": "全部合规"
+    },
+    {
+      "item": "版本号三处一致（version.json / 产物 / 公告）",
+      "ok": true,
+      "detail": "v4.0.10 · NEWS_VER v4.0.10-eeafdffa"
+    },
+    {
+      "item": "更新日志首条 = 当前版本",
+      "ok": true,
+      "detail": "CHANGELOG 顶上就是 v4.0.10（版本谱系与涨号规则也写在开头）"
+    },
+    {
+      "item": "releases/ 里有当前版本的归档",
+      "ok": true,
+      "detail": "已归档，可随时回退"
+    },
+    {
+      "item": "DOM 引用不悬空（202 处 $('id')）",
+      "ok": true,
+      "detail": "全部有着落"
+    },
+    {
+      "item": "待办标记（TODO / FIXME）",
+      "ok": true,
+      "detail": "0 处（无）"
+    },
+    {
+      "item": "汇报页无外链（图片全内联）",
+      "ok": true,
+      "detail": "汇报页自查：全部通过 ✅"
+    }
+  ],
+  "failures": [],
+  "observations": [
+    {
+      "id": "A1",
+      "title": "有 28 个同名函数被定义了不止一次",
+      "why": "addStele（10_bank_skeleton.js、11_world.js）；addSpirit（10_bank_skeleton.js、11_world.js）；addGuard（10_bank_skeleton.js、11_world.js）；addHermit（10_bank_skeleton.js、11_world.js） —— 后一份生效、前一份是死代码，改错文件等于没改。",
+      "cost": "小",
+      "where": "src/js/（删掉不生效的那一份，或加注释说明为何覆盖）"
+    }
+  ],
+  "suggestions": [
+    {
+      "id": "menu-search",
+      "title": "☰ 菜单加搜索 / 筛选框",
+      "why": "功能项已经 20+ 条（含四个世界的入口），手机上要滚两三屏才找得到「公式速查」。给菜单加一个输入框，边打边筛。",
+      "cost": "小",
+      "where": "src/js/70_blaze_overrides.js（showMenu）"
+    },
+    {
+      "id": "daily-advice",
+      "title": "进游戏时给一句「今天练这个」",
+      "why": "学习报告要玩家自己点开看，看完还得自己决定练什么。把已有统计（薄弱知识点 + 到期错题）压成一句话，进场时闪一下，点一下直接开练。",
+      "cost": "中",
+      "where": "src/js/46_report_index.js + 顶栏任务条"
+    },
+    {
+      "id": "wrongbook-filter-type",
+      "title": "错题本按「八种思路题型」筛选",
+      "why": "题库早就给每题挂了思路题型徽章（转化 / 定位 / 多解…），但错题本只能按科目筛 —— 想专门补「防坑」这一型做不到。",
+      "cost": "小",
+      "where": "src/js/44_wrongbook_core.js"
+    },
+    {
+      "id": "in-game-feedback",
+      "title": "游戏内「反馈箱」：把 bug 与建议写在本机",
+      "why": "玩家发现问题时正在游戏里，切出去写反馈基本等于不会写。给一个入口，写两行、存本机，导出成一个文件交给维护方。",
+      "cost": "中",
+      "where": "src/js/55_boot_news.js（☰ 菜单）+ 新增模块"
+    },
+    {
+      "id": "upbar-snooze",
+      "title": "通知栏加「稍后再提醒」",
+      "why": "现在只有「立即刷新」和「✕ 本次不再提醒」。中间那一档最常用：这局先打完，下次进来再说。",
+      "cost": "小",
+      "where": "src/js/73_version.js"
+    },
+    {
+      "id": "dex-location-hint",
+      "title": "图鉴里未收服的精灵写清「在哪一域能遇到」",
+      "why": "未收服只有锁形剪影，玩家不知道去哪儿找。42 只精灵分散在四国十四域，写清域名叫「收集」变得可行。",
+      "cost": "小",
+      "where": "src/js/（图鉴渲染）"
+    },
+    {
+      "id": "report-trend",
+      "title": "学习报告加近 7 天正确率趋势",
+      "why": "现在只有分布（各域 / 各知识点），看得到短板看不到进步。「这周比上周好了没」比「哪个域最差」更能留住人。",
+      "cost": "中",
+      "where": "src/js/46_report_index.js"
+    },
+    {
+      "id": "blaze-death-review",
+      "title": "烽火阵亡结算里列出「本局答错的题」",
+      "why": "烽火一局几十道题，打崩了只记得「刚才有一题不会」。结算页把答错的题捞出来，一键进错题本。",
+      "cost": "小",
+      "where": "src/js/64_blaze_deploy.js"
+    },
+    {
+      "id": "cloud-sync-time",
+      "title": "存档面板显示最近一次云同步的时间与结果",
+      "why": "云对账现在是后台悄悄做的，玩家不知道自己的进度到底有没有上去过 —— v4.0.4 那个「卡在载入中」的事故就是因为看不见。",
+      "cost": "小",
+      "where": "src/js/72_cloud_save.js"
+    },
+    {
+      "id": "session-skip",
+      "title": "答题面板加「跳过本题」",
+      "why": "卡住的题只能乱选一个（会拉低正确率、还会被记进错题）。给一个明确跳过：计入练习数、不计对错，但进错题本下一轮再来。",
+      "cost": "小",
+      "where": "src/js/38_session.js"
+    },
+    {
+      "id": "tablet-answer-fit",
+      "title": "平板横屏再压一档题面排版",
+      "why": "v4.0.5 之后帧率已经不是瓶颈，下一个体感短板是横屏短高度下攻坚题的选项会被顶出首屏。",
+      "cost": "中",
+      "where": "src/css/10_quiz.css + src/js/38_session.js"
+    },
+    {
+      "id": "shadowed-functions",
+      "title": "清理被覆盖的同名函数（28 处，多国改造后遗留）",
+      "why": "巡检每天都在报：同名函数定义了不止一次，后一份生效、前一份是死代码 —— 改错文件等于没改。最典型的是 addStele / addSpirit / addGuard / addHermit：10_bank_skeleton.js 里那份往全局 SPOTS 里塞，11_world.js 里那份往 CUR_BUILD.spots 里塞，内容模块真正调到的是后者，前者是四国改造前的旧接口。4.0.9 那个「每次都弹教学」的 bug 就是同一类问题（maybeIntro 两份，覆盖的那份漏了写入），不清理还会再踩。",
+      "cost": "中",
+      "where": "src/js/10_bank_skeleton.js 与 11_world.js 等（删不生效的那份，或改名 + 加注释说明）"
+    }
+  ]
+}

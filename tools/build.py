@@ -5,9 +5,13 @@
   shujing-app/index.html     —— 依旧「一个文件就是 App」，双击/上传即可用
   shujing-app/version.json   —— 给「更新推送」用：部署后玩家那边能对出自己是不是旧版
 
-构建时会做两件注入：
+构建时会做三件注入：
   · <!-- BUILD_STAMP --> → 真实构建戳（版本 / 时间 / 源码摘要）
   · __BUILD_VER__        → 真实版本号（供 src/js/73_version.js 做版本自检）
+  · 公告标记区 + __NEWS_VER__ → 由 news.json 渲染的公告卡与"已读位"（tools/news.py）
+
+公告那一条是 2026-10-15 加的：公告内容与 NEWS_VER 现在同源，
+改了内容一定重弹，不会再出现"公告改了、老玩家看不到"的老坑。
 
 用法：
   python tools/build.py            构建并写入产物
@@ -22,12 +26,14 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import news  # noqa: E402
 from manifest import PIECES, PUBLISH  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VERSION_FILE = os.path.join(ROOT, "version.json")
 STAMP_TOKEN = b"<!-- BUILD_STAMP -->"
 VER_TOKEN = b"__BUILD_VER__"
+NEWS_TOKEN = b"__NEWS_VER__"
 
 
 def read_version():
@@ -78,7 +84,15 @@ def main():
     if VER_TOKEN not in raw:
         raise SystemExit("源码里找不到 %s，无法注入版本号" % VER_TOKEN.decode())
 
-    data = raw.replace(STAMP_TOKEN, stamp).replace(VER_TOKEN, ver.encode("utf-8"))
+    # 公告：news.json 里最新一条 → 卡片 HTML + NEWS_VER（内容摘要），一起注入
+    raw, card = news.inject(raw)
+    news_ver = news.ver_token(news.latest(), card)
+    if NEWS_TOKEN not in raw:
+        raise SystemExit("源码里找不到 %s，无法注入公告已读位" % NEWS_TOKEN.decode())
+
+    data = (raw.replace(STAMP_TOKEN, stamp)
+               .replace(VER_TOKEN, ver.encode("utf-8"))
+               .replace(NEWS_TOKEN, news_ver.encode("utf-8")))
     digest = hashlib.sha256(data).hexdigest()
 
     if "--dry" in sys.argv:
@@ -91,6 +105,8 @@ def main():
     open(dst, "wb").write(data)
 
     news_hash, news_ver = news_meta(data)
+    # 「本次更新要点」也写进 version.json：旧版客户端顶部那条通知栏直接读它，
+    # 不用等下完新文件就知道新版改了什么（tools/news.py summary()）。
     vj = {
         "name": meta.get("name", ""),
         "version": ver,
@@ -103,14 +119,23 @@ def main():
         "news_ver": news_ver,
         "news_hash": news_hash,
     }
+    vj.update(news.summary(news.latest()))
     open(os.path.join(os.path.dirname(dst), "version.json"), "w", encoding="utf-8", newline="\n").write(
         json.dumps(vj, ensure_ascii=False, indent=2) + "\n")
+
+    # 根目录那份也把公告两项同步上：它记的是"上一次构建时的公告"，
+    # 发版脚本据此判断这次公告到底变没变（内容 hash 一变，玩家那边就会重弹）。
+    meta["news_ver"], meta["news_hash"] = news_ver, news_hash
+    open(VERSION_FILE, "w", encoding="utf-8", newline="\n").write(
+        json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
 
     if not quiet:
         print("已构建 %s" % PUBLISH)
         print("  版本 v%s · 模块 %d 个 · %d 字节 (%.2f MB) · sha256 %s"
               % (ver, len(PIECES), len(data), len(data) / 1048576.0, digest[:16]))
-        print("  同时写出 shujing-app/version.json")
+        print("  公告 v%s · NEWS_VER %s（内容摘要，改公告就会变）"
+              % (news.latest().get("version"), news_ver))
+        print("  同时写出 shujing-app/version.json（含 news_title / news_items）")
         if old == data:
             print("  与构建前内容一致（本次没有任何改动）")
         else:

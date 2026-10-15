@@ -84,35 +84,10 @@ function syncModeButtons(){
   if(mode)mode.textContent=ep?'🔥 烽火':((bz||dr)?'⚔️ 闯关':'📜 史诗');
 }
 
-/* ---------------- 覆盖：首次进入的说明 ---------------- */
-function maybeIntro(delay){
-  try{if(localStorage.getItem(curKey+'_intro'))return;}catch(e){return;}
-  setTimeout(()=>{
-    if(modal.classList.contains('show'))return;
-    panel.dataset.intro='1';introShowing=true;
-    const html = CUR===BLAZE ? blazeIntroHtml()
-               : CUR===EPIC ? epicIntroHtml()
-               : CUR===DRILL ? drillIntroHtml()
-               : null;
-    if(html){
-      openPanel(html);
-      const g=$('go');
-      if(g)g.onclick=()=>{
-        closePanel();
-        if(CUR===BLAZE)setTimeout(showBlazeLobby,320);
-        if(CUR===DRILL)setTimeout(showDrill,320);
-      };
-      return;
-    }
-    /* 闯关模式的原始说明 */
-    openPanel(`
-      <h2>${WORLD_TITLE}</h2>
-      <div class="sub">${WORLD_SUB}</div>
-      <div class="it-list"><div class="il">📐 <b style="color:#9db4ff">数理群岛</b> · 数学　⚡ <b style="color:#ffd76a">力理亚</b> · 物理</div><div class="il">🔥 <b style="color:#ffb072">嬗变利亚</b> · 化学　🌿 <b style="color:#84e3a6">生衍利亚</b> · 生物</div><div class="il"><span style="color:#9cc0e0;font-size:var(--fs-sm)">四个国度<b>各有一张独立地图</b>，各含 3~5 个域，共十四域、42 只精灵</span></div><div class="il">⛩️ <b>传送塔</b>：每域一座，走过去自动点亮，之后可在四国之间任意往返</div><div class="il">🕹️ <b>移动</b>：在地图上<b>任意位置按住拖动</b>，摇杆会出现在你的手指下</div><div class="il">🗿 <b>石碑</b>：靠近后点右下角按钮，答题换结晶</div><div class="il">✨ <b>精灵</b>：答对 2/3 题即可收服进图鉴（四国共 42 只）</div><div class="il">🛡️ <b>守护者</b>：连答 5 道挑战题（错≤1）拿徽章、开桥</div><div class="il">💎 <b>结晶</b>：散落各处，走过去自动捡；商行可换道具</div><div class="il">📕 <b>错题中心</b>：答错的题自动收录，按熟炼度排复习日程 —— 到期就练，连对 5 次毕业</div><div class="il">📈 <b>三档难度</b>：普通 → 中档 → 高考，连对 2 题升档、错 2 题降档</div><div class="il">🆕 <b>四个模式</b>：⚔️ 闯关（刷实题）· 📜 史诗（读科学史）· 🔥 烽火（搜打撤）· 🎯 练枪（压轴 + 思路详解），进度各自独立</div><div class="il">💾 <b>存档</b>：进度自动存在本机；换设备/清缓存前，先到「💾 存档」导出存档码</div></div>
-      <div class="row"><button class="btn primary" id="go">开始探索</button></div>`);
-    $('go').onclick=closePanel;
-  },delay||0);
-}
+/* ---------------- 首次进入的说明 ----------------
+   4.0.9 起不在这里定义了：这一份当年把 55_boot_news.js 里那份整个盖掉，
+   却漏了"读过了"的写入（结尾只 closePanel），于是闯关说明每次打开都弹。
+   两份合成一份，四个世界统一在 55_boot_news.js 的 maybeIntro 里处理。 */
 
 /* ---------------- 覆盖：图鉴键在烽火模式下开大厅 ---------------- */
 $('btnDex').onclick=()=>{

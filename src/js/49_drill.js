@@ -718,7 +718,11 @@ function drillSession(sid,opt){
     recentArr.push(t);recent.add(t);
     while(recentArr.length>RECENT_WIN)recent.delete(recentArr.shift());
   }
-  let n=0,right=0,wrong=0,newWrong=0,streak=0,best=0,apR=0,apN=0;
+  let n=0,right=0,wrong=0,newWrong=0,backWrong=0,streak=0,best=0,apR=0,apN=0;
+  /* 这一轮答错的题，原样存一份 —— 结算页那颗「马上重做」直接用它。
+     刚错完的这会儿记忆最热，这时候再练一遍最值钱；
+     没有它的话玩家得自己：错题本 → 全部错题 → 按最新排 → 一道道挑出来。 */
+  const missed=[];
   let cur=drawOne();
   let q=cur.q,curRid=cur.rid,opts=q.opts.slice();
   /* 连续几次都没抽到该专题的题（题池太小或最近去重卡住），提醒一句别干等 */
@@ -860,20 +864,30 @@ function drillSession(sid,opt){
     }else{
       wrong++;streak=0;state.totalWrong++;
       SFX.wrong();
-      fb.className='no';
-      fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b>`+fbExpHtml(q,true)
-        +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 这题已收进错题本。</div>`
-        +aiExpBtnHtml(q);
+      /* 存进错题本的那份快照：字段名按错题本的写法（ans 不是 ansText），
+         这样"马上重做"能原样喂给 sessionFixed，不用再转一道手。
+         攻坚题记 hardIdx、带图的记 fig —— 重做时才画得出那张图。 */
       const wf=(function(){
         const i=(typeof HARD!=='undefined')?HARD.indexOf(q):-1;
         if(i>=0)return {hardIdx:i};
         const fg=figStr(q.fig);
         return fg?{fig:fg}:{};
       })();
-      if(wbAdd(Object.assign({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,
-          opts:q.opts.slice(),rid:curRid,subject:sid,src2:'练枪',
-          steps:q.steps||null,hints:q.hints||null,appr:q.appr||null},wf)))newWrong++;
+      const item=Object.assign({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,
+        opts:q.opts.slice(),rid:curRid,subject:sid,src2:'练枪',
+        steps:q.steps||null,hints:q.hints||null,appr:q.appr||null},wf);
+      /* wbMiss 而不是 wbAdd：题已经在本子里时也要把"又错一次"记下来
+         （打回第一天），不然练枪场犯的错在错题分析里一次都不算数 */
+      const kind=wbMiss(item);
+      if(kind==='new')newWrong++;else if(kind==='back')backWrong++;
+      missed.push(item);
       state.wrongBook=state.wrongBook.slice(0,WRONG_CAP);
+      fb.className='no';
+      /* 顺序有讲究：正确答案 → 这题进错题本怎么处理 → 才轮到完整解析。
+         解析一摊开就是十几行，把"这题已收进本子"塞在它后面等于没写。 */
+      fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b>`
+        +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 📕 ${wbMissWord(kind)}</div>`
+        +fbExpHtml(q,true)+aiExpBtnHtml(q);
     }
     /* 思路灵：练枪场提示免费，但点开过就不算独立解出 */
     try{lingJudge(q,correct,hintLv>0);}catch(e){}
@@ -916,10 +930,13 @@ function drillSession(sid,opt){
       <div class="center" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
         border-radius:14px;padding:12px;line-height:var(--lh-loose)">
         本轮 <b>${n}</b> 题 · 答对 ${right} · 命中率 <b style="color:#ffd76a">${rate}%</b><br>
-        最长连对 ${best} · 新收错题 ${newWrong} 题<br>
+        最长连对 ${best} · 新收错题 ${newWrong} 题${backWrong?` · 又错回来 ${backWrong} 题`:''}<br>
         ${apN?`🧭 思路命中 <b style="color:#9fe4ff">${apRate}%</b>（${apN} 次选择）<br>`:''}
         错题本 ${state.wrongBook.length} / ${WRONG_CAP} 题 · 今日待复习 ${wbDueList().length} 题
       </div>
+      ${missed.length?`<div class="row">
+        <button class="btn primary" id="dfRe" style="width:100%">🔁 趁热重做刚错的 ${missed.length} 题</button>
+      </div>`:''}
       ${wl.length?`<div class="center" style="text-align:left;margin-top:12px;line-height:var(--lh-loose)">
         <b style="color:#ff8a8a">🎯 这一科最该补的知识点</b><br>
         ${wl.map(x=>`· ${esc(x.k)}：${x.n} 题 · <b style="color:${levelOf(x.p).c}">${pctOf(x.p)}</b>
@@ -936,6 +953,28 @@ function drillSession(sid,opt){
         <button class="btn primary" id="dfOk">收工</button>
       </div>
     `);
+    const dre=$('dfRe');
+    /* 趁热重做：只发"这一轮错的这几道"，不搅动错题本里别的题 ——
+       练枪场是自由练习，不该把「今日复习」那套队列也带进来。
+       重做走的还是错题重练那套面板（sessionFixed），
+       所以答对同样升熟炼度、答错同样打回第一天，跟正式复习一个待遇。 */
+    if(dre)dre.onclick=()=>{
+      sessionFixed(missed.slice(),'🔁 重做刚错的题',(r,t)=>{
+        save();updateHUD();
+        openPanel(`
+          <h2>🔁 重做完成</h2>
+          <div class="sub">答对 ${r} / ${t}${t&&r===t?' · 全中 🏆':''}</div>
+          <div class="center" style="font-size:44px;margin:8px 0">${t&&r===t?'🏆':(r*2>=t?'💪':'📗')}</div>
+          <div class="center" style="color:#9cc0e0;font-size:var(--fs-sm);line-height:var(--lh-loose)">
+            熟炼度已按刚才的表现更新<br>
+            错题本 ${state.wrongBook.length} / ${WRONG_CAP} 题 · 今日待复习 ${wbDueList().length} 题
+          </div>
+          <div class="row"><button class="btn" id="mwWb">📕 错题本</button>
+            <button class="btn primary" id="ok">好</button></div>`);
+        $('ok').onclick=closePanel;
+        $('mwWb').onclick=()=>showWrongBook(sid);
+      });
+    };
     $('dfAgain').onclick=()=>{closePanel();
       if(ladId)ladderSession(ladId);
       else drillSession(sid,{tier:tier,focus:false,tid:tid});};

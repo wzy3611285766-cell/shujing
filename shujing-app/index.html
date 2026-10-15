@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>格物纪元 · 四国远征</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.0.4 · 2026-10-14 22:23 · 源码摘要 6aa4adea · 74 个模块 -->
+<!-- build: v4.0.10 · 2026-10-15 13:43 · 源码摘要 265ba267 · 74 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -60,6 +60,9 @@
 
   /* 顶栏实测高度，由 JS 写入；任务条据此下移，避免和换行后的按钮叠在一起 */
   --topH:52px;
+  /* 新版本通知栏的高度，平时 0；顶上那条通知栏出来后由 JS 实测写入，
+     顶栏 / 任务条 / toast 都按它整体下移（4.0.6） */
+  --upH:0px;
 
   /* ============ iOS 玻璃按键系统（3.4.0）============
      照搬「学习目标管理台」的三层玻璃结构，游戏是夜航主题，全天候取深色档：
@@ -119,10 +122,55 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
    不加这一条的话 #bg 会盖住整块画布。relative 不影响它的占位尺寸。 */
 #game{position:relative;z-index:1}
 
+/* ============ 新版本通知栏（4.0.6）============
+   玩家手里那份是缓存里的旧版时，光弹一句"刷新一下"等于没说。
+   这条把 version.json 带回来的「本次更新要点」直接铺开：
+   先看清新版改了什么，再决定刷不刷新。
+   它是通知，不是面板：不遮地图、点 ✕ 就收（本标签页内不再顶）。
+   高度实测写进 --upH，顶栏 / 任务条 / toast 整体下移，谁也不压谁。 */
+#upbar[hidden]{display:none!important}
+#upbar{position:absolute;top:0;left:0;right:0;z-index:60;
+  padding:calc(var(--safeT) + 7px) calc(var(--safeR) + 10px) 8px calc(var(--safeL) + 10px);
+  display:flex;gap:9px;align-items:flex-start;
+  background:linear-gradient(180deg,rgba(41,92,158,.97),rgba(22,52,96,.95));
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(143,196,255,.30);
+  box-shadow:0 10px 26px -12px rgba(0,0,0,.72);
+  color:#eaf4ff;font-size:var(--fs-xs);line-height:var(--lh-snug)}
+#upbar .up-ico{flex:none;font-size:var(--fs-lg);line-height:1.15}
+#upbar .up-tx{flex:1;min-width:0}
+#upbar .up-tx>b{display:block;color:#fff;font-size:var(--fs-sm);font-weight:700;margin-bottom:3px}
+/* 要点列表限高：条目多也不会把通知栏撑到半个屏幕，里面自己滚 */
+#upbar .up-list{max-height:31vh;overflow:auto;overscroll-behavior:contain}
+#upbar .up-li{position:relative;padding-left:1.15em;margin:2px 0;
+  color:#cfe4ff;font-size:var(--fs-2xs);line-height:1.5;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical}
+#upbar .up-li::before{content:'·';position:absolute;left:.35em;color:#7ee0ff;font-weight:700}
+#upbar .up-go{flex:none;border:none;border-radius:999px;cursor:pointer;
+  padding:7px 14px;font-size:var(--fs-xs);font-weight:700;color:#22313d;
+  background:linear-gradient(180deg,#ffe7a8,#f5b23c);
+  box-shadow:0 6px 16px -7px rgba(245,159,43,.85),var(--gb-hair);
+  white-space:nowrap}
+#upbar .up-go:active{transform:scale(.97);filter:brightness(.96)}
+#upbar .up-x{flex:none;width:1.9em;height:1.9em;border:none;border-radius:999px;cursor:pointer;
+  background:rgba(255,255,255,.14);color:#eaf4ff;font-size:var(--fs-xs);line-height:1;
+  display:flex;align-items:center;justify-content:center}
+#upbar .up-x:active{transform:scale(.94)}
+/* 通知栏里的全屏键（4.0.10）：全屏是必需功能，只藏在 ☰ 菜单里不少人一直没发现，
+   于是在"打开游戏就会看到"的地方也放一颗 —— 次要按钮样式，别和「立即刷新」抢眼 */
+#upbar .up-fs{flex:none;border:1px solid rgba(255,255,255,.2);border-radius:999px;cursor:pointer;
+  padding:7px 12px;font-size:var(--fs-xs);font-weight:700;color:#eaf4ff;
+  background:rgba(255,255,255,.13);white-space:nowrap}
+#upbar .up-fs:active{transform:scale(.96);filter:brightness(1.08)}
+/* 通知栏在的时候，面板整体下移一块 —— 顶栏能靠 --upH 让位，
+   面板（进说明 / 答题 / 菜单）也该让，不然它的顶部会被通知栏压住。 */
+body.upbar-on #modal{top:var(--upH)}
+
 /* ============ 顶部 HUD ============
    窄屏一行放不下 7 个入口，以前会挤成 3~4 行压住地图。
    现在：位置 / 难度 / 结晶 / ☰ 常驻，其余功能收进 ☰ 菜单；宽屏才全部平铺。 */
-#topbar{position:absolute;top:0;left:0;right:0;
+#topbar{position:absolute;top:var(--upH);left:0;right:0;
   padding:calc(var(--safeT) + var(--pad)) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
   display:flex;gap:var(--gap);align-items:center;pointer-events:none;z-index:20}
 .chip{pointer-events:auto;background:var(--gb-face-deep);
@@ -165,7 +213,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 
 /* ============ 任务条 ============ */
 #quest{position:absolute;left:50%;transform:translateX(-50%);
-  top:calc(var(--safeT) + var(--topH) + 6px);
+  top:calc(var(--safeT) + var(--upH) + var(--topH) + 6px);
   max-width:calc(100% - 32px);text-align:center;
   background:rgba(10,24,40,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   border:1px solid rgba(255,255,255,.12);border-radius:var(--r);
@@ -281,7 +329,7 @@ body.pc #stick.active{opacity:1}
    拾取、升档降档、传送、清档反馈都走这里。
    挂在顶栏下方居中：底部被摇杆 + 互动键 + 移动提示占满了，
    放那儿不是被挡住就是压住按键。 */
-#toast{position:absolute;left:50%;top:calc(var(--safeT) + var(--topH) + 58px);
+#toast{position:absolute;left:50%;top:calc(var(--safeT) + var(--upH) + var(--topH) + 58px);
   transform:translateX(-50%);z-index:70;display:flex;flex-direction:column;
   align-items:center;gap:6px;pointer-events:none;width:max-content;
   max-width:calc(100% - 28px)}
@@ -404,7 +452,10 @@ body.pc #stick.active{opacity:1}
 .news-li .e{flex:none;font-size:var(--fs-lg);line-height:1.25}
 .news-li b{color:#fff;font-weight:700}
 
-/* 一键全屏：金色主按钮，和游戏里其它 primary 一个语言 */
+/* 全屏：4.0.6 把按钮搬进 ☰ 菜单、公告里只留"各平台怎么开"的说明；
+   4.0.10 又把按钮**请回公告**（用户反馈：全屏是必需功能，藏在菜单里很多人
+   一辈子发现不了）。所以这里是"按钮 + 怎么开"整块，两处入口并存 ——
+   菜单那份是给老手的，公告这份是给还没发现它的人的。 */
 .fs-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;
   border:none;border-radius:14px;cursor:pointer;isolation:isolate;
   padding:clamp(10px,calc(var(--vmin) * .0385),14px) 16px;
@@ -414,7 +465,6 @@ body.pc #stick.active{opacity:1}
              0 8px 22px -8px rgba(245,159,43,.75);
   transition:transform .12s ease-out,filter .15s;margin-bottom:9px}
 .fs-btn:active{transform:scale(.975);filter:brightness(.96)}
-.fs-btn-e{font-size:1.15em;line-height:1}
 .fs-tips{display:block}
 .fs-tip{display:flex;gap:9px;align-items:baseline;
   padding:6px 2px;font-size:var(--fs-xs);color:#9cc0e0;line-height:1.6;
@@ -460,6 +510,13 @@ body.pc #stick.active{opacity:1}
 @keyframes pop{from{transform:scale(.86);opacity:0}to{transform:scale(1);opacity:1}}
 .panel h2{color:#fff;font-size:var(--fs-2xl);margin-bottom:4px;text-align:center;line-height:1.35}
 .panel .sub{color:#9cc0e0;font-size:var(--fs-sm);text-align:center;margin-bottom:14px;line-height:1.5}
+/* 版本小标签：挂在 ☰ 菜单标题那一行的副标题后面。
+   以前只有"有新版本"那条通知栏才会提到版本号，平时玩家根本不知道自己跑的是哪一版 ——
+   报 bug 时第一句就是"你是哪一版"，没处可查。 */
+.ver-tag{display:inline-block;margin-left:7px;padding:1px 8px;border-radius:999px;
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);
+  color:#9cc0e0;font-size:var(--fs-2xs);font-weight:700;letter-spacing:.4px;
+  vertical-align:middle;white-space:nowrap}
 .qtag{display:inline-block;background:rgba(255,215,106,.16);color:#ffd76a;
   border:1px solid rgba(255,215,106,.35);border-radius:999px;padding:3px 11px;
   font-size:var(--fs-xs);font-weight:700;margin-bottom:12px}
@@ -1551,6 +1608,22 @@ padding:10px 12px;margin-bottom:9px;border:1px solid}
   <div id="ents"></div>
   <div id="fx"></div>
 
+  <!-- ============ 新版本通知栏（4.0.6）============
+       玩家手里那份是缓存里的旧版时，光弹一句"刷新一下"等于没说 ——
+       这里把 version.json 里带回来的「本次更新要点」直接铺开，
+       让他先看清新版改了什么，再决定刷不刷新。
+       平时 hidden，由 src/js/73_version.js 在真检测到新版时才挂出来。 -->
+  <div id="upbar" role="status" aria-live="polite" hidden>
+    <span class="up-ico">🛎️</span>
+    <div class="up-tx">
+      <b id="upTitle"></b>
+      <div class="up-list" id="upList"></div>
+    </div>
+    <button class="up-fs" id="upFs" aria-label="全屏 / 退出全屏">⛶ 全屏</button>
+    <button class="up-go" id="upGo">立即刷新</button>
+    <button class="up-x" id="upX" aria-label="这次不提醒">✕</button>
+  </div>
+
   <div id="topbar">
     <div class="chip" id="regionChip">📍 <span class="txt">——</span></div>
     <div class="chip small" id="diffChip"><span class="txt">基础题</span></div>
@@ -1585,43 +1658,38 @@ padding:10px 12px;margin-bottom:9px;border:1px solid}
   <!-- ============ 活动公告（版本更新）============
        大型游戏进场那张"活动弹窗"：全屏遮罩 + 中央卡片，点右上角 ✕ 才关。
        刻意不绑遮罩点击 —— 公告就是要点掉它才算看过。
-       内容写死在 HTML 里，JS 只负责显示/隐藏与"是否看过"的记录。 -->
+       卡片内容不写死在这里：构建时由 tools/build.py 从 news.json 渲染，
+       连"已读位" NEWS_VER 也一起生成（内容改了必重弹，不会再漏）。
+       要改公告：改 news.json 顶上加一条，然后 python tools/build.py。 -->
   <div id="news" role="dialog" aria-modal="true" aria-label="版本更新公告">
-    <div class="news-card">
+<!-- NEWS-CARD-START · 标记区内由构建期生成，别手改（下次构建会被覆盖） -->
+<div class="news-card">
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新</span>
-        <div class="news-title">练枪入口合一 + 自动提醒新版本</div>
-        <div class="news-sub">顶栏不再出现两颗一模一样的 🎯 —— 想练哪科，一颗键直达</div>
+        <span class="news-badge">📣 版本更新 · v4.0.10</span>
+        <div class="news-title">全屏按钮回到更新公告里：一次更新，一次提醒</div>
+        <div class="news-sub">全屏是必需功能，只藏在 ☰ 菜单里不少人一直没发现 —— 现在打开游戏就能看到它</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
           <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">🎯</span><span>
-            <b>练枪只剩一个入口</b>：顶栏常驻的「<b>🎯 练枪</b>」，闯关 / 史诗 / 烽火里都能直接点开练</span></div>
-          <div class="news-li"><span class="e">🧭</span><span>
-            <b>烽火那颗模式键改回「⚔️ 闯关」</b>：以前它也叫「练枪场」，两颗键长得一样、
-            点下去还是同一个地方，容易点错</span></div>
-          <div class="news-li"><span class="e">📋</span><span>
-            <b>菜单里的练枪场合并成一条</b>（在 ☰ → 切换世界 里），
-            下面直接写着已经练过多少题</span></div>
-          <div class="news-li"><span class="e">🔄</span><span>
-            <b>打开旧版会提醒刷新</b>：新版上线后，你屏幕上那份旧页面会自己说一句 ——
-            <b>不用清缓存</b>，刷新一下就拿到最新版</span></div>
+          <div class="news-li"><span class="e">⛶</span><span><b>公告里重新放上「⛶ 一键全屏」</b>：v4.0.6 把它搬进了 ☰ 菜单，但很多人根本不会去翻菜单 —— 现在<b>每次发版的公告尾巴上都会带这颗按钮</b>，点一下即全屏、再点一下退出</span></div>
+          <div class="news-li"><span class="e">📖</span><span><b>按钮旁边就是「怎么开」</b>：五个平台各自的开法（游戏里 · 电脑 F11 · iPhone 加主屏幕 · 安卓 · 微信转浏览器）一直列在这里，现在按钮和说明挨在一起，不用再猜</span></div>
+          <div class="news-li"><span class="e">🔔</span><span><b>顶部更新通知栏也放了一颗</b>：手里那份是旧版时，那条栏每次打开都会出现，上面同样有「⛶ 全屏」和「立即刷新」</span></div>
+          <div class="news-li"><span class="e">🔁</span><span><b>按钮会跟着状态变字</b>：全屏时写着「🗗 退出全屏」，窗口时回到「⛶ 一键全屏」—— 不用再试第二次才知道自己到底在不在全屏里</span></div>
         </div>
 
         <div class="news-sec">
-          <div class="news-sec-h">怎么开全屏</div>
-          <button class="fs-btn" id="newsFs">
-            <span class="fs-btn-e">⛶</span><span>一键全屏</span>
-          </button>
+          <div class="news-sec-h">⛶ 全屏 · 一键开，怎么用</div>
+          <button class="fs-btn" id="newsFs">⛶ 一键全屏</button>
           <div class="fs-tips">
-            <div class="fs-tip"><span class="k">💻 电脑</span><span>按 <b>F11</b>（Mac 是 <b>⌃⌘F</b>），再按一次退出</span></div>
-            <div class="fs-tip"><span class="k">📱 iPhone</span><span>Safari 底部「分享」→「<b>添加到主屏幕</b>」，从桌面图标打开即全屏，没有地址栏</span></div>
-            <div class="fs-tip"><span class="k">🤖 安卓</span><span>Chrome 右上角 <b>⋮</b> →「<b>添加到主屏幕</b>」，同样从图标进</span></div>
-            <div class="fs-tip"><span class="k">💬 微信</span><span>右上角 <b>⋯</b> →「<b>在浏览器打开</b>」，再照上面的做</span></div>
+            <div class="fs-tip"><span class="k">⛶ 游戏里</span><b>右上角 ☰ 菜单 → ⛶ 全屏</b>，一键进 / 一键退；菜单里永远留着它</div>
+            <div class="fs-tip"><span class="k">💻 电脑</span>按 <b>F11</b>（Mac 是 <b>⌃⌘F</b>），再按一次退出</div>
+            <div class="fs-tip"><span class="k">📱 iPhone</span>Safari 底部「分享」→「<b>添加到主屏幕</b>」，从桌面图标打开即全屏、没有地址栏</div>
+            <div class="fs-tip"><span class="k">🤖 安卓</span>Chrome 右上角 <b>⋮</b> →「<b>添加到主屏幕</b>」，同样从图标进</div>
+            <div class="fs-tip"><span class="k">💬 微信</span>右上角 <b>⋯</b> →「<b>在浏览器打开</b>」，再照上面的做</div>
           </div>
         </div>
       </div>
@@ -1630,6 +1698,7 @@ padding:10px 12px;margin-bottom:9px;border:1px solid}
         <button class="btn primary" id="newsOk">知道了，开玩 →</button>
       </div>
     </div>
+<!-- NEWS-CARD-END -->
   </div>
 </div>
 
@@ -13576,7 +13645,8 @@ function measureTopbar(){
   if(!h||Math.abs(h-questTopH)<1)return;
   questTopH=h;
   document.documentElement.style.setProperty('--topH',h+'px');
-  const q=$('quest');if(q)q.style.top='calc(var(--safeT) + '+h+'px + 6px)';
+  /* 也要让开顶部那条"新版本通知栏"（--upH，没有它时是 0） */
+  const q=$('quest');if(q)q.style.top='calc(var(--safeT) + var(--upH) + '+h+'px + 6px)';
 }
 if(window.ResizeObserver&&document.getElementById('topbar')){
   try{new ResizeObserver(measureTopbar).observe(document.getElementById('topbar'));}catch(e){}
@@ -14503,10 +14573,14 @@ function session(cfg){
       SFX.wrong();
       fb.className='no';
       fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`;
-      // 错题本（容量见 WRONG_CAP，1.5.15 起 30 → 200）
-      if(wbAdd({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,opts:q.opts.slice(),
-        rid:curRid,subject:subjOfRid(curRid),src2:'闯关'}))
-        toast('📕 已收进错题本 · 明天再考你一次');
+      /* 错题本（容量见 WRONG_CAP，1.5.15 起 30 → 200）。
+         走 wbMiss 而不是 wbAdd：题已经在本子里时也要把"又错一次"记下来，
+         否则推图时反复错的题在错题分析里一次都不算数。 */
+      const kind=wbMiss({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,opts:q.opts.slice(),
+        rid:curRid,subject:subjOfRid(curRid),src2:'闯关'});
+      if(kind==='down')
+        fb.innerHTML+='<div class="exp">📕 这题又错了一次 · 熟炼度打回第一天</div>';
+      else if(kind==='new'||kind==='back')toast('📕 '+wbMissWord(kind));
       state.wrongBook=state.wrongBook.slice(0,WRONG_CAP);
     }
     /* 思路灵：独立答对才觉醒 / 涨羁绊（看了提示这题不计） */
@@ -16641,6 +16715,39 @@ function wbAdd(it){
     it.rev=d.rev||0;it.addAt=d.addAt||it.addAt;
   }
   return true;
+}
+/* 按题干找一条：本子里 / 归档区里。用题干当主键是全工程一贯的做法 */
+function wbFind(text){
+  const t=String(text);
+  return (state.wrongBook||[]).filter(w=>w.text===t)[0]||null;
+}
+function wbFindDone(text){
+  const t=String(text);
+  return (state.wrongDone||[]).filter(w=>w.text===t)[0]||null;
+}
+/* 练习模式（练枪场 / 闯关）答错，一步到位：新收 / 拉回 / 打回第一天。
+   ------------------------------------------------------------
+   以前这些模式只调 wbAdd()，而它碰到"题干已经在本子里"会直接返回 false
+   —— 于是「又错一次」这件事被整个丢掉：熟炼度不掉、badN 不涨、复习日不重排。
+   结果就是：连着三天在练枪场错同一道题，本子里那条还安安稳稳写着
+   「熟炼度 3 星 · 4 天后再见」，而错题分析里按 badN 排的「最薄弱」
+   永远看不见练习场上犯的错 —— 恰恰是练得最多的地方。
+   返回 'new' 新收 | 'down' 打回第一天 | 'back' 从「已掌握」拉回 | 'full' 本子满了 */
+function wbMiss(it){
+  if(!it||!it.text)return 'full';
+  const hit=wbFind(it.text);
+  if(hit){wbGrade(hit,false);return 'down';}
+  const old=wbFindDone(it.text);
+  if(old){wbRestore(old);wbGrade(old,false);return 'back';}
+  if(state.wrongBook.length>=WRONG_CAP)return 'full';
+  return wbAdd(it)?'new':'full';
+}
+/* 把 wbMiss 的结果说成人话。各模式共用一套说法，别一个地方一个口径 */
+function wbMissWord(kind){
+  if(kind==='new')return '已收进错题本，明天再考你一次';
+  if(kind==='down')return '这题本来就在本子里 —— 又错一次，熟炼度打回第一天';
+  if(kind==='back')return '这题你已经掌握过了 —— 又错了，已从「已掌握」拉回来重学';
+  return '错题本满了（'+WRONG_CAP+' 题）没存下 —— 去「错题本」删几道吧';
 }
 /* 判一次复习结果：答对升一星，满星毕业；答错打回第一天。
    返回 'up' 升级 / 'down' 打回 / 'done' 毕业 / 'back' 从归档区拉回 / 'none' 不在本子里 */
@@ -19285,7 +19392,11 @@ function drillSession(sid,opt){
     recentArr.push(t);recent.add(t);
     while(recentArr.length>RECENT_WIN)recent.delete(recentArr.shift());
   }
-  let n=0,right=0,wrong=0,newWrong=0,streak=0,best=0,apR=0,apN=0;
+  let n=0,right=0,wrong=0,newWrong=0,backWrong=0,streak=0,best=0,apR=0,apN=0;
+  /* 这一轮答错的题，原样存一份 —— 结算页那颗「马上重做」直接用它。
+     刚错完的这会儿记忆最热，这时候再练一遍最值钱；
+     没有它的话玩家得自己：错题本 → 全部错题 → 按最新排 → 一道道挑出来。 */
+  const missed=[];
   let cur=drawOne();
   let q=cur.q,curRid=cur.rid,opts=q.opts.slice();
   /* 连续几次都没抽到该专题的题（题池太小或最近去重卡住），提醒一句别干等 */
@@ -19427,20 +19538,30 @@ function drillSession(sid,opt){
     }else{
       wrong++;streak=0;state.totalWrong++;
       SFX.wrong();
-      fb.className='no';
-      fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b>`+fbExpHtml(q,true)
-        +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 这题已收进错题本。</div>`
-        +aiExpBtnHtml(q);
+      /* 存进错题本的那份快照：字段名按错题本的写法（ans 不是 ansText），
+         这样"马上重做"能原样喂给 sessionFixed，不用再转一道手。
+         攻坚题记 hardIdx、带图的记 fig —— 重做时才画得出那张图。 */
       const wf=(function(){
         const i=(typeof HARD!=='undefined')?HARD.indexOf(q):-1;
         if(i>=0)return {hardIdx:i};
         const fg=figStr(q.fig);
         return fg?{fig:fg}:{};
       })();
-      if(wbAdd(Object.assign({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,
-          opts:q.opts.slice(),rid:curRid,subject:sid,src2:'练枪',
-          steps:q.steps||null,hints:q.hints||null,appr:q.appr||null},wf)))newWrong++;
+      const item=Object.assign({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,
+        opts:q.opts.slice(),rid:curRid,subject:sid,src2:'练枪',
+        steps:q.steps||null,hints:q.hints||null,appr:q.appr||null},wf);
+      /* wbMiss 而不是 wbAdd：题已经在本子里时也要把"又错一次"记下来
+         （打回第一天），不然练枪场犯的错在错题分析里一次都不算数 */
+      const kind=wbMiss(item);
+      if(kind==='new')newWrong++;else if(kind==='back')backWrong++;
+      missed.push(item);
       state.wrongBook=state.wrongBook.slice(0,WRONG_CAP);
+      fb.className='no';
+      /* 顺序有讲究：正确答案 → 这题进错题本怎么处理 → 才轮到完整解析。
+         解析一摊开就是十几行，把"这题已收进本子"塞在它后面等于没写。 */
+      fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b>`
+        +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 📕 ${wbMissWord(kind)}</div>`
+        +fbExpHtml(q,true)+aiExpBtnHtml(q);
     }
     /* 思路灵：练枪场提示免费，但点开过就不算独立解出 */
     try{lingJudge(q,correct,hintLv>0);}catch(e){}
@@ -19483,10 +19604,13 @@ function drillSession(sid,opt){
       <div class="center" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
         border-radius:14px;padding:12px;line-height:var(--lh-loose)">
         本轮 <b>${n}</b> 题 · 答对 ${right} · 命中率 <b style="color:#ffd76a">${rate}%</b><br>
-        最长连对 ${best} · 新收错题 ${newWrong} 题<br>
+        最长连对 ${best} · 新收错题 ${newWrong} 题${backWrong?` · 又错回来 ${backWrong} 题`:''}<br>
         ${apN?`🧭 思路命中 <b style="color:#9fe4ff">${apRate}%</b>（${apN} 次选择）<br>`:''}
         错题本 ${state.wrongBook.length} / ${WRONG_CAP} 题 · 今日待复习 ${wbDueList().length} 题
       </div>
+      ${missed.length?`<div class="row">
+        <button class="btn primary" id="dfRe" style="width:100%">🔁 趁热重做刚错的 ${missed.length} 题</button>
+      </div>`:''}
       ${wl.length?`<div class="center" style="text-align:left;margin-top:12px;line-height:var(--lh-loose)">
         <b style="color:#ff8a8a">🎯 这一科最该补的知识点</b><br>
         ${wl.map(x=>`· ${esc(x.k)}：${x.n} 题 · <b style="color:${levelOf(x.p).c}">${pctOf(x.p)}</b>
@@ -19503,6 +19627,28 @@ function drillSession(sid,opt){
         <button class="btn primary" id="dfOk">收工</button>
       </div>
     `);
+    const dre=$('dfRe');
+    /* 趁热重做：只发"这一轮错的这几道"，不搅动错题本里别的题 ——
+       练枪场是自由练习，不该把「今日复习」那套队列也带进来。
+       重做走的还是错题重练那套面板（sessionFixed），
+       所以答对同样升熟炼度、答错同样打回第一天，跟正式复习一个待遇。 */
+    if(dre)dre.onclick=()=>{
+      sessionFixed(missed.slice(),'🔁 重做刚错的题',(r,t)=>{
+        save();updateHUD();
+        openPanel(`
+          <h2>🔁 重做完成</h2>
+          <div class="sub">答对 ${r} / ${t}${t&&r===t?' · 全中 🏆':''}</div>
+          <div class="center" style="font-size:44px;margin:8px 0">${t&&r===t?'🏆':(r*2>=t?'💪':'📗')}</div>
+          <div class="center" style="color:#9cc0e0;font-size:var(--fs-sm);line-height:var(--lh-loose)">
+            熟炼度已按刚才的表现更新<br>
+            错题本 ${state.wrongBook.length} / ${WRONG_CAP} 题 · 今日待复习 ${wbDueList().length} 题
+          </div>
+          <div class="row"><button class="btn" id="mwWb">📕 错题本</button>
+            <button class="btn primary" id="ok">好</button></div>`);
+        $('ok').onclick=closePanel;
+        $('mwWb').onclick=()=>showWrongBook(sid);
+      });
+    };
     $('dfAgain').onclick=()=>{closePanel();
       if(ladId)ladderSession(ladId);
       else drillSession(sid,{tier:tier,focus:false,tid:tid});};
@@ -21420,20 +21566,29 @@ startGame();
       存不下的环境（预览沙箱）用内存标记兜底：同一次会话只弹一遍，
       免得刷新一下就又糊一脸。
    ========================================================= */
-/* ⚠️ 发版必改：NEWS_VER 是公告的"已读位"。
-   玩家看过一次就把它写进 localStorage，值不变就永远不再弹 ——
-   每次更新内容后**必须**把这里改成新值（建议「v+日期」或「v+版本号」），
-   否则新公告写了也发不出去。这个坑踩过一次：v173 一直没升，
-   后面几版的公告全都弹不出来。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.0.3-1013';
+/* NEWS_VER 是公告的"已读位"：玩家看过一次就写进 localStorage，值不变就不再弹。
+   以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
+   现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
+   内容一改值必变，必重弹，不用再惦记这件事。 */
+const NEWS_KEY='genji_news', NEWS_VER='v4.0.10-eeafdffa';
 let NEWS_SEEN=false, NEWS_OPEN=false;
+/* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
+   至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
+function newsVer(){
+  if(NEWS_VER.indexOf('__')!==0)return NEWS_VER;
+  const el=document.getElementById('news');
+  const t=el?(el.textContent||'').replace(/\s+/g,''):'nodom';
+  let h=5381;
+  for(let i=0;i<t.length;i++)h=((h*33)^t.charCodeAt(i))>>>0;
+  return 'raw-'+h.toString(36);
+}
 function newsSeen(){
   if(NEWS_SEEN)return true;
-  try{return localStorage.getItem(NEWS_KEY)===NEWS_VER;}catch(e){return false;}
+  try{return localStorage.getItem(NEWS_KEY)===newsVer();}catch(e){return false;}
 }
 function markNewsSeen(){
   NEWS_SEEN=true;
-  try{localStorage.setItem(NEWS_KEY,NEWS_VER);}catch(e){}
+  try{localStorage.setItem(NEWS_KEY,newsVer());}catch(e){}
 }
 function newsIsOpen(){return NEWS_OPEN;}
 function showNews(){
@@ -21451,12 +21606,16 @@ function hideNews(){
 /* 一键全屏：桌面浏览器和安卓 Chrome 有效。
    iPhone 的 Safari 压根没有网页全屏 API，调用会失败 —— 返回 false，
    由调用方提示"从桌面图标打开"（那是 iOS 上唯一的全屏路径）。
-   iframe 里（预览面板）也可能被 sandbox 拦下，catch 兜住不让它炸。 */
-function newsFullscreen(){
+   iframe 里（预览面板）也可能被 sandbox 拦下，catch 兜住不让它炸。
+   入口在 ☰ 菜单里那颗独立的「⛶ 全屏」（4.0.6 从公告卡片里搬出来的）。 */
+function fullscreenOn(){
+  const d=document;
+  return !!(d.fullscreenElement||d.webkitFullscreenElement||d.msFullscreenElement);
+}
+function toggleFullscreen(){
   const d=document, el=d.documentElement;
   try{
-    const cur=d.fullscreenElement||d.webkitFullscreenElement||d.msFullscreenElement;
-    if(cur){
+    if(fullscreenOn()){
       const ex=d.exitFullscreen||d.webkitExitFullscreen||d.msExitFullscreen;
       if(ex){const p=ex.call(d);if(p&&p.catch)p.catch(()=>{});}
       return true;
@@ -21468,23 +21627,53 @@ function newsFullscreen(){
     return true;
   }catch(e){return false;}
 }
+/* 全屏按钮的通用绑定：点一下切换，标题跟着变成"退出全屏 / 一键全屏"。
+   公告卡里那颗（#newsFs）和顶部通知栏那颗（#upFs）共用这里 ——
+   两处说法与行为必须一致，不然玩家会以为自己点错了东西。
+   iPhone Safari 没有网页全屏 API：切换失败时给一条能走通的替代路径，
+   而不是假装成功（旧版那颗按钮就是在这一点上糊弄过）。 */
+function fsButtonBind(btn,onTxt,offTxt){
+  if(!btn)return;
+  const paint=()=>{btn.textContent=fullscreenOn()?(offTxt||'🗗 退出全屏'):(onTxt||'⛶ 一键全屏');};
+  paint();
+  ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>
+    document.addEventListener(ev,paint));
+  btn.onclick=()=>{
+    const was=fullscreenOn();
+    if(!toggleFullscreen()){
+      toast('这个浏览器不给网页全屏 —— iOS 请从「添加到主屏幕」的图标进；电脑按 F11');
+      return;
+    }
+    try{audioKick();}catch(e){}
+    toast(was?'已退出全屏':'已全屏 · 再点一次就退出');
+    setTimeout(paint,150);
+  };
+}
 function newsBind(){
   const el=$('news');if(!el)return;
   const close=()=>{hideNews();try{audioKick();}catch(e){}};
-  const x=$('newsX'), ok=$('newsOk'), fs=$('newsFs');
+  const x=$('newsX'), ok=$('newsOk');
   if(x)x.addEventListener('click',close);
   if(ok)ok.addEventListener('click',close);
-  if(fs)fs.addEventListener('click',()=>{
-    if(newsFullscreen())toast('已全屏 · 再点一次退出');
-    else toast('这个浏览器不给网页全屏 —— 按下面的方法从桌面图标打开');
-  });
+  /* 公告尾巴上那颗全屏按钮（4.0.10 请回来的）：一次更新 = 一次提醒 + 一次教学 */
+  fsButtonBind($('newsFs'));
   /* 只认 ✕ 和底部按钮：点遮罩、点卡片本身都不关。
      公告的作用就是"让你看见"，关掉它得是一个明确动作。 */
   el.addEventListener('click',e=>e.stopPropagation());
 }
 function newsBoot(){
   newsBind();
+  /* 顶部通知栏那颗「⛶ 全屏」也在这里绑：那条栏由 73_version.js 检测到新版时才显示，
+     但绑定不该等到显示那一刻（那时再绑就晚了，玩家可能已经点上去）。
+     全屏是必需功能，不能只藏在 ☰ 菜单里 —— 这里给它两个"打开就能看见"的入口。 */
+  fsButtonBind($('upFs'),'⛶ 全屏','🗗 退出');
   if(newsSeen())return;
+  /* 全新玩家先看教学，不看"这次改了什么" ——
+     他连上次是什么样都不知道，一上来读更新要点没有意义（4.0.9）。
+     直接记为已读，免得玩到一半又被弹一次。 */
+  try{
+    if(!localStorage.getItem(curKey+'_intro')&&isNewPlayer()){markNewsSeen();return;}
+  }catch(e){}
   const tryOpen=n=>{
     /* 玩家手快先开了别的面板，就别硬顶掉，等它读完再弹。
        最多等 ~4 秒还不行就放弃本次（别和玩家的操作抢屏幕）。 */
@@ -21495,8 +21684,34 @@ function newsBoot(){
   setTimeout(()=>tryOpen(0),420);
 }
 
-/* 首次进入说明 */
+/* =========================================================
+   首次进入说明（一次性）
+   ---------------------------------------------------------
+   4.0.9 起这里只有一份 maybeIntro —— 以前 69_blaze_toggle.js 里还藏着一份
+   同名的，它定义在后、把这一份整个盖掉，而它那份**漏了"读过了"的写入**
+   （闯关分支结尾只写了 closePanel，没写 localStorage），
+   于是「闯关模式说明」每次打开游戏都弹，老玩家被反复糊一脸。
+   现在四个世界的说明都在这里处理，点掉就写已读位。
+   ========================================================= */
 let introWaitN=0;
+/* 写"这个世界的说明读过了" */
+function markIntroSeen(key){
+  try{localStorage.setItem((key||curKey)+'_intro','1');}catch(e){}
+}
+/* 新玩家 = 本机还没有"玩过"的痕迹。
+   刻意不认 x / y / crystals 这类"一进游戏就有"的东西，
+   也不认 state.tier —— healState() 会给每个域都塞上 tier:1，
+   那只是"初始化过"，不代表玩过（第一版就是栽在这个字段上：
+   所有新玩家都被当成老玩家，公告照样弹）。
+   只认真的动过手：答过题、收过精灵徽章、读过卷宗、本子里有错题。 */
+function isNewPlayer(){
+  if(!state)return true;
+  const nz=o=>!!o&&Object.keys(o).length>0;
+  return !((((state.totalRight|0)+(state.totalWrong|0))>=3)||
+           nz(state.caught)||nz(state.solved)||nz(state.loose)||nz(state.badges)||
+           nz(state.wrongBook)||nz(state.wrongDone)||nz(state.read)||nz(state.quiz)||
+           nz(state.stat)||nz(state.tstat)||nz(state.astat)||nz(state.drill));
+}
 function maybeIntro(delay){
   /* 活动公告优先：它还没被看掉时先别弹说明，否则两个弹窗挤在一起。
      等公告关掉（或被标记已读）再继续。等太久（约 20 秒）就放弃弹说明 ——
@@ -21507,7 +21722,14 @@ function maybeIntro(delay){
       return;
     }
   }catch(e){}
-  try{if(localStorage.getItem(curKey+'_intro'))return;}catch(e){return;}
+  let seen=false;
+  try{seen=!!localStorage.getItem(curKey+'_intro');}catch(e){seen=true;}
+  if(seen)return;
+  /* 老玩家不弹说明：看的是"有没有真进度"，不是那个标记 ——
+     4.0.9 以前标记从来没被写下来过，只认标记的话，
+     所有老玩家都会被再糊一次说明。 */
+  if(!isNewPlayer()){markIntroSeen();return;}
+  const ikey=curKey;                 // 记下是哪个世界的说明：中途切世界也不写错钥匙
   setTimeout(()=>{
     /* 玩家已经在看别的面板就别硬顶掉（切模式后 600ms 才弹，手快的话会撞车） */
     if(modal.classList.contains('show'))return;
@@ -21515,20 +21737,38 @@ function maybeIntro(delay){
        它只是"请先读一眼"，不是"题做到一半"，不该拦住切国度 / 切模式 */
     panel.dataset.intro='1';introShowing=true;
 
-    openPanel(CUR===EPIC?epicIntroHtml():`
+    const html=CUR===BLAZE?blazeIntroHtml()
+             :CUR===EPIC?epicIntroHtml()
+             :CUR===DRILL?drillIntroHtml()
+             :null;
+    if(html){
+      openPanel(html);
+      introShowing=false;            /* 之后被别的面板顶掉也能记成"读过了" */
+      const g=$('go');
+      if(g)g.onclick=()=>{
+        closePanel();
+        markIntroSeen(ikey);
+        /* 烽火 / 练枪是"面板驱动"的世界：说明读完直接把大厅端上来 */
+        if(CUR===BLAZE)setTimeout(showBlazeLobby,320);
+        if(CUR===DRILL)setTimeout(showDrill,320);
+        audioKick();
+      };
+      return;
+    }
+    /* 闯关模式的说明 */
+    openPanel(`
       <h2>${WORLD_TITLE}</h2>
       <div class="sub">${WORLD_SUB}</div>
-      <div class="it-list"><div class="il">📐 <b style="color:#9db4ff">数理群岛</b> · 数学　⚡ <b style="color:#ffd76a">力理亚</b> · 物理</div><div class="il">🔥 <b style="color:#ffb072">嬗变利亚</b> · 化学　🌿 <b style="color:#84e3a6">生衍利亚</b> · 生物</div><div class="il"><span style="color:#9cc0e0;font-size:var(--fs-sm)">四个国度<b>各有一张独立地图</b>，各含 3~5 个域，共十四域、42 只精灵</span></div><div class="il">⛩️ <b>传送塔</b>：每域一座，走过去自动点亮，之后可在四国之间任意往返</div><div class="il">🕹️ <b>移动</b>：在地图上<b>任意位置按住拖动</b>，摇杆会出现在你的手指下</div><div class="il">🗿 <b>石碑</b>：靠近后点右下角按钮，答题换结晶</div><div class="il">✨ <b>精灵</b>：答对 2/3 题即可收服进图鉴（四国共 42 只，本国 ${SPIRITS.length} 只）</div><div class="il">🛡️ <b>守护者</b>：连答 5 道挑战题（错≤1）拿徽章、开桥</div><div class="il">💎 <b>结晶</b>：散落各处，走过去自动捡；商行可换道具</div><div class="il">📕 <b>错题中心</b>：答错的题自动收录，按熟炼度排复习日程 —— 到期就练，连对 5 次毕业</div><div class="il">📈 <b>三档难度</b>：普通 → 中档 → 高考，连对 2 题升档、错 2 题降档</div><div class="il">🆕 <b>新功能</b>（都在 ☰ 菜单）：🎯 每日一练 · 📊 学习报告 · 📐 公式速查 · 🔭 引路标 · 🌀 传送网络</div><div class="il">🌍 <b>换国度</b>：点顶部区域名，或走近 ⛩️ 传送塔，都能打开传送网络；四国<b>并列互不依赖</b>，任意时间都能前往任意一国（落在该国的出生域）</div><div class="il">🔀 <b>切模式</b>：顶部「📜 史诗」可去科学编年史（四科按时间混排），进度互不影响</div><div class="il">💾 <b>存档</b>：进度自动存在本机；换设备/清缓存前，先到「💾 存档」导出存档码</div></div>
-      <div class="row"><button class="btn primary" id="go">开始冒险</button></div>
-    `);
+      <div class="it-list"><div class="il">📐 <b style="color:#9db4ff">数理群岛</b> · 数学　⚡ <b style="color:#ffd76a">力理亚</b> · 物理</div><div class="il">🔥 <b style="color:#ffb072">嬗变利亚</b> · 化学　🌿 <b style="color:#84e3a6">生衍利亚</b> · 生物</div><div class="il"><span style="color:#9cc0e0;font-size:var(--fs-sm)">四个国度<b>各有一张独立地图</b>，各含 3~5 个域，共十四域、42 只精灵</span></div><div class="il">⛩️ <b>传送塔</b>：每域一座，走过去自动点亮，之后可在四国之间任意往返</div><div class="il">🕹️ <b>移动</b>：在地图上<b>任意位置按住拖动</b>，摇杆会出现在你的手指下</div><div class="il">🗿 <b>石碑</b>：靠近后点右下角按钮，答题换结晶</div><div class="il">✨ <b>精灵</b>：答对 2/3 题即可收服进图鉴（四国共 42 只）</div><div class="il">🛡️ <b>守护者</b>：连答 5 道挑战题（错≤1）拿徽章、开桥</div><div class="il">💎 <b>结晶</b>：散落各处，走过去自动捡；商行可换道具</div><div class="il">📕 <b>错题中心</b>：答错的题自动收录，按熟炼度排复习日程 —— 到期就练，连对 5 次毕业</div><div class="il">📈 <b>三档难度</b>：普通 → 中档 → 高考，连对 2 题升档、错 2 题降档</div><div class="il">🆕 <b>四个模式</b>：⚔️ 闯关（刷实题）· 📜 史诗（读科学史）· 🔥 烽火（搜打撤）· 🎯 练枪（压轴 + 思路详解），进度各自独立</div><div class="il">💾 <b>存档</b>：进度自动存在本机；换设备/清缓存前，先到「💾 存档」导出存档码</div></div>
+      <div class="row"><button class="btn primary" id="go">开始探索</button></div>`);
     introShowing=false;
     /* 无痕模式下 setItem 会抛异常，不兜住的话后面 audioKick() 就执行不到了 */
     $('go').onclick=()=>{
       closePanel();
-      try{localStorage.setItem(curKey+'_intro','1');}catch(e){}
+      markIntroSeen(ikey);        /* ← 老版本这里漏了写，教学才每次都弹 */
       audioKick();
     };
-    },delay||700);
+  },delay||0);
 }
 newsBoot();
 maybeIntro(700);
@@ -25886,35 +26126,10 @@ function syncModeButtons(){
   if(mode)mode.textContent=ep?'🔥 烽火':((bz||dr)?'⚔️ 闯关':'📜 史诗');
 }
 
-/* ---------------- 覆盖：首次进入的说明 ---------------- */
-function maybeIntro(delay){
-  try{if(localStorage.getItem(curKey+'_intro'))return;}catch(e){return;}
-  setTimeout(()=>{
-    if(modal.classList.contains('show'))return;
-    panel.dataset.intro='1';introShowing=true;
-    const html = CUR===BLAZE ? blazeIntroHtml()
-               : CUR===EPIC ? epicIntroHtml()
-               : CUR===DRILL ? drillIntroHtml()
-               : null;
-    if(html){
-      openPanel(html);
-      const g=$('go');
-      if(g)g.onclick=()=>{
-        closePanel();
-        if(CUR===BLAZE)setTimeout(showBlazeLobby,320);
-        if(CUR===DRILL)setTimeout(showDrill,320);
-      };
-      return;
-    }
-    /* 闯关模式的原始说明 */
-    openPanel(`
-      <h2>${WORLD_TITLE}</h2>
-      <div class="sub">${WORLD_SUB}</div>
-      <div class="it-list"><div class="il">📐 <b style="color:#9db4ff">数理群岛</b> · 数学　⚡ <b style="color:#ffd76a">力理亚</b> · 物理</div><div class="il">🔥 <b style="color:#ffb072">嬗变利亚</b> · 化学　🌿 <b style="color:#84e3a6">生衍利亚</b> · 生物</div><div class="il"><span style="color:#9cc0e0;font-size:var(--fs-sm)">四个国度<b>各有一张独立地图</b>，各含 3~5 个域，共十四域、42 只精灵</span></div><div class="il">⛩️ <b>传送塔</b>：每域一座，走过去自动点亮，之后可在四国之间任意往返</div><div class="il">🕹️ <b>移动</b>：在地图上<b>任意位置按住拖动</b>，摇杆会出现在你的手指下</div><div class="il">🗿 <b>石碑</b>：靠近后点右下角按钮，答题换结晶</div><div class="il">✨ <b>精灵</b>：答对 2/3 题即可收服进图鉴（四国共 42 只）</div><div class="il">🛡️ <b>守护者</b>：连答 5 道挑战题（错≤1）拿徽章、开桥</div><div class="il">💎 <b>结晶</b>：散落各处，走过去自动捡；商行可换道具</div><div class="il">📕 <b>错题中心</b>：答错的题自动收录，按熟炼度排复习日程 —— 到期就练，连对 5 次毕业</div><div class="il">📈 <b>三档难度</b>：普通 → 中档 → 高考，连对 2 题升档、错 2 题降档</div><div class="il">🆕 <b>四个模式</b>：⚔️ 闯关（刷实题）· 📜 史诗（读科学史）· 🔥 烽火（搜打撤）· 🎯 练枪（压轴 + 思路详解），进度各自独立</div><div class="il">💾 <b>存档</b>：进度自动存在本机；换设备/清缓存前，先到「💾 存档」导出存档码</div></div>
-      <div class="row"><button class="btn primary" id="go">开始探索</button></div>`);
-    $('go').onclick=closePanel;
-  },delay||0);
-}
+/* ---------------- 首次进入的说明 ----------------
+   4.0.9 起不在这里定义了：这一份当年把 55_boot_news.js 里那份整个盖掉，
+   却漏了"读过了"的写入（结尾只 closePanel），于是闯关说明每次打开都弹。
+   两份合成一份，四个世界统一在 55_boot_news.js 的 maybeIntro 里处理。 */
 
 /* ---------------- 覆盖：图鉴键在烽火模式下开大厅 ---------------- */
 $('btnDex').onclick=()=>{
@@ -26187,6 +26402,11 @@ function resetBlazeState(){
 function showMenu(){
   const ep=CUR===EPIC, bz=CUR===BLAZE, dr=CUR===DRILL;
   const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'格物纪元 · 四国远征'));
+  /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
+     平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
+     没经过构建（4.0.10 占位）时不显示，免得把占位符贴到界面上。 */
+  const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
+    ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
      在史诗模式想回闯关得点两次，很容易点错 */
   const worlds=[
@@ -26211,6 +26431,8 @@ function showMenu(){
                 :'精灵 '+SPIRITS.filter(v=>state.caught[v.id]).length+'/'+SPIRITS.length
                  +' 已收服 · 徽章 '+Object.keys(state.badges).length+'/'+REGIONS.length);
   const sndTxt=state.sound?'🔊 音效：开':'🔇 音效：关';
+  /* 全屏开关的当前状态：读它来决定菜单里那颗按钮写"全屏"还是"退出全屏" */
+  const fsOn=(typeof fullscreenOn==='function')&&fullscreenOn();
   /* 错题中心那一项的 HTML：有到期题时**排到菜单最上面**。
      原因见 updateWbBadge 的注释 —— 顶栏 ☰ 顶着「4」，点开菜单却要
      滚动半屏才在功能列表里找到「错题中心」，红点照样是悬空的。
@@ -26224,7 +26446,7 @@ function showMenu(){
 
   openPanel(`
     <h2>☰ 菜单</h2>
-    <div class="sub">${head}</div>
+    <div class="sub">${head}${verTag}</div>
     ${showWb&&dueN?`<div class="menu-list" style="margin-bottom:12px">${mWbHtml}</div>`:''}
     <div class="sub" style="text-align:left;margin:2px 0 8px">切换世界（四个模式进度分开存）</div>
     <div class="menu-list" style="margin-bottom:14px">${wlist}</div>
@@ -26266,9 +26488,13 @@ function showMenu(){
       <button class="menu-li" id="mSave"><span class="e">💾</span>
         <span class="tx">存档管理<div class="d">导出 / 导入存档码 · 清档重开</div></span></button>
       <button class="menu-li" id="mNews"><span class="e">📣</span>
-        <span class="tx">更新公告<div class="d">练枪入口合一 · 旧版会提醒刷新 · 一键全屏怎么开</div></span></button>
+        <span class="tx">更新公告${verTag}<div class="d">本版改了哪几件事 · 旧版会顶出通知栏 · 各平台怎么开全屏</div></span></button>
       <button class="menu-li" id="mSound"><span class="e">${state.sound?'🔊':'🔇'}</span>
         <span class="tx">${sndTxt}<div class="d">答题与拾取的提示音</div></span></button>
+      <button class="menu-li" id="mFs"><span class="e">${fsOn?'🗗':'⛶'}</span>
+        <span class="tx">${fsOn?'退出全屏':'⛶ 全屏'}<div class="d">${fsOn
+          ?'回到窗口模式 · 也可以按 F11（Mac 是 ⌃⌘F）'
+          :'铺满整屏、去掉地址栏 · iPhone 请从「添加到主屏幕」的图标进（Safari 不给网页全屏）'}</div></span></button>
     </div>
     <div class="row"><button class="btn primary" id="ok">关闭</button></div>
   `);
@@ -26312,6 +26538,24 @@ function showMenu(){
      看完照样记成看过（下次进场不再自动弹） */
   if(mn)mn.onclick=()=>{closePanel();audioKick();setTimeout(showNews,90);};
   $('mSound').onclick=()=>{closePanel();$('btnSound').onclick();setTimeout(showMenu,60);};
+  const mfs=$('mFs');
+  /* ⛶ 全屏（4.0.6 从更新公告里搬出来的独立入口）：
+     点一下就切，切完把菜单重开一遍 —— 按钮上写着"全屏 / 退出全屏"，
+     状态得是切换后的，不然玩家不知道自己到底在不在全屏。
+     iPhone Safari 没有网页全屏 API，toggleFullscreen() 会返回 false，
+     这里按平台给一条能走通的替代路径。 */
+  if(mfs)mfs.onclick=()=>{
+    const wasOn=fullscreenOn();
+    closePanel();
+    if(!toggleFullscreen()){
+      toast('这个浏览器不给网页全屏 —— iOS 请从「添加到主屏幕」的图标进；'+
+            '电脑按 F11 · 安卓 Chrome 右上角 ⋮');
+      return;
+    }
+    audioKick();
+    toast(wasOn?'已退出全屏':'已全屏 · 再点一次「退出全屏」回来');
+    setTimeout(showMenu,140);
+  };
 }
 
 /* =========================================================
@@ -27192,17 +27436,53 @@ function acctMenuDesc(){
 }
 
 /* =========================================================
-   版本自检 · 更新推送（2026-10-13）
+   版本自检 · 更新推送（2026-10-13，4.0.6 加通知栏）
    —— 玩家手里那份可能是缓存里的旧版：他刷新一下就能拿到新的，
       但他不知道"已经有新版了"。这里替他说这句话。
 
    做法：构建时把版本占位符换成真实版本号，发布目录里放一份
-   version.json（tools/release.py 生成）。启动时取一次 version.json，
-   对不上就提示刷新。
+   version.json（tools/build.py 生成 —— 里面除了版本号，还带着
+   news.json 那条公告的标题与要点）。启动时取一次：对不上就
+   ① 在游戏顶部顶出一条通知栏，把这次改了什么直接列出来，
+      给一个「立即刷新」；② 顺带 toast 一句。
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.0.4';
+const BUILD_VER='4.0.10';
+const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
+function upbarSkipped(v){
+  try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}
+}
+/* 通知栏：不只是"有新版"，而是把新版改了哪几件事摆出来。
+   没有 news_items（老版 version.json / 部署没更新）时退回一句话。 */
+function showUpbar(j){
+  const el=$('upbar');if(!el)return;
+  const items=(j.news_items||[]).slice(0,6);
+  const ti=$('upTitle'), li=$('upList');
+  if(ti)ti.textContent='新版本 v'+j.version+' 已就绪 · 你手上这份还是 v'+BUILD_VER;
+  if(li){
+    let html=items.map(s=>'<div class="up-li">'+esc(s)+'</div>').join('');
+    if(!html&&j.news_title)html='<div class="up-li">'+esc(j.news_title)+'</div>';
+    li.innerHTML=html;
+  }
+  el.hidden=false;
+  /* 顶栏 / 任务条 / toast / 面板 按 --upH 往下让位：通知栏不压任何东西。
+     高度实测写入（和 37_hud.js 写 --topH 同一个套路）。 */
+  document.documentElement.style.setProperty('--upH',el.offsetHeight+'px');
+  document.body.classList.add('upbar-on');
+  const go=$('upGo'), x=$('upX');
+  /* 通知栏里那颗「⛶ 全屏」（4.0.10）在 55_boot_news.js 的 newsBoot 里统一绑：
+     它在"打开游戏就会看到"的位置上，比藏在 ☰ 菜单里容易发现得多，
+     但绑定不能等到这条栏真的顶出来才做 —— 那时玩家已经点不到它了。 */
+  if(go)go.onclick=()=>{try{location.reload();}catch(e){}};
+  if(x)x.onclick=()=>{
+    el.hidden=true;
+    document.documentElement.style.setProperty('--upH','0px');
+    document.body.classList.remove('upbar-on');
+    try{sessionStorage.setItem(UPBAR_KEY,String(j.version));}catch(e){}
+    toast('新版还在等你 —— 什么时候刷新都行');
+  };
+}
 (function(){
   /* 只在真正的网页部署下检查：本地双击打开 / 沙箱预览里没有"新旧"这回事 */
   if(!/^https?:$/.test(location.protocol))return;
@@ -27216,6 +27496,7 @@ const BUILD_VER='4.0.4';
         if(!j||!j.version)return;
         if(String(j.version)===String(BUILD_VER))return;
         toast('🔄 有新版本 v'+j.version+'（当前 v'+BUILD_VER+'）· 刷新一下就能用上');
+        if(!upbarSkipped(j.version))showUpbar(j);
       })
       .catch(()=>{});
   };

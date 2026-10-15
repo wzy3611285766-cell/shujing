@@ -139,7 +139,43 @@ PROBE = r"""
       var t=el.querySelector('.news-title');
       if(!t||!t.textContent.trim())throw new Error('公告没有标题');
       if(!/^v?\d/.test(String(NEWS_VER)))throw new Error('NEWS_VER 长得不对：'+NEWS_VER);
+      /* 公告已读位由构建期从 news.json 生成（v<版本>-<内容摘要>），
+         不再是手改的常量 —— 老坑就是"改了公告忘了升它" */
+      if(String(NEWS_VER).indexOf('__')===0)throw new Error('NEWS_VER 没被构建注入（还是占位符）');
+      if(newsVer()!==NEWS_VER)throw new Error('newsVer() 与 NEWS_VER 不一致：'+newsVer());
+      if(el.querySelectorAll('.news-card').length!==1)throw new Error('公告卡片不是 1 张');
+      if(!el.querySelector('.news-li'))throw new Error('公告里没有"本次更新"条目');
       return NEWS_VER+' · '+t.textContent.trim();});
+    /* 全屏入口：4.0.6 是"只留 ☰ 菜单里一颗"，4.0.10 改成"三处都要"——
+       用户反馈：全屏是必需功能，只藏在菜单里很多人一辈子发现不了。
+       所以：☰ 菜单（老手常用）+ 更新公告卡尾 + 顶部通知栏（新手发现）。 */
+    out.checks.全屏入口 = safe('fs',function(){
+      useWorld(ADV);syncModeButtons();
+      if(typeof toggleFullscreen!=='function')throw new Error('没有 toggleFullscreen()');
+      if(typeof fsButtonBind!=='function')throw new Error('没有 fsButtonBind()');
+      showMenu();
+      var btns=panel.querySelectorAll('.menu-li'),hit=[];
+      for(var i=0;i<btns.length;i++){
+        var tx=btns[i].querySelector('.tx');
+        if(!tx)continue;
+        var label=(tx.childNodes[0]&&tx.childNodes[0].textContent)||'';
+        if(label.indexOf('全屏')>=0)hit.push(btns[i].id);
+      }
+      closePanel();
+      if(!document.getElementById('upbar'))throw new Error('产物里没有新版本通知栏 #upbar');
+      if(hit.length!==1||hit[0]!=='mFs')
+        throw new Error('☰ 菜单里全屏入口应只有 #mFs 一个，实得：'+(hit.join('/')||'无'));
+      var nf=document.getElementById('newsFs'),uf=document.getElementById('upFs');
+      if(!nf)throw new Error('公告卡片里没有全屏按钮 #newsFs（4.0.10 请回来的那个）');
+      if(!uf)throw new Error('顶部通知栏里没有全屏按钮 #upFs');
+      if(typeof nf.onclick!=='function')throw new Error('#newsFs 没绑上行为，点了没反应');
+      if(typeof uf.onclick!=='function')throw new Error('#upFs 没绑上行为，点了没反应');
+      if(!/全屏/.test(nf.textContent))throw new Error('#newsFs 文案里没有「全屏」：'+nf.textContent);
+      if(!/全屏/.test(uf.textContent))throw new Error('#upFs 文案里没有「全屏」：'+uf.textContent);
+      /* 用户要的是"并说明使用方法"：公告里各平台怎么开，至少得列全 */
+      var tips=document.querySelectorAll('#news .fs-tip');
+      if(tips.length<4)throw new Error('公告里各平台怎么开全屏的说明只有 '+tips.length+' 条');
+      return '☰ #mFs · 公告 #newsFs · 通知栏 #upFs（三处都在、都绑了行为）· 平台说明 '+tips.length+' 条';});
     /* 云对账决策：把"无限重载"那类事故当测试用例钉住 */
     out.checks.云端对账决策 = safe('decide',function(){
       var cases=[
@@ -176,6 +212,142 @@ PROBE = r"""
                      :'本地地址：按设计提示不支持登录（线上域名下才可用）';});
     out.checks.存档面板 = safe('panel',function(){
       openPanel('<h2>冒烟</h2><div class="sub">面板通路</div>');closePanel();return '开合正常';});
+    /* 练枪场错题回流（4.0.7）
+       ① 内核：答错一道"已经在本子里"的题，熟炼度必须打回第一天 ——
+          以前 wbAdd 碰到已存在的题直接返回 false，这个错就白错了；
+       ② 界面：练枪结算页要有一颗「趁热重做刚错的 N 题」。 */
+    /* 菜单标题上的版本号（4.0.8）：玩家报问题时第一句就是"你是哪一版"，
+       以前只有"有新版本"那条通知栏才会提版本号，平时没处可查 */
+    out.checks.菜单版本号 = safe('ver',function(){
+      useWorld(ADV);syncModeButtons();
+      showMenu();
+      var tag=panel.querySelector('.ver-tag'),txt=tag?String(tag.textContent).trim():'';
+      closePanel();
+      if(!tag)throw new Error('☰ 菜单标题上没有 .ver-tag 版本标签');
+      if(txt.indexOf('__')>=0)throw new Error('版本标签里是构建占位符：'+txt);
+      if(txt!=='v'+BUILD_VER)throw new Error('标签写的 '+txt+'，而 BUILD_VER 是 '+BUILD_VER);
+      return txt+'（与 BUILD_VER 一致）';});
+    out.checks.错题回流内核 = safe('wbm',function(){
+      var T='__冒烟探针__'+Date.now();
+      function scrub(){
+        state.wrongBook=state.wrongBook.filter(function(w){return String(w.text).indexOf('__冒烟探针__')!==0;});
+        state.wrongDone=state.wrongDone.filter(function(w){return String(w.text).indexOf('__冒烟探针__')!==0;});
+      }
+      scrub();
+      var it={text:T,ans:'A',opts:['A','B','C','D'],exp:'探针',topic:'探针',rid:'func',subject:'math'};
+      var k1=wbMiss(it),w1=wbFind(T),box1=w1?w1.box:-1;
+      if(w1)w1.box=3;                                  /* 假装它已经练到 3 星 */
+      var k2=wbMiss(it),w2=wbFind(T),box2=w2?w2.box:-1,bad2=w2?w2.badN:-1;
+      if(w2)wbArchive(w2);                             /* 再假装它已经毕业 */
+      var k3=wbMiss(it),back=(!!wbFind(T)&&!wbFindDone(T));
+      scrub();
+      if(k1!=='new'||box1!==0)throw new Error('新题应 new 且 box=0，实得 '+k1+'/box'+box1);
+      if(k2!=='down'||box2!==0)throw new Error('又错一次没打回第一天：'+k2+'/box'+box2);
+      if(bad2!==1)throw new Error('又错一次没记进 badN（错题分析靠它排最薄弱）：'+bad2);
+      if(k3!=='back'||!back)throw new Error('已掌握的题再错应拉回本子，实得 '+k3);
+      return '新收 / 打回第一天（box 3→0 · badN+1）/ 从已掌握拉回 —— 三种都对';});
+    out.checks.练枪结算重做 = safe('drill',function(){
+      closePanel();
+      useWorld(ADV);syncModeButtons();
+      drillSession('math',{tier:1});
+      if(!panel.querySelector('.opt'))throw new Error('练枪没开出题目面板');
+      var got=false,k;
+      /* 一题一题蒙第一个选项，蒙错一题就收工 —— 选项 4 个，8 题内几乎必中 */
+      for(k=0;k<8&&!got;k++){
+        var sk=document.getElementById('skipBtn');
+        if(sk&&sk.offsetParent!==null)sk.click();       /* 有思路环节先跳过 */
+        var os=panel.querySelectorAll('.opt:not(.appr)');
+        if(!os.length)throw new Error('第 '+(k+1)+' 题没有可选项');
+        os[0].click();
+        var fb=document.getElementById('feedback');
+        if(fb&&fb.className==='no')got=true;
+        else{
+          var nx=document.getElementById('nextBtn');
+          if(nx)nx.click();else break;
+        }
+      }
+      if(!got)throw new Error('连试 8 题都没蒙错，测不下去');
+      var fin=document.getElementById('finBtn');
+      if(!fin)throw new Error('答题面板上没有「🏁 收工」');
+      fin.click();
+      var re=document.getElementById('dfRe');
+      if(!re)throw new Error('结算页没有「趁热重做刚错的 N 题」按钮');
+      var label=String(re.textContent).trim();
+      re.click();                                      /* 点进去应当直接开始重做 */
+      var head=String((panel.querySelector('h2')||{}).textContent||'');
+      var opts2=panel.querySelectorAll('.opt').length;
+      closePanel();
+      if(!/重做刚错/.test(label))throw new Error('按钮文案不对：'+label);
+      if(!/重做刚错/.test(head))throw new Error('点进去没进重做面板，标题是：'+head);
+      if(!opts2)throw new Error('重做面板里没有选项');
+      return label+' → 面板「'+head+'」'+opts2+' 个选项';});
+    /* 首访说明（4.0.9）：新玩家只弹一次、点掉就写已读位、老玩家一次都不弹。
+       老病根是"两个同名 maybeIntro，覆盖的那份漏了写入"，所以这里既验弹不弹，
+       也验**已读位到底有没有写进去** —— 只验"弹了"是抓不住那个 bug 的。 */
+    (function(){
+      useWorld(ADV);syncModeButtons();
+      var ikey=curKey+'_intro',newsEl=document.getElementById('news'),r={};
+      var snap=JSON.stringify(state),savedSave=null,savedFlag=null;
+      try{savedSave=localStorage.getItem(curKey);savedFlag=localStorage.getItem(ikey);}catch(e){}
+      var blank={totalRight:0,totalWrong:0,caught:{},solved:{},loose:{},badges:{},
+        wrongBook:[],wrongDone:[],read:{},quiz:{},stat:{},tstat:{},drill:{},tier:{}};
+      function isIntro(){
+        return modal.classList.contains('show')&&panel.dataset.intro==='1';
+      }
+      try{localStorage.removeItem(ikey);}catch(e){}
+      Object.assign(state,blank);           /* 造一个"全新玩家" */
+      healState();                          /* 走一遍开场的补齐：tier 会被填满，别误判成老玩家 */
+      closePanel();try{hideNews();}catch(e){}
+      maybeIntro(0);
+      setTimeout(function(){
+        r.opened=isIntro();
+        var go=document.getElementById('go');
+        if(go)go.click();                   /* 点「开始探索」 */
+        try{r.marked=String(localStorage.getItem(ikey)||'');}catch(e){r.marked='';}
+        closePanel();
+        maybeIntro(0);                      /* 再看一次：不该弹 */
+        setTimeout(function(){
+          r.again=isIntro();
+          closePanel();
+          try{localStorage.removeItem(ikey);}catch(e){}
+          state.totalRight=7;               /* 造一个"玩过的老玩家"（但没有已读位） */
+          maybeIntro(0);
+          setTimeout(function(){
+            r.oldPlayer=isIntro();
+            closePanel();
+            /* 全新玩家连「本次更新」都不该弹：他连上次是什么样都不知道 */
+            try{localStorage.removeItem(ikey);}catch(e){}
+            Object.assign(state,blank);
+            healState();
+            newsEl.classList.remove('show');
+            NEWS_SEEN=false;NEWS_OPEN=false;
+            try{localStorage.removeItem(NEWS_KEY);}catch(e){}
+            newsBoot();
+            setTimeout(function(){
+              r.newsForNew=newsEl.classList.contains('show');
+              try{r.newsMarked=String(localStorage.getItem(NEWS_KEY)||'');}catch(e){r.newsMarked='';}
+              /* 还原现场，别把后面的检查带跑偏 */
+              try{Object.assign(state,JSON.parse(snap));}catch(e){}
+              try{
+                if(savedSave==null)localStorage.removeItem(curKey);else localStorage.setItem(curKey,savedSave);
+                if(savedFlag==null)localStorage.removeItem(ikey);else localStorage.setItem(ikey,savedFlag);
+                localStorage.setItem(NEWS_KEY,newsVer());
+              }catch(e){}
+              NEWS_SEEN=true;NEWS_OPEN=false;closePanel();
+              out.checks.首访说明只弹一次 = safe('intro',function(){
+                if(!r.opened)throw new Error('新玩家没弹说明');
+                if(r.marked!=='1')throw new Error('点掉说明后没写已读位（"每次都弹"的老病根）');
+                if(r.again)throw new Error('读过一次了还弹');
+                if(r.oldPlayer)throw new Error('有进度的老玩家又被弹了说明');
+                if(r.newsForNew)throw new Error('全新玩家被弹了「本次更新」公告');
+                if(!r.newsMarked)throw new Error('新玩家的公告没记已读位，玩到一半还会弹');
+                return '新玩家只弹教学（公告记已读）· 点掉即写已读位 · 重开不再弹 · 老玩家不弹教学';});
+              dump();
+            },600);
+          },140);
+        },140);
+      },140);
+    })();
     dump();
     /* 网页部署下再等一会儿：验「发现新版本 → 提示刷新」这条链路 */
     if(/^https?:/.test(location.protocol)){
@@ -197,6 +369,23 @@ PROBE = r"""
           }
           if(!saw)throw new Error('有新版本却没提示刷新');
           return '已提示刷新';});
+        /* 通知栏：发现新版时，顶部那条要把"本次更新要点"铺出来，
+           而不是只有一句"刷新一下"（要点来自 version.json 的 news_items） */
+        out.checks.新版本通知栏 = safe('upbar',function(){
+          var el=document.getElementById('upbar');
+          if(!el)throw new Error('找不到 #upbar');
+          if(location.search.indexOf('expect_none')>=0){
+            if(!el.hidden)throw new Error('版本一致却顶出了通知栏（误报）');
+            return '不显示（版本一致）';
+          }
+          if(el.hidden)throw new Error('有新版本却没顶出通知栏');
+          var items=el.querySelectorAll('.up-li'),txt=(el.textContent||'');
+          if(!items.length)throw new Error('通知栏里一条更新要点都没列');
+          if(txt.indexOf('9.9.9')<0)throw new Error('通知栏没写清新版版本号');
+          var top=getComputedStyle(document.documentElement).getPropertyValue('--upH');
+          if(!top||parseFloat(top)<10)throw new Error('--upH 没写进去，顶栏会被压住：'+top);
+          if(!document.getElementById('upGo'))throw new Error('通知栏没有「立即刷新」按钮');
+          return items.length+' 条要点 · --upH '+top.trim();});
         dump();
       },5000);
     }
