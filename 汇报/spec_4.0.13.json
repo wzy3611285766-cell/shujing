@@ -1,0 +1,93 @@
+{
+  "name": "更新汇报_v4.0.13",
+  "version": "4.0.13",
+  "date": "2026-10-15",
+  "kicker": "SHUJING · 烽火两个毛病",
+  "title": "战术地图整张能拖了；营地不再撒碎石",
+  "tagline": "第一条查出来是<b>按元素名写的 CSS 规则误伤面板画布</b>（和 3.1.1 那次 touch-action 坑同一类）；第二条比表面复杂 —— 顺着它又抓出<b>第三个真问题：实体层换场没清，指挥部勋章会粘在地图上</b>。",
+  "pills": ["2 条反馈 + 1 个顺带", "96 项冒烟全过", "含前后对比截图"],
+
+  "sections": [
+    {
+      "h": "一、战术地图：为什么只有两侧那条窄边能拖",
+      "paras": [
+        "根因在 <code>00_base.css</code> 里一行看起来很无辜的规则：<code>canvas{display:block;width:100%;height:100%;touch-action:none}</code>。",
+        "它是给<b>世界层那两块画布</b>（<code>#bg</code> / <code>#game</code>，摇杆要在上面拖）写的，却按<b>元素名</b>匹配 —— 面板里的地图画布 <code>#tacCv</code> 也被一起吃掉。而 <code>touch-action</code> 取的是「命中元素到根这条路径上所有值的交集」："
+      ],
+      "code": "手指落在图中间：\n  #tacCv  → touch-action:none      ← 交集吃掉一切\n  .panel  → touch-action:pan-y     ← 白写了\n  #modal  → touch-action:pan-y\n  html    → touch-action:pan-y\n  ⇒ 不产生任何滚动手势（图中心 = 死区）\n\n手指落在画布之外那圈面板边距：\n  .panel  → pan-y  ⇒ 能滚\n  （所以只有左右两侧那条窄边能拖 —— 和你看到的一模一样）"
+      ,
+      "note": {
+        "kind": "good",
+        "html": "修法：世界层那两块<b>按 id 写</b>（<code>#bg,#game</code>），另加 <code>#panel canvas{touch-action:pan-y}</code>。这已经是<b>同类问题第二次</b>了 —— 3.1.1 修过一次 touch-action 交集（那次是 html/body/#app 写了 none），教训一样：<b>按元素名写，迟早误伤面板里的东西</b>。"
+      },
+      "shots": [
+        {"file": "shots_auto/n13_战术地图.png", "cap": "修好后的战术地图：整块区域都能拖着滚（栅格 / 分区 / 撤离点 / 300m 比例尺）", "wide": true}
+      ]
+    },
+
+    {
+      "h": "二、特勤处的「石子」是什么",
+      "paras": [
+        "不是粒子系统，是<b>基地走了战场同一支画笔</b>：<code>drawBlazeWorld</code> 会给每个区域铺「掩体方块 + 地表碎石」，而行动基地也在这套循环里 —— 于是营地地面上也撒了一圈灰色掩体块与碎石点。它们和战场上的掩体长得一模一样，从基地部署进图时就显得「特勤处地面的石子还在、跟地图叠在一起」。"
+      ],
+      "shots": [
+        {"file": "shots_auto/o13_基地.png", "cap": "改之前：营地上散着 6 块灰色掩体方块 + 一圈碎石点（就是你说的「石子」）"},
+        {"file": "shots_auto/n13_基地.png", "cap": "改之后：营地只留地面、边界与指挥部 —— 掩体与碎石是战场的语汇"}
+      ],
+      "note": {
+        "kind": "good",
+        "html": "判据抽成了 <code>bzNeedGroundFurniture()</code>：<b>有地形数据才是战场</b>，营地不画这两层。<br>顺带说明：这些掩体是<b>纯视觉散布</b>（<code>blazeBlocked</code> 只认房间与岩石），从营地拿掉对玩法零影响。"
+      }
+    },
+
+    {
+      "h": "三、顺带抓出的第三个真问题：换场没清实体层",
+      "paras": [
+        "顺着「基地的东西为什么会出现在地图上」往下查，用探针走真实路径（<code>switchTo</code> → 部署）抓了两遍实体层："
+      ],
+      "code": "改前：\n  基地   ： 🎖️@222,328  🥷@252,436\n  部署后 ： 🎖️@222,328  🥷@252,436   ← 指挥部勋章坐标一动没动\n\n改后：\n  基地   ： 🎖️@222,328  🥷@252,436\n  部署后 ： 🥷@…                    ← 只剩玩家自己"
+      ,
+      "note": {
+        "kind": "bad",
+        "html": "实体层只在「这一帧还被画到」时更新，<b>不再被画到的节点没人收拾</b>。换世界（<code>switchTo</code>）里原本清过，<b>同一个世界里的换场（基地 ↔ 战场）没清</b> —— 于是指挥部勋章粘在战场上，反过来打完回基地，战场上的箱子 / 守卫也会一路留在营地上。<br>修法：新增 <code>entWipe()</code>（摘节点 + 清特效，但<b>不动结晶计数基准</b> —— 换场时数字没变过，不该再弹一下），由 <code>blazeDeploy()</code> 与 <code>blazeToLobby()</code> 各调一次。"
+      }
+    },
+
+    {
+      "h": "四、验收与产物",
+      "checks_intro": "两条新检查都是「永久岗哨」，不靠人记：",
+      "steps": [
+        {"b": "① 战术地图可拖动：", "html": "钉住画布的 <code>touch-action</code> 不许是 <code>none</code>、面板自己能滚、画布必须在 <code>#modal</code> 里（在模态里输入层才不当它是游戏地图）。"},
+        {"b": "② 换场清实体层：", "html": "塞一个「残留」实体 → 部署 → 必须消失；同时验 <code>bzNeedGroundFurniture()</code> 在营地是 false、在战场是 true、回营地又变 false。"},
+        {"b": "③ 中途踩的坑：", "html": "第一版我在 <code>forEach</code> 回调里写了 <code>continue</code>（应该用 <code>return</code>）→ 整个脚本语法错、页面白屏。是<b>启动报错探针</b>一分钟内抓出来的（<code>Illegal continue statement</code>）—— 这类错不靠探针就得靠肉眼翻一万行。"}
+      ]
+    }
+  ],
+
+  "files": [
+    {"path": "src/css/00_base.css", "delta": "+11 / -1", "note": "canvas 手势规则按 id 写；面板画布给 pan-y（战术地图能拖的直接原因）"},
+    {"path": "src/js/58_blaze_impl.js", "delta": "+9 行", "note": "新增 bzNeedGroundFurniture()；掩体/碎石只在战场画"},
+    {"path": "src/js/29_terrain.js", "delta": "+11 / -1", "note": "拆出 entWipe()（清实体+特效，不动结晶基准），entReset 复用它"},
+    {"path": "src/js/64_blaze_deploy.js", "delta": "+5 行", "note": "blazeDeploy / blazeToLobby 各清一次实体层"},
+    {"path": "tools/smoke.py", "delta": "+46 行", "note": "新增「战术地图可拖动」「换场清实体层」两条永久检查"},
+    {"path": "tools/shots.py", "delta": "+39 行", "note": "新增场景：基地 / 战场 / 战术地图"},
+    {"path": "news.json", "delta": "+1 条公告", "note": "v4.0.13 公告"},
+    {"path": "version.json", "delta": "4.0.12 → 4.0.13", "note": "版本号"}
+  ],
+
+  "checks": [
+    {"name": "构建 + 公告同源", "ok": true, "detail": "74 个模块 · 公告 v4.0.13 · NEWS_VER v4.0.13-1f4b89f2"},
+    {"name": "战术地图可拖动（新增）", "ok": true, "detail": "画布 touch-action=pan-y · 面板 pan-y · 画布在 #modal 里 · 图中间可拖"},
+    {"name": "换场清实体层（新增）", "ok": true, "detail": "营地不画掩体/碎石 · 部署即清空实体层 · 回营地恢复"},
+    {"name": "无头浏览器冒烟", "ok": true, "detail": "96 项全过 / 0 失败 · 控制台 0 报错（file:// 与 http:// 各一遍）"},
+    {"name": "静态体检", "ok": true, "detail": "7 项全过：换行符 / 版本号一致 / 更新日志首条 / 归档齐全 / DOM 引用零悬空 / TODO 0 / 汇报页无外链"}
+  ],
+
+  "rollback": "拿 <code>releases/数境169_v4.0.12_2026-10-15.html</code> 覆盖 <code>shujing-app/index.html</code> 即可退回。<br>退回会同时退回两个毛病（战术地图图中间拖不动、营地上有掩体与碎石）。存档零影响。",
+
+  "next": [
+    "建议池 12 条：#12（清理同名函数 / 死变量）今天又验证了同类风险 —— 这轮的 canvas 规则误伤也属于「按名字一刀切」",
+    "体感收益最大仍是 #1 ☰ 菜单搜索、#10 跳过本题",
+    "上线仍未做：线上还是 v4.0.5，已经攒了 8 个版本的公告"
+  ]
+}

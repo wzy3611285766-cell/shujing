@@ -1000,45 +1000,6 @@ function findSpawnIn(reg){
       if(walkable(x+dx,y+dy))return {x:x+dx,y:y+dy};
   return {x:x+w/2,y:y+h/2};
 }
-function teleportTo(rid){
-  const reg=REGIONS.find(r=>r.id===rid);if(!reg)return;
-  const p=findSpawnIn(reg);if(!p)return;
-  state.x=p.x;state.y=p.y;
-  cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
-  cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));
-  state.region=rid;
-  save();updateHUD();SFX.unlock();
-  showBanner(reg.emoji+' '+reg.name,reg.sub);
-  flashQuest(true);
-}
-function showTeleport(){
-  const ids=unlockedRegions();
-  openPanel(`
-    <h2>🌀 传送阵</h2>
-    <div class="sub">已开通 ${ids.length} / ${REGIONS.length} 座域，选一座直接过去</div>
-    <div class="menu-list">
-      ${ids.map(id=>{
-        const r=REGIONS.find(v=>v.id===id);if(!r)return '';
-        const tot=SPOTS.filter(s=>s.r===id&&s.t==='stele').length;
-        const lit=SPOTS.filter(s=>s.r===id&&s.t==='stele'&&state.solved[s.x+','+s.y]).length;
-        const sp=SPIRITS.filter(v=>v.r===id&&state.caught[v.id]).length;
-        const spAll=SPIRITS.filter(v=>v.r===id).length;
-        return `<button class="menu-li" id="tp_${id}"><span class="e">${r.emoji}</span>
-          <span class="tx">${esc(r.name)}
-            <div class="d">${state.badges[id]?'🏅 徽章已到手':'🛡️ 守护者未通过'}
-              · 石碑 ${lit}/${tot} · 精灵 ${sp}/${spAll}
-              ${state.region===id?' · 📍你在这里':''}</div></span></button>`;
-      }).join('')}
-    </div>
-    <div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin-top:10px;line-height:var(--lh-base)">
-      通往新域的桥要靠徽章打通，<br>打赢守护者之后这里就会多出一座
-    </div>
-    <div class="row"><button class="btn primary" id="ok">关闭</button></div>
-  `);
-  $('ok').onclick=closePanel;
-  ids.forEach(id=>{const b=$('tp_'+id);if(b)b.onclick=()=>{closePanel();teleportTo(id);};});
-}
-
 /* ---------------- 商行 ---------------- */
 function showShop(){
   function render(){
@@ -1102,85 +1063,7 @@ $('btnGoal').onclick=()=>{audioKick();flashQuest(true);};
 /* ---------------- ☰ 菜单（窄屏的功能入口） ----------------
    顶栏在 360px 宽的屏幕上最多放得下三四个按钮，挤满七个会换行成三层，
    把整个地图顶掉。窄屏下把次要功能收进这里，顶栏恒定一行。 */
-function showMenu(){
-  const ep=CUR===EPIC;
-  const modeTxt=ep?'⚔️ 回到闯关模式':'📜 科学编年史 · 科学长河';
-  const dexTxt =ep?'📜 编年史（回顾全部篇章）':'📖 图鉴与徽章';
-  const sndTxt =state.sound?'🔊 音效：开':'🔇 音效：关';
-  openPanel(`
-    <h2>☰ 菜单</h2>
-    <div class="sub">${ep?'科学编年史 · 科学长河':'格物纪元 · 四国远征'}</div>
-    <div class="menu-list">
-      <button class="menu-li" id="mMode"><span class="e">${ep?'⚔️':'📜'}</span>
-        <span class="tx">${modeTxt}<div class="d">${ep?'回去刷四国十四域的题':'读数学、物理、化学、生物交织的科学史，两边进度分开存'}</div></span></button>
-      <button class="menu-li" id="mDex"><span class="e">${ep?'📜':'📖'}</span>
-        <span class="tx">${dexTxt}<div class="d">${ep?'已读篇章 · 未读的可一键传送'
-          :'精灵 '+SPIRITS.filter(v=>state.caught[v.id]).length+'/'+SPIRITS.length
-            +' 已收服 · 徽章 '+Object.keys(state.badges).length+'/'+REGIONS.length}</div></span></button>
-      ${ep
-        ?`<button class="menu-li" id="mAid"><span class="e">⏳</span>
-        <span class="tx">时空交易所<div class="d">用时间星尘换支援券，带给烽火与闯关 · 手上 ${aidTotal()} 张</div></span></button>`
-        :`<button class="menu-li" id="mShop"><span class="e">🏪</span>
-        <span class="tx">结晶商行<div class="d">启示灯 / 错题重练 / 专项训练</div></span></button>
-        <button class="menu-li" id="mAid"><span class="e">⏳</span>
-        <span class="tx">时空交易所<div class="d">用编年史的时间星尘换支援券 · 手上 ${aidTotal()} 张</div></span></button>`}
-      ${ep?'':`<button class="menu-li" id="mDaily"><span class="e">🎯</span>
-        <span class="tx">每日一练<div class="d">${state.daily===todayStr()?'今天已完成 ✓ 明天刷新':'5 道跨域混合题 · 奖励 20 🪙'}</div></span></button>`}
-      <button class="menu-li" id="mStudy"><span class="e">📚</span>
-        <span class="tx">自习室<div class="d">不知道该练哪块？按薄弱程度替你排好了 · 打开就能学</div></span></button>
-      <button class="menu-li" id="mLadder"><span class="e">🧗</span>
-        <span class="tx">母题阶梯<div class="d">${ladderList(null).length} 个课本模型 · 母题 → 变式 → 出其不意，三级按顺序连刷</div></span></button>
-      ${ep?'':`<button class="menu-li" id="mReport"><span class="e">📊</span>
-        <span class="tx">学习报告<div class="d">各域 / 各知识点正确率，找出该补哪里</div></span></button>`}
-      ${!bz&&!ep?`<button class="menu-li${wbDueList().length?' pend-item':''}" id="mWb"><span class="e">📕</span>
-        <span class="tx">📕 错题中心${wbDueList().length?`<span class="wb-dot">${wbDueList().length>99?'99+':wbDueList().length}</span>`:''}<div class="d">${wbDueList().length?'🔥 今日待复习 '+wbDueList().length+' 题 · ':''}本子 ${state.wrongBook.length} 题 · 已掌握 ${(state.wrongDone||[]).length} 题</div></span></button>`:''}
-      <button class="menu-li" id="mFormula"><span class="e">📐</span>
-        <span class="tx">公式速查<div class="d">十四个域的核心公式，考前扫一眼</div></span></button>
-      ${ep?'':`<button class="menu-li" id="mTeleport"><span class="e">🌀</span>
-        <span class="tx">传送阵<div class="d">四国并列，随时可去任意一国 · 也能跳到该国已点亮的传送塔</div></span></button>`}
-      <button class="menu-li" id="mGoal"><span class="e">🎯</span>
-        <span class="tx">当前目标<div class="d">把任务条重新叫出来</div></span></button>
-      <button class="menu-li" id="mAcct"><span class="e">☁️</span>
-        <span class="tx">账号与同步<div class="d">${acctMenuDesc()}</div></span></button>
-      <button class="menu-li" id="mSave"><span class="e">💾</span>
-        <span class="tx">存档管理<div class="d">导出 / 导入存档码 · 清档重开</div></span></button>
-      <button class="menu-li" id="mNews"><span class="e">📣</span>
-        <span class="tx">更新公告<div class="d">练枪入口合一 · 旧版会提醒刷新 · 一键全屏怎么开</div></span></button>
-      <button class="menu-li" id="mSound"><span class="e">${state.sound?'🔊':'🔇'}</span>
-        <span class="tx">${sndTxt}<div class="d">答题与拾取的提示音</div></span></button>
-    </div>
-    <div class="row"><button class="btn primary" id="ok">关闭</button></div>
-  `);
-  $('ok').onclick=closePanel;
-  $('mMode').onclick =()=>{closePanel();switchMode();};
-  $('mDex').onclick  =()=>{closePanel();audioKick();ep?showChronicle():showDex();};
-  const mw=$('mWb');
-  if(mw)mw.onclick=()=>{closePanel();audioKick();showWrongBook();};
-  const ms=$('mShop');
-  /* 商行按钮在史诗下会变成交易所，这里直接调函数，别绕 btnShop 的分派 */
-  if(ms)ms.onclick  =()=>{closePanel();audioKick();showShop();};
-  const ma=$('mAid');
-  if(ma)ma.onclick  =()=>{closePanel();audioKick();showAidShop();};
-  const md=$('mDaily'),mr=$('mReport'),mf=$('mFormula'),mt=$('mTeleport');
-  const mst=$('mStudy');
-  if(mst)mst.onclick=()=>{closePanel();audioKick();showStudyRoom();};
-  const mld=$('mLadder');
-  if(mld)mld.onclick=()=>{closePanel();audioKick();showLadder();};
-  if(md)md.onclick  =()=>{closePanel();audioKick();showDaily();};
-  if(mr)mr.onclick  =()=>{closePanel();audioKick();showReport();};
-  if(mf)mf.onclick  =()=>{closePanel();audioKick();showFormula();};
-  if(mt)mt.onclick  =()=>{closePanel();audioKick();showTeleport();};
-  const mk=$('mKeys');
-  if(mk)mk.onclick  =()=>{closePanel();audioKick();showKeyHelp();};
-  $('mGoal').onclick =()=>{closePanel();flashQuest(true);};
-  $('mSave').onclick =()=>{closePanel();audioKick();showSavePanel();};
-  $('mAcct').onclick =()=>{closePanel();audioKick();showAccountPanel();};
-  const mn=$('mNews');
-  /* 从菜单看公告不标记"已读"以外的东西：它和进场弹的是同一个，
-     看完照样记成看过（下次进场不再自动弹） */
-  if(mn)mn.onclick=()=>{closePanel();audioKick();setTimeout(showNews,90);};
-  $('mSound').onclick=()=>{closePanel();$('btnSound').onclick();setTimeout(showMenu,60);};
-}
+
 $('btnMenu').onclick=()=>{audioKick();showMenu();};
 /* 练枪 / 错题本在 ☰ 里也有，这里提一项到顶栏：宽屏下少点两层 */
 $('btnDrill').onclick=()=>{audioKick();showDrill();};
@@ -1194,24 +1077,6 @@ const TA_STYLE='width:100%;height:150px;background:rgba(255,255,255,.06);color:#
   'touch-action:auto;'+
   '-webkit-touch-callout:default;font-family:ui-monospace,Menlo,Consolas,monospace';
 
-function saveSummary(){
-  if(CUR===EPIC){
-    const tot=EPIC_SPOTS.length,rd=EPIC_SPOTS.filter(s=>state.read[s.sid]).length;
-    const qz=Object.keys(state.quiz||{}).length;
-    const bd=Object.keys(state.badges||{}).length;
-    const ep=EPOCHS.find(r=>r.id===state.region)||EPOCHS[0];
-    return `📍 ${ep.name} · ✨ ${state.crystals} 星尘 · 🎖️ ${bd}/${EPOCHS.length} 纪元章<br>`+
-           `📜 已读 ${rd}/${tot} 篇 · 时空考题通过 ${qz} 道 · 答对 ${state.totalRight} / 答错 ${state.totalWrong}`;
-  }
-  const got=SPIRITS.filter(s=>state.caught[s.id]).length;
-  const allReg=NATIONS.reduce((a,n)=>a.concat(n.regions),[]);
-  const bd=allReg.filter(r=>state.badges[r.id]).length;
-  const bdHere=REGIONS.filter(r=>state.badges[r.id]).length;
-  const reg=REGIONS.find(r=>r.id===state.region)||REGIONS[0];
-  return `📍 ${reg.name} · 🪙 ${state.crystals} 结晶 · 🏅 ${bd}/${allReg.length} 徽章（本国 ${bdHere}/${REGIONS.length}）<br>`+
-         `✨ ${got}/${SPIRITS.length} 精灵 · 答对 ${state.totalRight} / 答错 ${state.totalWrong} · 错题本 ${state.wrongBook.length} / ${WRONG_CAP} 题<br>`+
-         `🎯 每日一练连续 ${state.dailyStreak||0} 天${state.daily?'（'+esc(state.daily)+' 已完成）':''}`;
-}
 function copyText(t){
   return new Promise(res=>{
     if(navigator.clipboard&&window.isSecureContext){

@@ -227,6 +227,203 @@ PROBE = r"""
       if(txt.indexOf('__')>=0)throw new Error('版本标签里是构建占位符：'+txt);
       if(txt!=='v'+BUILD_VER)throw new Error('标签写的 '+txt+'，而 BUILD_VER 是 '+BUILD_VER);
       return txt+'（与 BUILD_VER 一致）';});
+    /* 战术地图要能拖（4.0.13）。
+       坑是 `canvas{touch-action:none}` 那条按元素名写的规则把面板里的画布也吃了：
+       touch-action 取路径交集，画布 none → 身后 .panel 的 pan-y 白写，
+       手指落在图中间压根不产生滚动手势（只有面板两侧那条窄边能滑）。 */
+    out.checks.战术地图可拖动 = safe('tacmap',function(){
+      useWorld(BLAZE);
+      BLAZE_STATE.naked=true;BLAZE_STATE.pick={site:'math',diff:1};BZ.carry={};
+      blazeDeploy();
+      showTacMap();
+      var cv=document.getElementById('tacCv');
+      if(!cv)throw new Error('战术地图面板里没有 #tacCv');
+      var ta=String(getComputedStyle(cv).touchAction||'');
+      var panelTA=String(getComputedStyle(panel).touchAction||'');
+      if(ta==='none')throw new Error('画布还在吃手势：touch-action=none —— 图中间拖不动');
+      if(panelTA==='none')throw new Error('面板自己就是 none，滚不了');
+      if(!cv.closest('#modal'))throw new Error('画布不在 #modal 里，输入层会把它当成游戏地图吞掉');
+      var h=cv.getBoundingClientRect().height;
+      closePanel();
+      useWorld(ADV);syncModeButtons();
+      if(!(h>60))throw new Error('画布高度不对：'+h);
+      return '画布 touch-action='+ta+' · 面板 '+panelTA+' · 图中间可拖 · 画布 '+Math.round(h)+'px 高';});
+    /* 营地 ⇄ 战场换场要清实体层（4.0.13）：
+       营地那枚 🎖️ 指挥部以前会粘在战场上不动；
+       营地本身也不该有战场那套掩体方块与地表碎石。 */
+    out.checks.换场清实体层 = safe('wipe',function(){
+      if(typeof entWipe!=='function')throw new Error('没有 entWipe()');
+      if(typeof bzNeedGroundFurniture!=='function')throw new Error('没有 bzNeedGroundFurniture()');
+      useWorld(BLAZE);
+      BZ.map=null;
+      if(bzNeedGroundFurniture())throw new Error('营地被当成战场，会画出掩体方块与碎石');
+      var layer=document.getElementById('ents');
+      var ghost=document.createElement('div');
+      ghost.textContent='🎖️';
+      layer.appendChild(ghost);
+      ENT.map.set('__probe_ghost__',ghost);
+      BLAZE_STATE.naked=true;BLAZE_STATE.pick={site:'math',diff:1};BZ.carry={};
+      blazeDeploy();
+      var left=ENT.map.has('__probe_ghost__')||layer.contains(ghost);
+      var onMap=bzNeedGroundFurniture();
+      BZ.active=false;BLAZE_STATE.run=null;blazeToLobby(true);
+      var backCamp=!bzNeedGroundFurniture();
+      useWorld(ADV);syncModeButtons();
+      if(left)throw new Error('部署后实体层还留着营地那枚 🎖️');
+      if(!onMap)throw new Error('战场上反而不画掩体了（判据坏了）');
+      if(!backCamp)throw new Error('回营地又被当成战场');
+      return '营地不画掩体/碎石 · 部署即清空实体层 · 回营地恢复';});
+    /* 卖东西走游戏内弹窗（4.0.14）。
+       原生 confirm 会把全屏踢掉：卖一次东西 → 弹一次框 → 全屏没了 →
+       回来还得再点一次「⛶ 全屏」。这条钉两件事：
+         ① 交易全程不碰浏览器 UI（把 window.confirm 换掉，一旦被调用就失败）
+         ② 弹窗里写的价 = 真正到账的价（同一个 blazeSellCalc 算的）
+       顺带验取消不落账、确认后交易站画得回来。 */
+    out.checks.交易走游戏内弹窗 = safe('sell',function(){
+      if(typeof uiConfirm!=='function')throw new Error('没有 uiConfirm()');
+      if(typeof blazeSellCalc!=='function')throw new Error('没有 blazeSellCalc()');
+      useWorld(BLAZE);
+      const keepStash=BLAZE_STATE.stash,keepCr=BLAZE_STATE.crystals|0;
+      const KEY='冒烟探针物资';
+      BLAZE_STATE.stash={};
+      BLAZE_STATE.stash[KEY]={n:KEY,e:'🧪',r:1,val:400,cnt:4,slot:1,cat:'探针',nt:0};
+      BLAZE_STATE.crystals=0;
+      blazeLobbyTab=2;blazeRenderLobby();           /* 交易站 */
+      let calls=0,msg='';
+      const real=window.confirm;
+      window.confirm=function(){calls++;return true;};
+      try{
+        const b1=$('sa_0');
+        if(!b1)throw new Error('交易站里没有「卖 N」按钮');
+        b1.click();
+        if(calls)throw new Error('还在弹浏览器确认框 —— 那会把全屏踢掉');
+        if(!$('ucOk')||!$('ucNo'))throw new Error('没弹出游戏内确认框');
+        const hope=blazeSellCalc(BLAZE_STATE.stash[KEY],4).gain;
+        const shown=String(panel.textContent||'');
+        if(shown.indexOf(String(hope))<0)
+          throw new Error('弹窗没把到手价写清（应含 '+hope+'）：'+shown.slice(0,90));
+        /* ① 取消：一件都不许少 */
+        $('ucNo').click();
+        if(!$('dump'))throw new Error('取消后没回到交易站');
+        if((BLAZE_STATE.crystals|0)!==0||!BLAZE_STATE.stash[KEY]||BLAZE_STATE.stash[KEY].cnt!==4)
+          throw new Error('点了取消却把东西卖了');
+        /* ② 确认：按弹窗里那个数到账 */
+        const b2=$('sa_0');
+        if(!b2)throw new Error('取消之后交易站没画回来');
+        b2.click();$('ucOk').click();
+        const got=BLAZE_STATE.crystals|0;
+        if(got!==hope)throw new Error('到账 '+got+' 与弹窗写的 '+hope+' 不一致');
+        if(BLAZE_STATE.stash[KEY])throw new Error('卖光了仓库里还留着这条');
+        /* 卖光之后交易站该画出"没有可卖的东西"那一屏（那一屏没有 #dump） */
+        if(String(panel.textContent||'').indexOf('没有可卖')<0)
+          throw new Error('卖完没回到交易站：'+String(panel.textContent||'').slice(0,60));
+        msg='到手 '+hope+' 🪙 与到账一致 · 全程 0 次浏览器 confirm · 取消不落账';
+      }finally{
+        window.confirm=real;
+        BLAZE_STATE.stash=keepStash;BLAZE_STATE.crystals=keepCr;
+        blazeLobbyTab=0;closePanel();
+      }
+      useWorld(ADV);syncModeButtons();
+      return msg;});
+    /* 特勤处升级也走同一套游戏内弹窗（4.0.14）：
+       同样不许碰 window.confirm；取消不扣钱，确认才扣。 */
+    out.checks.升级走游戏内弹窗 = safe('dept',function(){
+      useWorld(BLAZE);
+      const keepCr=BLAZE_STATE.crystals|0,keepStash=BLAZE_STATE.stash;
+      const keepHqd=JSON.stringify(BLAZE_STATE.hqd||{});
+      const KEY='冒烟探针物资';
+      BLAZE_STATE.stash={};
+      BLAZE_STATE.stash[KEY]={n:KEY,e:'🧪',r:5,val:4000,cnt:8,slot:1,cat:'探针',nt:0};
+      BLAZE_STATE.crystals=99999;
+      blazeLobbyTab=3;blazeRenderLobby();              /* 特勤处 */
+      const b1=$('up_cmd');
+      if(!b1||b1.disabled)throw new Error('特勤处那颗升级按钮点不了');
+      let calls=0,msg='';
+      const real=window.confirm;
+      window.confirm=function(){calls++;return true;};
+      try{
+        const lv0=deptLevel('cmd');
+        b1.click();
+        if(calls)throw new Error('升级还在弹浏览器确认框 —— 那会把全屏踢掉');
+        if(!$('ucOk')||!$('ucNo'))throw new Error('升级没弹出游戏内确认框');
+        const shown=String(panel.textContent||'');
+        const nxCost=deptNext('cmd').cost;
+        if(shown.indexOf(String(nxCost))<0)
+          throw new Error('弹窗没把花费写清（应含 '+nxCost+'）：'+shown.slice(0,80));
+        $('ucNo').click();
+        if(deptLevel('cmd')!==lv0)throw new Error('点了取消却升级了');
+        const b2=$('up_cmd');
+        if(!b2)throw new Error('取消后没回到特勤处');
+        b2.click();$('ucOk').click();
+        if(deptLevel('cmd')!==lv0+1)
+          throw new Error('确认后没升级：Lv'+deptLevel('cmd'));
+        msg='Lv'+lv0+'→Lv'+deptLevel('cmd')+' · 花费 '+nxCost+' 🪙 写在弹窗里 · 取消不扣钱 · 0 次 confirm';
+      }finally{
+        window.confirm=real;
+        BLAZE_STATE.crystals=keepCr;BLAZE_STATE.stash=keepStash;
+        BLAZE_STATE.hqd=JSON.parse(keepHqd);
+        blazeLobbyTab=0;closePanel();
+      }
+      useWorld(ADV);syncModeButtons();
+      return msg;});
+    /* 烽火只有一种卡：房卡（4.0.12）。保险箱钥匙卡并进了房卡 ——
+       💠 高价值保险箱改成刷一张房卡（扣手里等级最低的那张）。 */
+    out.checks.房卡唯一 = safe('cards',function(){
+      if(typeof blazeLowestCard!=='function')throw new Error('没有 blazeLowestCard()');
+      var key=BLAZE_GEAR.filter(function(g){return g.id==='key';});
+      if(key.length)throw new Error('战备物资里还留着「保险箱钥匙卡」');
+      var named=BLAZE_GEAR.filter(function(g){return String(g.n).indexOf('钥匙卡')>=0;});
+      if(named.length)throw new Error('还有叫钥匙卡的采购项：'+named.map(function(g){return g.n;}).join('/'));
+      if(BLAZE_CARDS.length!==3)throw new Error('房卡应有 3 张，实得 '+BLAZE_CARDS.length);
+      var lc=blazeLowestCard({kc3:1,kc1:2,kc2:1});
+      if(!lc||lc.id!=='kc1')throw new Error('应当挑出等级最低的 kc1，实得 '+(lc&&lc.id));
+      if(blazeLowestCard({})!==null)throw new Error('一张卡都没有时应返回 null');
+      var aid=AID_OF['key'];
+      if(!aid||String(aid.n).indexOf('房卡')<0)throw new Error('时空交易所那张券没换成房卡：'+(aid&&aid.n));
+      return '物资里没有钥匙卡 · 房卡 3 张 · 最低级优先（kc1）· 交易所券已改成房卡补给';});
+    /* 采购页：房卡与物资必须是同一套行标记。
+       4.0.12 之前房卡另写一套 .kcard，那颗购买按钮因此没吃到 .item .buy
+       的金色样式，成了一颗浏览器默认灰按钮（同一页两种长相）。 */
+    out.checks.房卡采购行 = safe('shoprow',function(){
+      useWorld(BLAZE);
+      BLAZE_STATE.active=false;
+      blazeLobbyTab=1;
+      blazeRenderLobby();
+      var kc=panel.querySelectorAll('.kcard').length;
+      var kcBtn=document.getElementById('buy_kc1');
+      var batBtn=document.getElementById('buy_battery');
+      var items=panel.querySelectorAll('.item').length;
+      var buys=panel.querySelectorAll('.item .buy').length;
+      closePanel();
+      if(kc)throw new Error('采购页还在用 .kcard 那套标记：'+kc);
+      if(!kcBtn||!batBtn)throw new Error('房卡或物资的购买按钮缺了');
+      if(kcBtn.className!==batBtn.className)
+        throw new Error('两种购买按钮的 class 不一致：'+kcBtn.className+' / '+batBtn.className);
+      if(typeof kcBtn.onclick!=='function')throw new Error('房卡购买按钮没绑行为');
+      if(buys!==items)throw new Error(items+' 行物资/房卡里只有 '+buys+' 个购买按钮');
+      return items+' 行同一套标记 · 房卡按钮 class="'+kcBtn.className+'" · 行为已绑';});
+    /* 帧率角标（4.0.11）：☰ 菜单里能开关，开了右上角真有一行数，
+       关掉之后元素与定时器都得拆干净（不留一个每秒跑两次的空转） */
+    out.checks.帧率角标 = safe('fps',function(){
+      if(typeof setFpsBadge!=='function')throw new Error('没有 setFpsBadge()');
+      useWorld(ADV);syncModeButtons();
+      setFpsBadge(false);
+      if(document.getElementById('fps'))throw new Error('关掉之后 #fps 还在');
+      showMenu();
+      var row=document.getElementById('mFps');
+      var txt=row?String(row.textContent):'';
+      closePanel();
+      if(!row)throw new Error('☰ 菜单里没有「帧率角标」这一行');
+      if(!/帧率角标/.test(txt))throw new Error('菜单那一行文案不对：'+txt);
+      setFpsBadge(true);
+      var el=document.getElementById('fps');
+      if(!el)throw new Error('打开之后右上角没有 #fps');
+      if(!/fps/.test(el.textContent))throw new Error('#fps 里没有 fps 字样：'+el.textContent);
+      var cs=getComputedStyle(el);
+      if(parseFloat(cs.right)<0)throw new Error('#fps 没贴右边：right='+cs.right);
+      setFpsBadge(false);
+      if(document.getElementById('fps'))throw new Error('再关一次没拆掉 #fps');
+      return '菜单可开关 · 打开时右上角有数（'+String(el.textContent||'')+'）· 关掉即拆干净';});
     out.checks.错题回流内核 = safe('wbm',function(){
       var T='__冒烟探针__'+Date.now();
       function scrub(){

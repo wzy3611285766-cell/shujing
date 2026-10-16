@@ -1,9 +1,9 @@
 {
   "name": "格物纪元 · 四国远征",
-  "version": "4.0.10",
-  "released": "2026-10-15",
+  "version": "4.0.15",
+  "released": "2026-10-16",
   "file": "index.html",
   "note": "版本号由 tools/release.py 递增，构建时写进产物并同步到 shujing-app/version.json；更新公告由 news.json 提供，构建时渲染进产物并自动生成 NEWS_VER",
-  "news_ver": "v4.0.10-eeafdffa",
-  "news_hash": "16179b3bc149752746c25668d20fb7400489b64d4aaaa5b7634da869708e761d"
+  "news_ver": "v4.0.15-82da181b",
+  "news_hash": "0df4c527fa53227a2e80838a4aa108fd5f117c3e8b89362d86bcf51b01e3a936"
 }

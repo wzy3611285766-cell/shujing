@@ -79,14 +79,20 @@
       "where": "src/css/10_quiz.css + src/js/38_session.js"
     },
     {
-      "id": "shadowed-functions",
-      "title": "清理被覆盖的同名函数（28 处，多国改造后遗留）",
-      "why": "巡检每天都在报：同名函数定义了不止一次，后一份生效、前一份是死代码 —— 改错文件等于没改。最典型的是 addStele / addSpirit / addGuard / addHermit：10_bank_skeleton.js 里那份往全局 SPOTS 里塞，11_world.js 里那份往 CUR_BUILD.spots 里塞，内容模块真正调到的是后者，前者是四国改造前的旧接口。4.0.9 那个「每次都弹教学」的 bug 就是同一类问题（maybeIntro 两份，覆盖的那份漏了写入），不清理还会再踩。",
+      "id": "quiz-css-merge",
+      "title": "10_quiz.css 里新旧两段样式的 7 处冲突（合并要拆选择器组）",
+      "why": "这个文件前半段是旧版样式，后半段「1. / 2. / 3. / 5.」编号章节是新版，把旧的整段压住。其中 3 条「零贡献」的已经删了，还剩 7 处是「部分属性被覆盖」：改前一处不生效、改后面那处又会连带影响别的选择器（有 .qtext.f-xs,.qtext.f-sm,.qtext.f-md 这种分组）。得单独一轮、逐屏截图对照着合。",
       "cost": "中",
-      "where": "src/js/10_bank_skeleton.js 与 11_world.js 等（删不生效的那份，或改名 + 加注释说明）"
+      "where": "src/css/10_quiz.css（新旧两段之间）+ 答题面板截图对照"
     }
   ],
   "done": [
+    {
+      "id": "shadowed-functions",
+      "title": "清掉被覆盖的同名函数（28 组 · 约 600 行）+ 死代码体检",
+      "ver": "4.0.15",
+      "note": "先实测了「同名函数谁生效」这条地基（一个 <script> 里，后声明的那份从第一行起就生效，连按值捕获也是后一份），确认前面那些是纯死代码再删。共删 41 个函数 + 3 条零贡献 CSS，产物小 32.4 KB。顺手把「量屎山」这件事做成了工具（tools/deadcode.py）并接进每日体检，带基线：以后任何一项从 0 变 1，当天巡检就报。"
+    },
     {
       "id": "drill-wrong-reflow",
       "title": "练枪错题回流：又错一次真的记账（打回第一天）+ 收工趁热重做刚错的题",

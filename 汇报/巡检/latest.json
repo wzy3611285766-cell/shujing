@@ -1,28 +1,28 @@
 {
-  "date": "2026-10-15",
-  "version": "4.0.10",
-  "seconds": 7.2,
+  "date": "2026-10-16",
+  "version": "4.0.15",
+  "seconds": 63.3,
   "ok": true,
   "steps": [
     {
       "name": "① 构建 + 公告同源",
       "ok": true,
-      "detail": "版本 v4.0.10 · 模块 74 个 · 1939763 字节 (1.85 MB) · sha256 434bb5a9e12a4ab0 · 公告 v4.0.10 · NEWS_VER v4.0.10-eeafdffa（内容摘要，改公告就会变）"
+      "detail": "版本 v4.0.15 · 模块 74 个 · 1922331 字节 (1.83 MB) · sha256 b42e3cb5a3a2c020 · 公告 v4.0.15 · NEWS_VER v4.0.15-82da181b（内容摘要，改公告就会变）"
     },
     {
       "name": "② 骨架比对（对比拆分前基线）",
       "ok": true,
-      "detail": "产物 +13897 字节 · 基线独有 125 行 / 产物独有 376 行（相对基线累计改动）"
+      "detail": "产物 -3535 字节 · 基线独有 394 行 / 产物独有 588 行（相对基线累计改动）"
     },
     {
       "name": "③ 无头浏览器冒烟（file:// + http:// 各一遍）",
       "ok": true,
-      "detail": "81 项通过 / 0 项失败 · 耗时 7s"
+      "detail": "102 项通过 / 0 项失败 · 耗时 8s"
     },
     {
       "name": "④ 静态体检",
       "ok": true,
-      "detail": "7 项检查 · 0 项未过"
+      "detail": "8 项检查 · 0 项未过"
     }
   ],
   "health": [
@@ -34,12 +34,12 @@
     {
       "item": "版本号三处一致（version.json / 产物 / 公告）",
       "ok": true,
-      "detail": "v4.0.10 · NEWS_VER v4.0.10-eeafdffa"
+      "detail": "v4.0.15 · NEWS_VER v4.0.15-82da181b"
     },
     {
       "item": "更新日志首条 = 当前版本",
       "ok": true,
-      "detail": "CHANGELOG 顶上就是 v4.0.10（版本谱系与涨号规则也写在开头）"
+      "detail": "CHANGELOG 顶上就是 v4.0.15（版本谱系与涨号规则也写在开头）"
     },
     {
       "item": "releases/ 里有当前版本的归档",
@@ -47,7 +47,7 @@
       "detail": "已归档，可随时回退"
     },
     {
-      "item": "DOM 引用不悬空（202 处 $('id')）",
+      "item": "DOM 引用不悬空（205 处 $('id')）",
       "ok": true,
       "detail": "全部有着落"
     },
@@ -60,16 +60,21 @@
       "item": "汇报页无外链（图片全内联）",
       "ok": true,
       "detail": "汇报页自查：全部通过 ✅"
+    },
+    {
+      "item": "死代码 / 同名覆盖（静态分析）",
+      "ok": true,
+      "detail": "同名函数 0 组 / 未引用函数 0 个 / 孤儿类 0 个 / 零贡献规则 0 条，全部在基线内"
     }
   ],
   "failures": [],
   "observations": [
     {
       "id": "A1",
-      "title": "有 28 个同名函数被定义了不止一次",
-      "why": "addStele（10_bank_skeleton.js、11_world.js）；addSpirit（10_bank_skeleton.js、11_world.js）；addGuard（10_bank_skeleton.js、11_world.js）；addHermit（10_bank_skeleton.js、11_world.js） —— 后一份生效、前一份是死代码，改错文件等于没改。",
-      "cost": "小",
-      "where": "src/js/（删掉不生效的那一份，或加注释说明为何覆盖）"
+      "title": "本次体检没有发现新问题",
+      "why": "四步体检全过。可以把精力放在下面的改进建议上。",
+      "cost": "—",
+      "where": "—"
     }
   ],
   "suggestions": [

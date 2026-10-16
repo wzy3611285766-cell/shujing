@@ -252,6 +252,14 @@ def step_health():
     ok, line = _imgcheck()
     rows.append({"item": "汇报页无外链（图片全内联）", "ok": ok, "detail": line})
 
+    # 死代码 / 同名覆盖：交给 tools/deadcode.py 判（它按模块顺序算"谁覆盖谁"）。
+    # 以前这里是 daily 里临时写的一段"同名函数"统计，既没有行号也说不清谁死谁活。
+    rc, out = run([os.path.join(TOOLS, "deadcode.py"), "--check"])
+    lines = [x for x in out.strip().splitlines() if x.strip()]
+    rows.append({"item": "死代码 / 同名覆盖（静态分析）", "ok": rc == 0,
+                 "detail": "；".join(lines[1:4]) if rc != 0
+                           else (lines[-1] if lines else "—")})
+
     return {"name": "④ 静态体检", "ok": all(r["ok"] for r in rows), "rows": rows}
 
 
@@ -273,22 +281,13 @@ def observations(health, smoke, ver):
             out.append({"title": "当前版本还没有归档",
                         "why": r["detail"], "cost": "小",
                         "where": "python tools/release.py --no-bump"})
-    # 重复定义：同名函数在多个模块里各一份（历史上 ☰ 菜单就出过两份）
-    dup = {}
-    for path, _s, _e, _n in PIECES:
-        if not path.endswith(".js"):
-            continue
-        p = os.path.join(ROOT, path)
-        if not os.path.exists(p):
-            continue
-        for m in re.finditer(r"^function\s+(\w+)\s*\(", open(p, encoding="utf-8", errors="replace").read(), re.M):
-            dup.setdefault(m.group(1), []).append(os.path.basename(path))
-    multi = {k: v for k, v in dup.items() if len(v) > 1}
-    if multi:
-        out.append({"title": "有 %d 个同名函数被定义了不止一次" % len(multi),
-                    "why": "；".join("%s（%s）" % (k, "、".join(v)) for k, v in list(multi.items())[:4])
-                           + " —— 后一份生效、前一份是死代码，改错文件等于没改。",
-                    "cost": "小", "where": "src/js/（删掉不生效的那一份，或加注释说明为何覆盖）"})
+    # 死代码 / 同名覆盖：由 tools/deadcode.py 判（这里只把结论端出来）
+    for r in health["rows"]:
+        if "死代码" in r["item"] and not r["ok"]:
+            out.append({"title": "静态分析查出死代码 / 同名覆盖",
+                        "why": r["detail"] + " —— 同名覆盖最坑：改了不生效的那一份等于没改。"
+                               "详细清单见 python tools/deadcode.py。",
+                        "cost": "小", "where": "src/js/（删掉不生效的那一份）"})
     if smoke.get("failures"):
         out.append({"title": "冒烟有 %d 项没过" % len(smoke["failures"]),
                     "why": "；".join(smoke["failures"][:4]), "cost": "小", "where": "见报告「冒烟」一节"})

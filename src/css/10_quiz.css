@@ -219,7 +219,6 @@
 .qtext .qs::before{content:'';position:absolute;left:0;top:.3em;bottom:.3em;width:3px;
   border-radius:2px;background:linear-gradient(180deg,rgba(255,215,106,.9),rgba(255,215,106,.22))}
 .qtext.f-lg .qs{margin:.42em 0}
-.qtext.f-xl .qs{margin:.55em 0}
 .qtext.seg .qs:first-child{margin-top:0}
 .qtext.seg .qs:last-child{margin-bottom:0}
 /* 超长题干：块内自己滚，别把选项顶到屏幕外去。
@@ -233,9 +232,6 @@
   scrollbar-color:rgba(255,215,106,.4) transparent}
 .qtext.scrollable::-webkit-scrollbar{width:4px}
 .qtext.scrollable::-webkit-scrollbar-thumb{background:rgba(255,215,106,.4);border-radius:99px}
-.qtext.scrollable:not(.at-end){
-  -webkit-mask-image:linear-gradient(to bottom,#000 80%,rgba(0,0,0,.18));
-  mask-image:linear-gradient(to bottom,#000 80%,rgba(0,0,0,.18))}
 .qmeta{text-align:center;color:#8fb4d6;font-size:var(--fs-xs);margin-bottom:14px}
 /* 长题干时把标题、统计行、徽章压一压：省下的高度全给题干本身 */
 .panel.long-q h2{font-size:var(--fs-xl);margin-bottom:2px}
@@ -256,7 +252,6 @@
 .opt:active{transform:scale(.96);box-shadow:var(--gb-press-lift)}
 .opt.right{background:var(--gb-tint-green);border-color:rgba(110,231,183,.8)}
 .opt.wrong{background:var(--gb-tint-red);border-color:rgba(255,138,128,.75)}
-.opt.dim{opacity:.3}
 .opt.locked{pointer-events:none}
 /* 思路选项：虚线边框 + 小一号字，和答案选项在视觉上一眼分开。
    思路文本比答案长（常见 15~24 字），字号降一档、行高放宽，才不会挤成两行半 */
@@ -568,12 +563,43 @@ font-size:var(--fs-sm);line-height:var(--lh-base)}
 font-size:var(--fs-xs);font-weight:700}
 .dept .dmax{text-align:center;color:#ffd76a;font-weight:800;font-size:var(--fs-sm);
 margin-top:8px;padding:5px 0}
-/* 房卡 */
-.kcard{display:flex;align-items:center;gap:10px;border-radius:14px;
-padding:10px 12px;margin-bottom:9px;border:1px solid}
-.kcard .e{font-size:var(--fs-2xl);flex:none}
-.kcard .nm{color:#fff;font-weight:800;font-size:var(--fs-md)}
-.kcard .ds{color:#9cc0e0;font-size:var(--fs-xs);line-height:1.5;margin-top:2px}
+/* 房卡那一排 4.0.12 起直接用 .item 渲染（见 blazeShopRow 的 accent 参数）：
+   以前是另一套 .kcard 标记，购买按钮没落到 .item .buy 的金色样式上，
+   同一页里房卡是灰按钮、物资是金按钮 —— 那套规则已删。 */
+
+/* =========================================================
+   游戏内确认弹窗（4.0.14）
+   ---------------------------------------------------------
+   替代 window.confirm()。原生框在手机上会把**全屏踢掉**：
+   卖一次东西 → 弹一次 → 全屏没了 → 回来还得再点一次「⛶ 全屏」。
+   换成面板里的一张卡，全屏状态原地不动。
+   卡片顺序就是玩家看东西的顺序：明细 → **到手金额** → 说明 → 警告。
+   ========================================================= */
+.cf-list{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.10);
+  border-radius:13px;padding:7px 11px;margin:0 0 11px}
+.cf-line{display:flex;align-items:center;gap:8px;padding:5px 0;
+  font-size:var(--fs-sm);border-bottom:1px solid rgba(255,255,255,.06)}
+.cf-line:last-child{border-bottom:none}
+.cf-line .e{flex:none;font-size:var(--fs-lg);line-height:1}
+.cf-line .n{flex:1;min-width:0;color:#eaf4ff;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-line .n b{color:#9fe4ff}
+.cf-line .v{flex:none;color:#ffd76a;font-weight:700;font-variant-numeric:tabular-nums}
+.cf-line.cf-more{justify-content:center;color:#7d94ab;font-size:var(--fs-xs)}
+/* 到手金额：整张卡上唯一"大"的数字 —— 玩家点进来看的就是它 */
+.cf-total{text-align:center;margin:0 0 11px;padding:9px 12px;border-radius:14px;
+  background:linear-gradient(180deg,rgba(255,215,106,.14),rgba(255,215,106,.05));
+  border:1px solid rgba(255,215,106,.30)}
+.cf-total .lb{font-size:var(--fs-xs);color:#9cc0e0}
+.cf-total .big{font-size:var(--fs-3xl);font-weight:800;color:#ffd76a;
+  line-height:1.15;font-variant-numeric:tabular-nums}
+.cf-total .big .u{font-size:var(--fs-sm);font-weight:700;color:#e8c274;margin-left:3px}
+.cf-total .sm{font-size:var(--fs-2xs);color:#9cc0e0;margin-top:3px;line-height:1.5}
+.cf-note{font-size:var(--fs-xs);color:#9cc0e0;line-height:var(--lh-base);margin:0 0 9px}
+.cf-warn{font-size:var(--fs-xs);line-height:var(--lh-base);margin:0 0 11px;
+  padding:7px 10px;border-radius:11px;color:#ffd6cb;
+  background:rgba(255,120,90,.10);border:1px solid rgba(255,120,90,.28)}
+
 
 .item{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);
   border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;margin-bottom:10px}

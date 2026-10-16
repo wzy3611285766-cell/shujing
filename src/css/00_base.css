@@ -100,7 +100,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0d1b2a;
 /* 世界地图的手势由 canvas 自己的 touch-action:none 挡住，不必再罩一层 */
 #app{position:fixed;inset:0;height:100vh;height:100dvh;overflow:hidden;
   touch-action:pan-y;overscroll-behavior:none}
-canvas{display:block;width:100%;height:100%;touch-action:none}
+/* 世界层那两块画布自己吃手势（摇杆要靠它拖）。
+   ⚠️ 这条以前是 `canvas{...}` 按元素名写的 —— 面板里的画布（战术地图 #tacCv）
+   被一起吃掉：touch-action 取「命中元素到根这条路径上所有值的交集」，
+   画布写了 none，身后 .panel 的 pan-y 就白写了。表现就是
+   「摊开战术地图后只有面板两侧那条窄边能拖，图中间怎么划都不动」，
+   玩家会以为卡死了、也滚不到底下的关闭键（4.0.13 修）。
+   和 3.1.1 那次 touch-action 交集坑是同一类问题：按元素名写，迟早误伤。 */
+#bg,#game{display:block;width:100%;height:100%;touch-action:none}
+/* 面板里的画布：跟着面板一起能被手指拖（宽 100%，高度由 JS 写成 px） */
+#panel canvas{display:block;width:100%;touch-action:pan-y}
 /* 静态地形层：按世界尺寸(2400x1900)原样铺开，靠 transform 跟着镜头走。
    尺寸由 JS 写成 px（要盖掉上面那条 width:100%），这块不参与命中测试。 */
 #bg{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none;z-index:0;

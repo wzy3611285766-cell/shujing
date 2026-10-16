@@ -58,42 +58,7 @@ function save(){
   catch(e){storageOK=false;return false;}   // 无痕模式 / 存储被禁用时退回内存
 }
 /* 老存档或手改过的存档可能缺字段，统一补齐，避免 undefined 报错 */
-function healState(){
-  const isObj=v=>v&&typeof v==='object'&&!Array.isArray(v);
-  if(!isObj(state.badges))state.badges={};
-  if(!isObj(state.caught))state.caught={};
-  if(!isObj(state.solved))state.solved={};
-  if(!isObj(state.loose))state.loose={};
-  if(!isObj(state.tier))state.tier={};
-  if(!isObj(state.read))state.read={};      // 史诗模式：已读篇章
-  if(!isObj(state.quiz))state.quiz={};      // 史诗模式：已通过的时空考题
-  if(!isObj(state.stat))state.stat={};      // 各岛答题统计（学习报告）
-  if(!isObj(state.tstat))state.tstat={};    // 各知识点答题统计
-  if(!isObj(state.astat))state.astat={};    // 各知识点思路选择统计
-  if(!isObj(state.drill))state.drill={};    // 练枪场：各科 / 各知识点统计
-  if(!isObj(state.drillTier))state.drillTier={};
-  if(!isObj(state.drillTopic))state.drillTopic={};
-  if(!Array.isArray(state.wrongBook))state.wrongBook=[];
-  if(!Array.isArray(state.wrongDone))state.wrongDone=[];
-  if(!isObj(state.wbRev))state.wbRev={};
-  wbHealAll();          // 1.7.0：给老存档的错题补上熟炼度 / 复习日期
-  if(typeof state.daily!=='string')state.daily='';
-  if(typeof state.dailyStreak!=='number'||!isFinite(state.dailyStreak))state.dailyStreak=0;
-  if(typeof state.crystals!=='number'||!isFinite(state.crystals))state.crystals=0;
-  if(typeof state.hint!=='number'||!isFinite(state.hint))state.hint=2;
-  state.hint=Math.max(0,Math.round(state.hint));   // 手改过的存档可能留下负数
-  if(typeof state.totalRight!=='number')state.totalRight=0;
-  if(typeof state.totalWrong!=='number')state.totalWrong=0;
-  if(typeof state.streak!=='number')state.streak=0;
-  if(typeof state.bestStreak!=='number'||!isFinite(state.bestStreak))state.bestStreak=0;
-  if(typeof state.sound!=='boolean')state.sound=true;
-  if(typeof state.x!=='number'||!isFinite(state.x))state.x=0;
-  if(typeof state.y!=='number'||!isFinite(state.y))state.y=0;
-  REGIONS.forEach(r=>{if(!state.tier[r.id])state.tier[r.id]=1;});
-  /* 用"="而不是"||="：切换世界时要把上一个世界留下的 got 标记清干净 */
-  LOOSE.forEach(c=>{c.got=!!state.loose[c.id];});
-  if(typeof state.era!=='string')state.era='';
-}
+
 function load(){
   let s=null;
   try{localStorage.setItem(curKey+'__t','1');localStorage.removeItem(curKey+'__t');}

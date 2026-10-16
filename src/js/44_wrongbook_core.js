@@ -149,7 +149,7 @@ function wbDel(w){
   state.wrongDone=state.wrongDone.filter(x=>x.text!==w.text);
 }
 /* 老版本「答对就划掉」的同名入口，1.7.0 起改走熟炼度归档 */
-function wbDrop(q){wbGrade(q,true);}
+
 /* 复习流水账：连续复习天数（同一天重复练不重复计数） */
 function wbRevTick(n){
   if(!state.wbRev||typeof state.wbRev!=='object')state.wbRev={};

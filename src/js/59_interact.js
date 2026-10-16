@@ -42,7 +42,7 @@ function blazeActBtn(spot,btn,hint){
   else if(spot.t==='vault'){
     const g=blazeVaultGuards(spot);
     if(g.length){t='🔒 有人守着';blocked=true;}
-    else if(spot.needKey&&!(BZ.gear&&BZ.gear.key)){t='🔑 需要钥匙卡';blocked=true;}
+    else if(spot.needCard&&!blazeLowestCard(BZ.gear)){t='🔑 需要房卡';blocked=true;}
     else t='🔓 开保险箱';
   }
   else if(spot.t==='door'){

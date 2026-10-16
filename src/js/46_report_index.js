@@ -138,63 +138,12 @@ function showReport(){
   $('rpDr').onclick=showDrill;
 }
 
-/* ---------- 公式速查 ----------
-   考前扫一眼比翻书快：按域分组，只收最常用的那几条。
-   上下标用 ^ / _ 写，避免小屏字体缺字符。 */
-function showFormula(rid){
-  const ids=Object.keys(FORMULAS);
-  if(!rid||!FORMULAS[rid])rid=ids.indexOf(state.region)>=0?state.region:ids[0];
-  const reg=REGIONS.find(r=>r.id===rid);
-  const list=FORMULAS[rid]||[];
-  openPanel(`
-    <h2>📐 公式速查</h2>
-    <div class="sub">${reg?esc(reg.emoji+' '+reg.name+' · '+reg.sub):esc(rid)}</div>
-    <div class="row" style="margin-top:0;margin-bottom:12px;gap:7px">
-      ${ids.map(k=>{const r=REGIONS.find(v=>v.id===k);
-        return `<button class="btn ${k===rid?'primary':''}" id="fm_${k}"
-          style="flex:0 0 auto;min-width:0;padding:7px 11px">${r?r.emoji:k}</button>`;}).join('')}
-    </div>
-    ${list.map(f=>`<div class="wb-item">
-      <div class="wb-t">${esc(f.t)}</div>
-      <div class="wb-e" style="color:#dbeafe">${esc(f.v)}</div></div>`).join('')}
-    <div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin-top:10px;line-height:var(--lh-base)">
-      只收最常考的几条，用来考前扫一眼；<br>真要吃透还得回到题目里练
-    </div>
-    <div class="row"><button class="btn primary" id="ok">关闭</button></div>
-  `);
-  $('ok').onclick=closePanel;
-  ids.forEach(k=>{const b=$('fm_'+k);if(b)b.onclick=()=>{audioKick();showFormula(k);};});
-}
 
 /* ---------- 引路标 ----------
    地图 2400×1900，跑图全靠腿。点一下就告诉你最近的目标在哪、往哪走，
    再给一支跟着人走的箭头，走岔了也能掰回来。 */
 let guideTarget=null,guideTimer=0;
-function spotNameOf(s){
-  if(CUR===EPIC&&typeof epicSpotLabel==='function')return epicSpotLabel(s);
-  if(s.t==='stele')return '🗿 智慧石碑';
-  if(s.t==='guard')return '🛡️ '+(s.name||'守护者');
-  if(s.t==='spirit'){const sp=SPIRITS.find(v=>v.id===s.sid);return sp?sp.e+' '+sp.n:'✨ 野生精灵';}
-  if(s.t==='hermit')return '🧙 引路人';
-  return s.name||'目标';
-}
-function guideCandidates(){
-  const out=[];
-  SPOTS.forEach(s=>{
-    /* 引路人不进候选：它只给提示、不产生进度，指过去没意义，
-       而且它永远"未完成"，会把真正要打的石碑、精灵挤到后面 */
-    if(s.t==='hermit')return;
-    /* 史诗模式的卷宗读完也算"没做完"，这里用 read 判断，避免反复指已读篇目 */
-    if(CUR===EPIC){if(state.read[s.sid])return;}
-    else if(spotDone(s))return;
-    out.push({x:s.x,y:s.y,kind:s.t,name:spotNameOf(s),emoji:s.t==='guard'?'🛡️':(s.t==='stele'?'🗿':(s.t==='spirit'?'✨':'🧙'))});
-  });
-  LOOSE.forEach(c=>{
-    if(c.got)return;
-    out.push({x:c.x,y:c.y,kind:'crystal',name:'💎 散落的结晶',emoji:'💎'});
-  });
-  return out;
-}
+
 function dirName(dx,dy){
   /* 屏幕坐标 y 向下为正，所以 atan2(dy,dx)=0 是东、π/2 是南 */
   const a=((Math.atan2(dy,dx)*180/Math.PI)+360)%360;

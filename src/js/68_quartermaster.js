@@ -63,26 +63,41 @@ function blazeDeptUpgrade(did){
                '，收藏柜里只有 '+blazeStashCount(nx.need.r)+' 件');
     return;
   }
-  if(!confirm('升级「'+d.n+'」到 '+(deptLevel(did)+1)+' 级？\n\n'+
-    '花费 '+nx.cost+' 🪙'+
-    (nx.need?('\n并上缴 '+(RAR_OF[nx.need.r]||RARITY[0]).n+'物资 ×'+nx.need.n):'')+
-    '\n\n升级后这些结晶与物资不再退还。'))return;
-  BLAZE_STATE.crystals=(BLAZE_STATE.crystals|0)-nx.cost;
-  if(nx.need)blazeStashConsume(nx.need.r,nx.need.n);
-  deptSet(did,deptLevel(did)+1);
-  BLAZE_STATE.spent=(BLAZE_STATE.spent|0)+nx.cost;
-  BLAZE_STATE.spentItem=(BLAZE_STATE.spentItem|0)+(nx.need?nx.need.n:0);
-  save();SFX.win();
-  toast(d.e+' '+d.n+' → '+deptLevel(did)+' 级');
-  blazeLobbyTab=3;blazeRenderLobby();
+  /* 确认走游戏内弹窗（4.0.14）：原生 confirm 会把全屏踢掉 */
+  const rr=RAR_OF[nx.need&&nx.need.r]||RARITY[0];
+  uiConfirm({
+    icon:d.e||'🏛️',
+    title:'把「'+d.n+'」升到 '+(deptLevel(did)+1)+' 级？',
+    sub:'Lv'+deptLevel(did)+' → Lv'+(deptLevel(did)+1),
+    lines:[{e:'🪙',n:'花费哈夫币',v:nx.cost+' 🪙'}]
+      .concat(nx.need?[{e:rr.e,n:rr.n+' 物资',c:'×'+nx.need.n,v:'一并上缴'}]:[]),
+    total:{label:'本次花费',v:nx.cost,unit:'🪙'},
+    warn:'升级后这些结晶与物资不再退还',
+    ok:'确认升级'},()=>{
+    BLAZE_STATE.crystals=(BLAZE_STATE.crystals|0)-nx.cost;
+    if(nx.need)blazeStashConsume(nx.need.r,nx.need.n);
+    deptSet(did,deptLevel(did)+1);
+    BLAZE_STATE.spent=(BLAZE_STATE.spent|0)+nx.cost;
+    BLAZE_STATE.spentItem=(BLAZE_STATE.spentItem|0)+(nx.need?nx.need.n:0);
+    save();SFX.win();
+    toast(d.e+' '+d.n+' → '+deptLevel(did)+' 级');
+    blazeLobbyTab=3;blazeRenderLobby();
+  },()=>{blazeLobbyTab=3;blazeRenderLobby();});   // 取消也要把特勤处那一屏画回来
 }
 
-/* 采购行：战备物资的统一渲染（折扣价与解锁提示都在这里算） */
-function blazeShopRow(it,gear){
+/* 采购行：战备物资的统一渲染（折扣价与解锁提示都在这里算）。
+   accent 是房卡用的强调色 —— 只换边框与底色，**结构与按钮一律和物资行相同**。
+   4.0.12 之前房卡是另写一套 .kcard 标记，那颗购买按钮因此没落到 .item .buy
+   的金色样式上，成了一颗浏览器默认灰按钮（同一页上两种长相）。
+   一个渲染器就不会再长出第二套长相。 */
+function blazeShopRow(it,gear,accent){
   const unlocked=hqShopUnlocked(it.id);
   const price=Math.round(it.price*hqDiscount());
   const poor=(BLAZE_STATE.crystals|0)<price;
-  return `<div class="item"${unlocked?'':' style="opacity:.5"'}>
+  const style=accent?(' style="border-color:'+accent+'66;background:'+accent+'12'+
+                      (unlocked?'':';opacity:.5')+'"')
+                    :(unlocked?'':' style="opacity:.5"');
+  return `<div class="item"${style}>
     <div class="ic">${unlocked?it.e:'🔒'}</div>
     <div style="flex:1;min-width:0">
       <div class="nm">${esc(it.n)}
@@ -135,7 +150,6 @@ function blazeRenderLobby(){
     if(carry.beacon) perk.push('多 1 个撤离点');
     if(carry.bag)    perk.push('背包 +10 格 · 估值 +20% · 稀有度 +15%');
     if(carry.ins)    perk.push('阵亡保住最贵 2 件');
-    if(carry.key)    perk.push('可开高价值保险箱');
     if(carry.scan)   perk.push('保险箱房上小地图');
     if(carry.medkit) perk.push('首次中弹不掉信号');
     if(carry.luck)   perk.push('稀有度 +40%');
@@ -242,25 +256,13 @@ function blazeRenderLobby(){
     <div class="sub" style="text-align:left;margin:0 0 8px">🎒 战备物资</div>
     ${BLAZE_GEAR.filter(it=>it.kind!=='card').map(it=>blazeShopRow(it,gear)).join('')}
     <div class="sub" style="text-align:left;margin:14px 0 8px">🔑 房卡
-      <span style="opacity:.7">（进游戏前买好，勾选携带，刷卡开门即消耗）</span></div>
-    ${BLAZE_CARDS.map(c=>{
-      const it=BLAZE_GEAR_OF[c.id];
-      const unlocked=hqShopUnlocked(c.id);
-      const price=Math.round(c.price*hqDiscount());
-      const poor=(BLAZE_STATE.crystals|0)<price;
-      return `<div class="kcard" style="background:${unlocked?'rgba(255,255,255,.05)':'rgba(255,255,255,.03)'};
-        border-color:${unlocked?c.c+'66':'rgba(255,255,255,.1)'};${unlocked?'':'opacity:.62'}">
-        <span class="e">${unlocked?c.e:'🔒'}</span>
-        <span style="flex:1;min-width:0">
-          <div class="nm">${esc(c.n)} <span style="font-size:var(--fs-xs);color:#9cc0e0">仓库 ×${gear[c.id]|0}</span></div>
-          <div class="ds">${unlocked?esc(c.d):('🔒 '+deptUnlockHint(c.id))}</div>
-        </span>
-        <button class="buy" id="buy_${c.id}" ${(unlocked&&!poor)?'':'disabled'}>${price} 🪙</button>
-      </div>`;}).join('')}
+      <span style="opacity:.7">（进游戏前买好，勾选携带，刷卡即消耗）</span></div>
+    ${BLAZE_CARDS.map(c=>blazeShopRow(BLAZE_GEAR_OF[c.id],gear,c.c)).join('')}
     <div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin:10px 0;line-height:var(--lh-base)">
       物资与房卡买进仓库后，要在「部署」页勾选携带才会生效；<br>
       带进战场就用掉了，无论撤离成功还是阵亡都不会退还。<br>
-      房卡刷开的是<b style="color:#ffd76a">上锁房间的铁门</b>，一扇门一张卡。
+      房卡两种用法：刷开<b style="color:#ffd76a">上锁房间的铁门</b>，或者开<b style="color:#ffd76a">💠 高价值保险箱</b>
+      —— 一扇门 / 一座箱子各一张卡，<b>手里哪张等级最低就先扣哪张</b>。
     </div>
     <div class="row">
       <button class="btn" id="back">← 返回部署</button>
@@ -306,9 +308,10 @@ function blazeRenderLobby(){
       🔍 <b>搜</b>：📦 物资箱答题开箱，开出的是<b>物资</b>，稀有度从普通到神话<br>
       💱 <b>交易</b>：战场上只掉物资，<b>一文现金都没有</b> ——
         回基地到「💱 交易站」卖掉，才变成哈夫币<br>
-      🔐 <b>保险箱房</b>：最远的那间楼，<b>门口与屋里都有守卫，不打赢别想开箱</b><br>
-      🔑 <b>房卡</b>：有些房间的门被焊死，
-        <b>进游戏前</b>在「🏪 战备采购」买卡、部署时勾选携带，走到门口刷卡才能进<br>
+      🔐 <b>保险箱房</b>：最远的那间楼，<b>门口与屋里都有守卫，不打赢别想开箱</b> ——
+        最里面那座 💠 高价值保险箱另外要<b>刷一张房卡</b><br>
+      🔑 <b>房卡</b>：两种用法 —— 刷开<b>上锁房间的铁门</b>，或者开 💠 <b>高价值保险箱</b>；
+        <b>进游戏前</b>在「🏪 战备采购」买卡、部署时勾选携带，刷卡即作废一张<br>
       💥 <b>打</b>：撞上 👾 巡逻队打三题，错两道当场阵亡；打赢从他们身上搜出物资<br>
       🚁 <b>撤</b>：到撤离点开始撤离，路上每波一题，
         <b>错一道，背包里的东西一件都带不走</b><br>
@@ -322,7 +325,7 @@ function blazeRenderLobby(){
         五个部门各自升级，花的是哈夫币 + 上缴的稀有物资<br>
       🎒 <b>背包</b>：按<b>格数</b>算（不是件数），满了会挤掉<b>单格价值最低</b>的<br>
       ⏳ <b>时空交易所</b>：☰ 菜单里用 📜 编年史的时间星尘换支援券 ——
-        🎟️ 免一次行动经费 · 🔑 白拿一张钥匙卡 · 📟 开局报点<br>
+        🎟️ 免一次行动经费 · 🔑 白拿一张蓝色房卡 · 📟 开局报点<br>
       ⚠️ 战利品只有<b>活着走出去</b>才入账、<b>卖掉了</b>才变成钱
     </div>
     <div class="row"><button class="btn primary" id="back">← 返回部署</button></div>`;
@@ -393,50 +396,89 @@ function blazeRenderLobby(){
     if(b)b.onclick=()=>{
       audioKick();
       const c=v.cnt;
-      if(!confirm('把仓库里 '+v.e+v.n+' ×'+c+' 全部卖出？'))return;
-      const g=blazeSell(v.n,c);
-      SFX.coin();save();updateHUD();toast('💱 卖出 '+c+' 件 ＋'+g+' 🪙');re();
+      const cal=blazeSellCalc(v,c);        // 先说准价，再动手
+      uiConfirm({
+        icon:'💱',
+        title:'把这一摞全卖掉？',
+        lines:[{e:v.e,n:v.n,c:'×'+c,v:cal.gain+' 🪙'}],
+        total:{label:'到手',v:cal.gain,unit:'🪙',
+          sub:'估值 '+v.val+' 🪙 × 行情 '+BLAZE_SELL_RATE.toFixed(2)
+             +' × 谈价 '+hqSellMul().toFixed(2)+(v.nt?' × 任务材料 0.4':'')},
+        warn:'卖掉一件，🏛️ 特勤处就少一件升级材料',
+        ok:'确认卖出'},()=>{
+        const g=blazeSell(v.n,c);
+        if(g>0){SFX.coin();save();updateHUD();toast('💱 卖出 '+c+' 件 ＋'+g+' 🪙');}
+        re();
+      },re);
     };
   });
   RARITY.forEach(r=>{
     const b=$('sr_'+r.id);
     if(b)b.onclick=()=>{
       audioKick();
-      const cnt=blazeStashList().filter(v=>v.r===r.id).reduce((a,x)=>a+x.cnt,0);
+      const items=blazeStashList().filter(v=>v.r===r.id);
+      const cnt=items.reduce((a,x)=>a+x.cnt,0);
       if(cnt<=0){toast('这一档没有存货');return;}
-      if(!confirm('把全部「'+r.e+' '+r.n+'」物资（'+cnt+' 件）卖掉？\n\n卖掉后 🏛️ 特勤处就少这些升级材料了。'))return;
-      const res=blazeSellRarity(r.id);
-      SFX.coin();save();updateHUD();toast('💱 '+r.n+' 卖出 '+res.n+' 件 ＋'+res.g+' 🪙');re();
+      const gain=items.reduce((a,x)=>a+blazeSellCalc(x,x.cnt).gain,0);
+      uiConfirm({
+        icon:r.e,
+        title:'整档卖掉「'+r.n+'」物资？',
+        sub:cnt+' 件 · '+items.length+' 种',
+        lines:items.map(x=>({e:x.e,n:x.n,c:'×'+x.cnt,v:blazeSellCalc(x,x.cnt).gain+' 🪙'})),
+        total:{label:'到手',v:gain,unit:'🪙'},
+        warn:'卖掉后 🏛️ 特勤处就少这些升级材料',
+        ok:'确认卖 '+cnt+' 件'},()=>{
+        const res=blazeSellRarity(r.id);
+        SFX.coin();save();updateHUD();toast('💱 '+r.n+' 卖出 '+res.n+' 件 ＋'+res.g+' 🪙');re();
+      },re);
     };
   });
   const dump=$('dump');
   if(dump)dump.onclick=()=>{
     audioKick();
+    const list=blazeStashList();
     const total=blazeStashCount(0);
     if(total<=0){toast('仓库是空的');return;}
-    const worth=Math.round(blazeStashList()
-      .reduce((a,b)=>a+b.val*(b.nt?0.4:1)*BLAZE_SELL_RATE,0)*hqSellMul());
-    if(!confirm('把仓库里全部 '+total+' 件物资卖掉？\n\n约到手 '+worth+' 🪙\n\n注意：卖光之后 🏛️ 特勤处就没有升级材料了。'))return;
-    let g=0;
-    blazeStashList().forEach(v=>{g+=blazeSell(v.n,v.cnt);});
-    SFX.win();save();updateHUD();toast('💱 清空仓库 ＋'+g+' 🪙');re();
+    /* 到手价逐件算完再加总 —— 和真正卖出去时是同一个函数。
+       以前这里写的是"约到手"：它自己复算了一遍，天生会和账目差一点 */
+    const worth=list.reduce((a,v)=>a+blazeSellCalc(v,v.cnt).gain,0);
+    const slots=list.reduce((a,b)=>a+Math.max(1,b.slot|0||1)*b.cnt,0);
+    uiConfirm({
+      icon:'📦',
+      title:'把仓库全部卖掉？',
+      sub:total+' 件 · '+list.length+' 种 · 占 '+slots+' 格',
+      lines:list.map(v=>({e:v.e,n:v.n,c:'×'+v.cnt,v:blazeSellCalc(v,v.cnt).gain+' 🪙'})),
+      total:{label:'到手',v:worth,unit:'🪙'},
+      warn:'卖光之后 🏛️ 特勤处就没有升级材料了',
+      ok:'确认清空'},()=>{
+      let g=0;
+      blazeStashList().forEach(v=>{g+=blazeSell(v.n,v.cnt);});
+      SFX.win();save();updateHUD();toast('💱 清空仓库 ＋'+g+' 🪙');re();
+    },re);
   };
   const cash=$('cash');
   if(cash)cash.onclick=()=>{
     audioKick();
     const n=BLAZE_STATE.crystals|0;
     if(n<=0){toast('仓库里没有结晶');return;}
+    const rate=Math.round(1/BLAZE_REMIT_RATE);
     const got=Math.floor(n*BLAZE_REMIT_RATE);
-    if(!confirm('把仓库里的 '+n+' 枚结晶上缴到「闯关模式」？\n\n'
-      +'烽火与闯关的物价差着一个量级，按 '+Math.round(1/BLAZE_REMIT_RATE)
-      +' 🪙 换 1 枚的行情，到手 '+got+' 枚。\n'
-      +'上缴后可以在闯关模式的商行使用。\n（单向，不可转回）'))return;
-    BLAZE_STATE.crystals=n-got*Math.round(1/BLAZE_REMIT_RATE);
-    ADV_STATE.crystals=(ADV_STATE.crystals|0)+got;
-    save();
-    try{localStorage.setItem(SAVE_KEY,JSON.stringify(ADV_STATE));}catch(e){}
-    SFX.win();toast('已上缴 '+n+' 🪙 → 闯关 ＋'+got+' 枚结晶');
-    blazeLobbyTab=0;re();
+    uiConfirm({
+      icon:'💱',
+      title:'把结晶上缴到闯关模式？',
+      sub:'烽火与闯关的物价差着一个量级',
+      lines:[{e:'🪙',n:'仓库结晶',c:'×'+n,v:n+' 🪙'},
+             {e:'💎',n:'闯关结晶',c:'×'+got,v:'上缴后到账'}],
+      total:{label:'闯关模式到手',v:got,unit:'枚',sub:'按 '+rate+' 🪙 换 1 枚的行情'},
+      warn:'单向操作：转过去就转不回来了',
+      ok:'确认上缴'},()=>{
+      BLAZE_STATE.crystals=n-got*rate;
+      ADV_STATE.crystals=(ADV_STATE.crystals|0)+got;
+      save();
+      try{localStorage.setItem(SAVE_KEY,JSON.stringify(ADV_STATE));}catch(e){}
+      SFX.win();toast('已上缴 '+n+' 🪙 → 闯关 ＋'+got+' 枚结晶');
+      blazeLobbyTab=0;re();
+    },re);
   };
   $('close').onclick=()=>{closePanel();if(!BZ.active&&CUR===BLAZE)flashQuest(true);};
   const go=$('go');
@@ -454,7 +496,7 @@ function blazeIntroHtml(){
     <div class="it-list"><div class="il">🎖️ <b>基地</b>：走进 🎖️ 指挥部，选行动地点与难度</div><div class="il">🗺️ <b>战场</b>：边界不规则，外面是焦土禁区；建筑能进、墙穿不过、岩石挡路</div><div class="il">🔑 <b>房卡</b>：部分房间门被焊死，先在「🏪 战备采购」买卡、部署时勾选携带</div><div class="il">🗺️ <b>四个行动地点</b>：📐 零点演算场 · ⚡ 长弓变电站 · 🔥 灰烬精炼厂 · 🌿 静默培养区</div><div class="il">🎚️ <b>三档难度</b>：🟢 常规 ×1 · 🟡 中档 ×2 · 🔴 高考 ×4（物资估值倍率）</div><div class="il">🎖️ <b>入局条件</b>：战备值达标 + 交<b>行动经费</b>才放你上机 ——
       <b style="color:#ffd76a">${BLAZE_DIFF.map(d=>d.emoji+d.name+' 🎖️'+d.req+' · 🎟️'+d.fee+'🪙').join('　')}</b></div><div class="il">🪖 <b>跑刀</b>：没钱可以光着进去捡垃圾 —— 免票，但估值 ×${BLAZE_NAKED_MUL}、
       阵亡<b>零保底</b>、信号值 -1，而且<b>只够进常规场</b></div><div class="il">🔍 <b>搜</b>：走到 📦 物资箱答题，答对开出<b>物资</b>，
-      答错触发警报、慌乱中还从背包掉一件</div><div class="il">🔐 <b>保险箱房</b>：最远那间楼有守卫把守，<b>必须打赢才打得开箱子</b></div><div class="il">💥 <b>打</b>：撞上 👾 巡逻队打三题，错两道当场阵亡；打赢从他们身上搜出物资</div><div class="il">🚁 <b>撤</b>：到 🚁 撤离点开始撤离，路上每波一题，
+      答错触发警报、慌乱中还从背包掉一件</div><div class="il">🔐 <b>保险箱房</b>：最远那间楼有守卫把守，<b>必须打赢才打得开箱子</b>；最里面那座 💠 高价值箱另外要<b>刷一张房卡</b></div><div class="il">💥 <b>打</b>：撞上 👾 巡逻队打三题，错两道当场阵亡；打赢从他们身上搜出物资</div><div class="il">🚁 <b>撤</b>：到 🚁 撤离点开始撤离，路上每波一题，
       <b>错一道，背包里的东西一件都带不走</b></div><div class="il">📶 <b>信号值</b>：答错就掉，归零直接被锁定淘汰</div><div class="il">🎒 <b>背包</b>：<b>按格数算，不是按件数</b> —— 一个 12 格的大红顶六件小货</div><div class="il">满了会挤掉<b>单格价值最低</b>的那件，装不下就先撤</div><div class="il">🏪 <b>战备采购</b>：电池 / 信标 / 背包 / 保险 / <b>房卡</b>，带进去就没了</div><div class="il">💱 <b>交易站</b>：战场上只掉物资，<b>一文现金都没有</b> ——
       活着回基地，把东西卖给回收商才变成哈夫币</div><div class="il">🏛️ <b>特勤处</b>：指挥部 · 后勤处 · 医疗站 · 情报处 · 军械库，
       花哈夫币 + 上缴稀有物资升级（卖光了就没材料了）</div><div class="il">⚠️ <b>核心规则</b>：战利品只有<b>活着走出去</b>才入账，<b>卖掉了</b>才变成钱</div><div class="il">💱 <b>上缴</b>：仓库结晶可以转回闯关模式花</div><div class="il">🔀 <b>切模式</b>：顶部「⚔️ 闯关」回去刷题，三个模式进度分开保存

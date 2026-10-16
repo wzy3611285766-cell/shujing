@@ -249,6 +249,8 @@ function showMenu(){
   const sndTxt=state.sound?'🔊 音效：开':'🔇 音效：关';
   /* 全屏开关的当前状态：读它来决定菜单里那颗按钮写"全屏"还是"退出全屏" */
   const fsOn=(typeof fullscreenOn==='function')&&fullscreenOn();
+  /* 帧率角标开关的当前状态（默认关，4.0.11） */
+  const fpsOn=(typeof fpsBadgeOn==='function')&&fpsBadgeOn();
   /* 错题中心那一项的 HTML：有到期题时**排到菜单最上面**。
      原因见 updateWbBadge 的注释 —— 顶栏 ☰ 顶着「4」，点开菜单却要
      滚动半屏才在功能列表里找到「错题中心」，红点照样是悬空的。
@@ -274,7 +276,7 @@ function showMenu(){
       <button class="menu-li" id="mAid"><span class="e">⏳</span>
         <span class="tx">时空交易所<div class="d">${
           ep?'用时间星尘换支援券，带给烽火与闯关'
-            :'用 📜 编年史的时间星尘换支援券：🎟️ 抵用券 · 🔑 钥匙卡 · 📟 情报 · 💡 启示灯'
+            :'用 📜 编年史的时间星尘换支援券：🎟️ 抵用券 · 🔑 房卡 · 📟 情报 · 💡 启示灯'
           } · 手上 ${aidTotal()} 张</div></span></button>
       ${!bz&&!ep&&!dr?`<button class="menu-li" id="mDaily"><span class="e">🎯</span>
         <span class="tx">每日一练<div class="d">${state.daily===todayStr()?'今天已完成 ✓ 明天刷新':'5 道跨域混合题 · 奖励 20 🪙'}</div></span></button>`:''}
@@ -311,6 +313,8 @@ function showMenu(){
         <span class="tx">${fsOn?'退出全屏':'⛶ 全屏'}<div class="d">${fsOn
           ?'回到窗口模式 · 也可以按 F11（Mac 是 ⌃⌘F）'
           :'铺满整屏、去掉地址栏 · iPhone 请从「添加到主屏幕」的图标进（Safari 不给网页全屏）'}</div></span></button>
+      <button class="menu-li" id="mFps"><span class="e">${fpsOn?'📊':'📉'}</span>
+        <span class="tx">帧率角标：${fpsOn?'开':'关'}<div class="d">右上角显示「渲染 fps · 每帧耗时」，超预算变黄 · 要完整诊断就在网址后面加 ?dbg=1</div></span></button>
     </div>
     <div class="row"><button class="btn primary" id="ok">关闭</button></div>
   `);
@@ -354,6 +358,10 @@ function showMenu(){
      看完照样记成看过（下次进场不再自动弹） */
   if(mn)mn.onclick=()=>{closePanel();audioKick();setTimeout(showNews,90);};
   $('mSound').onclick=()=>{closePanel();$('btnSound').onclick();setTimeout(showMenu,60);};
+  /* 帧率角标：点一下就切，切完重开菜单 —— 那一行写着「开/关」，
+     状态得是切换后的，不然玩家不知道自己到底开了没 */
+  const mfps=$('mFps');
+  if(mfps)mfps.onclick=()=>{closePanel();setFpsBadge(!fpsBadgeOn());setTimeout(showMenu,60);};
   const mfs=$('mFs');
   /* ⛶ 全屏（4.0.6 从更新公告里搬出来的独立入口）：
      点一下就切，切完把菜单重开一遍 —— 按钮上写着"全屏 / 退出全屏"，

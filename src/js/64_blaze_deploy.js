@@ -103,6 +103,9 @@ function blazeDeploy(){
 
   const sp=blazeGenMap(site.id,diff.id,g);
   state.x=sp.spawnX;state.y=sp.spawnY;state.region='zone';
+  /* 换场先清实体层：营地那枚 🎖️ 指挥部不会跟着上飞机，
+     战场上那些箱子 / 守卫也不会跟着回基地（4.0.13） */
+  entWipe();
   buildStatic();
   blazeCamTo(state.x,state.y);
   blazeSaveRun();updateHUD();
@@ -277,6 +280,8 @@ function blazeToLobby(silent){
   BLAZE_STATE.run=null;
   blazeBuildLobby();
   state.x=800;state.y=590;state.region='base';
+  /* 回营地同样清一次：战场上的箱子 / 保险箱 / 巡逻队不能跟着回来（4.0.13） */
+  entWipe();
   buildStatic();
   blazeCamTo(state.x,state.y);
   save();updateHUD();

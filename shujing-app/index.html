@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>格物纪元 · 四国远征</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.0.10 · 2026-10-15 13:43 · 源码摘要 265ba267 · 74 个模块 -->
+<!-- build: v4.0.15 · 2026-10-16 22:17 · 源码摘要 2c355b56 · 74 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -113,7 +113,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0d1b2a;
 /* 世界地图的手势由 canvas 自己的 touch-action:none 挡住，不必再罩一层 */
 #app{position:fixed;inset:0;height:100vh;height:100dvh;overflow:hidden;
   touch-action:pan-y;overscroll-behavior:none}
-canvas{display:block;width:100%;height:100%;touch-action:none}
+/* 世界层那两块画布自己吃手势（摇杆要靠它拖）。
+   ⚠️ 这条以前是 `canvas{...}` 按元素名写的 —— 面板里的画布（战术地图 #tacCv）
+   被一起吃掉：touch-action 取「命中元素到根这条路径上所有值的交集」，
+   画布写了 none，身后 .panel 的 pan-y 就白写了。表现就是
+   「摊开战术地图后只有面板两侧那条窄边能拖，图中间怎么划都不动」，
+   玩家会以为卡死了、也滚不到底下的关闭键（4.0.13 修）。
+   和 3.1.1 那次 touch-action 交集坑是同一类问题：按元素名写，迟早误伤。 */
+#bg,#game{display:block;width:100%;height:100%;touch-action:none}
+/* 面板里的画布：跟着面板一起能被手指拖（宽 100%，高度由 JS 写成 px） */
+#panel canvas{display:block;width:100%;touch-action:pan-y}
 /* 静态地形层：按世界尺寸(2400x1900)原样铺开，靠 transform 跟着镜头走。
    尺寸由 JS 写成 px（要盖掉上面那条 width:100%），这块不参与命中测试。 */
 #bg{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none;z-index:0;
@@ -593,7 +602,6 @@ body.pc #stick.active{opacity:1}
 .qtext .qs::before{content:'';position:absolute;left:0;top:.3em;bottom:.3em;width:3px;
   border-radius:2px;background:linear-gradient(180deg,rgba(255,215,106,.9),rgba(255,215,106,.22))}
 .qtext.f-lg .qs{margin:.42em 0}
-.qtext.f-xl .qs{margin:.55em 0}
 .qtext.seg .qs:first-child{margin-top:0}
 .qtext.seg .qs:last-child{margin-bottom:0}
 /* 超长题干：块内自己滚，别把选项顶到屏幕外去。
@@ -607,9 +615,6 @@ body.pc #stick.active{opacity:1}
   scrollbar-color:rgba(255,215,106,.4) transparent}
 .qtext.scrollable::-webkit-scrollbar{width:4px}
 .qtext.scrollable::-webkit-scrollbar-thumb{background:rgba(255,215,106,.4);border-radius:99px}
-.qtext.scrollable:not(.at-end){
-  -webkit-mask-image:linear-gradient(to bottom,#000 80%,rgba(0,0,0,.18));
-  mask-image:linear-gradient(to bottom,#000 80%,rgba(0,0,0,.18))}
 .qmeta{text-align:center;color:#8fb4d6;font-size:var(--fs-xs);margin-bottom:14px}
 /* 长题干时把标题、统计行、徽章压一压：省下的高度全给题干本身 */
 .panel.long-q h2{font-size:var(--fs-xl);margin-bottom:2px}
@@ -630,7 +635,6 @@ body.pc #stick.active{opacity:1}
 .opt:active{transform:scale(.96);box-shadow:var(--gb-press-lift)}
 .opt.right{background:var(--gb-tint-green);border-color:rgba(110,231,183,.8)}
 .opt.wrong{background:var(--gb-tint-red);border-color:rgba(255,138,128,.75)}
-.opt.dim{opacity:.3}
 .opt.locked{pointer-events:none}
 /* 思路选项：虚线边框 + 小一号字，和答案选项在视觉上一眼分开。
    思路文本比答案长（常见 15~24 字），字号降一档、行高放宽，才不会挤成两行半 */
@@ -942,12 +946,43 @@ font-size:var(--fs-sm);line-height:var(--lh-base)}
 font-size:var(--fs-xs);font-weight:700}
 .dept .dmax{text-align:center;color:#ffd76a;font-weight:800;font-size:var(--fs-sm);
 margin-top:8px;padding:5px 0}
-/* 房卡 */
-.kcard{display:flex;align-items:center;gap:10px;border-radius:14px;
-padding:10px 12px;margin-bottom:9px;border:1px solid}
-.kcard .e{font-size:var(--fs-2xl);flex:none}
-.kcard .nm{color:#fff;font-weight:800;font-size:var(--fs-md)}
-.kcard .ds{color:#9cc0e0;font-size:var(--fs-xs);line-height:1.5;margin-top:2px}
+/* 房卡那一排 4.0.12 起直接用 .item 渲染（见 blazeShopRow 的 accent 参数）：
+   以前是另一套 .kcard 标记，购买按钮没落到 .item .buy 的金色样式上，
+   同一页里房卡是灰按钮、物资是金按钮 —— 那套规则已删。 */
+
+/* =========================================================
+   游戏内确认弹窗（4.0.14）
+   ---------------------------------------------------------
+   替代 window.confirm()。原生框在手机上会把**全屏踢掉**：
+   卖一次东西 → 弹一次 → 全屏没了 → 回来还得再点一次「⛶ 全屏」。
+   换成面板里的一张卡，全屏状态原地不动。
+   卡片顺序就是玩家看东西的顺序：明细 → **到手金额** → 说明 → 警告。
+   ========================================================= */
+.cf-list{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.10);
+  border-radius:13px;padding:7px 11px;margin:0 0 11px}
+.cf-line{display:flex;align-items:center;gap:8px;padding:5px 0;
+  font-size:var(--fs-sm);border-bottom:1px solid rgba(255,255,255,.06)}
+.cf-line:last-child{border-bottom:none}
+.cf-line .e{flex:none;font-size:var(--fs-lg);line-height:1}
+.cf-line .n{flex:1;min-width:0;color:#eaf4ff;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-line .n b{color:#9fe4ff}
+.cf-line .v{flex:none;color:#ffd76a;font-weight:700;font-variant-numeric:tabular-nums}
+.cf-line.cf-more{justify-content:center;color:#7d94ab;font-size:var(--fs-xs)}
+/* 到手金额：整张卡上唯一"大"的数字 —— 玩家点进来看的就是它 */
+.cf-total{text-align:center;margin:0 0 11px;padding:9px 12px;border-radius:14px;
+  background:linear-gradient(180deg,rgba(255,215,106,.14),rgba(255,215,106,.05));
+  border:1px solid rgba(255,215,106,.30)}
+.cf-total .lb{font-size:var(--fs-xs);color:#9cc0e0}
+.cf-total .big{font-size:var(--fs-3xl);font-weight:800;color:#ffd76a;
+  line-height:1.15;font-variant-numeric:tabular-nums}
+.cf-total .big .u{font-size:var(--fs-sm);font-weight:700;color:#e8c274;margin-left:3px}
+.cf-total .sm{font-size:var(--fs-2xs);color:#9cc0e0;margin-top:3px;line-height:1.5}
+.cf-note{font-size:var(--fs-xs);color:#9cc0e0;line-height:var(--lh-base);margin:0 0 9px}
+.cf-warn{font-size:var(--fs-xs);line-height:var(--lh-base);margin:0 0 11px;
+  padding:7px 10px;border-radius:11px;color:#ffd6cb;
+  background:rgba(255,120,90,.10);border:1px solid rgba(255,120,90,.28)}
+
 
 .item{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);
   border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;margin-bottom:10px}
@@ -1667,18 +1702,18 @@ padding:10px 12px;margin-bottom:9px;border:1px solid}
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新 · v4.0.10</span>
-        <div class="news-title">全屏按钮回到更新公告里：一次更新，一次提醒</div>
-        <div class="news-sub">全屏是必需功能，只藏在 ☰ 菜单里不少人一直没发现 —— 现在打开游戏就能看到它</div>
+        <span class="news-badge">📣 版本更新 · v4.0.15</span>
+        <div class="news-title">清掉 600 行永远跑不到的代码（玩起来一模一样）</div>
+        <div class="news-sub">顺手给工程加了一项「死代码体检」，以后同类问题每天会被抓出来</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
           <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">⛶</span><span><b>公告里重新放上「⛶ 一键全屏」</b>：v4.0.6 把它搬进了 ☰ 菜单，但很多人根本不会去翻菜单 —— 现在<b>每次发版的公告尾巴上都会带这颗按钮</b>，点一下即全屏、再点一下退出</span></div>
-          <div class="news-li"><span class="e">📖</span><span><b>按钮旁边就是「怎么开」</b>：五个平台各自的开法（游戏里 · 电脑 F11 · iPhone 加主屏幕 · 安卓 · 微信转浏览器）一直列在这里，现在按钮和说明挨在一起，不用再猜</span></div>
-          <div class="news-li"><span class="e">🔔</span><span><b>顶部更新通知栏也放了一颗</b>：手里那份是旧版时，那条栏每次打开都会出现，上面同样有「⛶ 全屏」和「立即刷新」</span></div>
-          <div class="news-li"><span class="e">🔁</span><span><b>按钮会跟着状态变字</b>：全屏时写着「🗗 退出全屏」，窗口时回到「⛶ 一键全屏」—— 不用再试第二次才知道自己到底在不在全屏里</span></div>
+          <div class="news-li"><span class="e">🧹</span><span><b>删掉 41 个永远不会被执行的函数</b>（约 600 行）：这款游戏是一个大脚本，<b>同名函数后面那份会盖住前面的</b> —— 前面那些连加载那一刻都跑不到。以前「改了一个文件却毫无反应」，根子就在这儿。现在这类同名冲突从 <b>28 组清零</b></span></div>
+          <div class="news-li"><span class="e">📉</span><span><b>游戏文件小了 32 KB</b>（1.7%）—— 少传的就是那批死代码</span></div>
+          <div class="news-li"><span class="e">🔍</span><span><b>每日体检多了一项「死代码体检」</b>：同名覆盖、从没被引用的函数、没人用的 CSS、整条被覆盖的 CSS，四项一起看着；以后再冒出来会当场报警，不会又攒成一座山</span></div>
+          <div class="news-li"><span class="e">✅</span><span><b>玩法零变化</b>：102 项自检查 + 572 个题目生成器全部照旧；四个世界、存档、交易、战场的表现与上一版逐项一致</span></div>
         </div>
 
         <div class="news-sec">
@@ -1762,7 +1797,7 @@ function sqrtTerm(k,n){
   const kk=k*s.k;
   return s.r===1?String(kk):((kk===1?'':kk)+'√'+s.r);
 }
-function piTerm(p,q){const g=gcd(p,q);p/=g;q/=g;return (p===1&&q===1?'π':p+'π'+(q===1?'':'/'+q));}
+
 /* √n 的完整显示串：√4 → 2，√12 → 2√3 */
 function sqrtS(n){
   const s=simplifySqrt(n);
@@ -2816,11 +2851,6 @@ function approachFor(q){
   return {r:right,opts:shuffle(set),why:why};
 }
 
-/* ---------- 世界数据助手（内容模块调用） ---------- */
-function addStele(x,y,r){SPOTS.push({t:'stele',x,y,r,e:'🗿',name:'智慧石碑'});}
-function addSpirit(x,y,id){const s=SPIRITS.find(v=>v.id===id);SPOTS.push({t:'spirit',x,y,sid:id,r:s?s.r:'',e:s?s.e:'✨',name:s?s.n:'精灵'});}
-function addGuard(x,y,r,n){SPOTS.push({t:'guard',x,y,r,e:'🛡️',name:n});}
-function addHermit(x,y,tip){SPOTS.push({t:'hermit',x,y,e:'🧙',name:'引路人',tip});}
 
 /* =========================================================
    格物纪元 · 四国并立
@@ -2851,8 +2881,10 @@ const SAVE_KEY_AID='genji_aid_v1';
 const AID_ITEMS=[
  {id:'ticket', e:'🎟️', n:'行动经费抵用券', price:30, to:'blaze',
   d:'烽火：部署时自动抵掉一次行动经费（常规 15 / 中档 60 / 高考 180）'},
- {id:'key',    e:'🔑', n:'钥匙卡补给',    price:45, to:'blaze',
-  d:'烽火：仓库直接 +1 张保险箱钥匙卡，不看指挥部等级也不用花哈夫币'},
+ /* id 还是 'key'（老存档里买过的券不丢），东西已经换成房卡了 ——
+    4.0.12 把「保险箱钥匙卡」并进了房卡，券也跟着换成发一张蓝卡 */
+ {id:'key',    e:'🔑', n:'房卡补给',      price:45, to:'blaze',
+  d:'烽火：仓库直接 +1 张蓝色房卡，不看指挥部等级也不用花哈夫币'},
  {id:'scan',   e:'📟', n:'开局情报',      price:25, to:'blaze',
   d:'烽火：部署时自动生效，开局报出保险箱房与全部上锁房间的方位'},
  {id:'lamp',   e:'💡', n:'启示灯',        price:20, to:'adv',
@@ -4062,20 +4094,8 @@ function curvePts(f,xmin,xmax,n,X,Y,ymin,ymax,c,w){
   return segs.map(p=>fPoly(p,{c:c||FC.blue,w:w||2.4})).join('');
 }
 
-/* ============ 数学 ============ */
 /* 三次函数：两个极值点 + 一条水平线（看 a 怎么挪） */
-function figCubic(){
-  const ax=mkAx({xmin:-2.2,xmax:3.2,ymin:-3.4,ymax:4.4,xt:[-2,-1,1,2,3],yt:[-2,2,4],xlab:'x',ylab:'y',O:1});
-  const f=x=>x*x*x-3*x;
-  let s=ax.s+curvePts(f,-2.2,3.2,140,ax.X,ax.Y,-3.4,4.4,FC.blue,2.6);
-  s+=fC(ax.X(-1),ax.Y(2),3.6,{f:'#fff',c:FC.red,w:2.2});
-  s+=fC(ax.X(1),ax.Y(-2),3.6,{f:'#fff',c:FC.red,w:2.2});
-  s+=fT(ax.X(-1)-4,ax.Y(2)-9,'极大',{s:12,c:FC.red});
-  s+=fT(ax.X(1)+18,ax.Y(-2)+19,'极小',{s:12,c:FC.red});
-  s+=fT(ax.X(3.0),ax.Y(3.6),'y = x³ − 3x',{s:13,c:FC.blue,a:'end'});
-  s+=fT(ax.X(2.0),ax.Y(-3.0),'P(2, m) 在曲线外',{s:11,c:FC.sub,a:'end'});
-  return svgWrap(ax.w,ax.h,s);
-}
+
 /* 对数 + 二次型：最大值出现在驻点（恒成立问题的示意） */
 function figLnMax(){
   const ax=mkAx({xmin:0.05,xmax:3.4,ymin:-2.6,ymax:0.7,xt:[1,2,3],yt:[-2,-1,0],xlab:'x',ylab:'y',O:1});
@@ -4110,37 +4130,9 @@ function figPyramid(){
   return svgWrap(w,h,s);
 }
 /* 指数曲线与对数曲线：公切线问题 */
-function figExpLog(){
-  const ax=mkAx({xmin:-1.5,xmax:4.2,ymin:-2.6,ymax:5.4,xt:[1,2,3,4],yt:[2,4],xlab:'x',ylab:'y',O:1});
-  let s=ax.s;
-  s+=curvePts(x=>Math.exp(x)-1,-1.5,1.6,120,ax.X,ax.Y,-2.6,5.4,FC.blue,2.6);
-  s+=curvePts(x=>Math.log(x),0.08,4.2,140,ax.X,ax.Y,-2.6,5.4,FC.red,2.6);
-  s+=fT(ax.X(1.35),ax.Y(2.9)-10,'y=eˣ−1',{s:13,c:FC.blue,a:'start'});
-  s+=fT(ax.X(3.2),ax.Y(1.16)+18,'y=ln x',{s:13,c:FC.red,a:'start'});
-  s+=fC(ax.X(0),ax.Y(0),3.4,{f:'#fff',c:FC.green,w:2});
-  s+=fC(ax.X(1),ax.Y(1),3.4,{f:'#fff',c:FC.green,w:2});
-  return svgWrap(ax.w,ax.h,s);
-}
+
 /* 椭圆 + 焦点弦 */
-function figEllipse(){
-  const w=360,h=220;
-  const cx=180,cy=110,a=130,b=76,c=Math.sqrt(a*a-b*b);
-  let s=fE(cx,cy,a,b,{c:FC.ink,w:2.2});
-  s+=fL(20,cy,340,cy,{c:FC.axis,w:1.6,m:'fa'});
-  s+=fL(cx,20,cx,200,{c:FC.axis,w:1.6,m:'fa'});
-  s+=fT(348,cy+16,'x',{s:13,c:FC.sub,i:1});s+=fT(cx+12,18,'y',{s:13,c:FC.sub,i:1});
-  const A=[cx+a*Math.cos(-0.62),cy-b*Math.sin(0.62)],B=[cx+a*Math.cos(2.05),cy+b*Math.sin(2.05)];
-  s+=fL(cx+c,cy,A[0],A[1],{c:FC.green,w:2.4});
-  s+=fL(cx+c,cy,B[0],B[1],{c:FC.green,w:2.4});
-  s+=fC(cx-c,cy,3.6,{f:FC.red,c:FC.red,w:2});
-  s+=fC(cx+c,cy,3.6,{f:FC.red,c:FC.red,w:2});
-  s+=fT(cx-c,cy-11,'F₁',{s:13,c:FC.red,b:1});
-  s+=fT(cx+c+13,cy-11,'F₂',{s:13,c:FC.red,b:1});
-  s+=fT(A[0]+4,A[1]-8,'A',{s:14,b:1});
-  s+=fT(B[0]+10,B[1]+14,'B',{s:14,b:1});
-  s+=fT(cx,cy+b+20,'x²/4 + y²/3 = 1',{s:13,c:FC.sub});
-  return svgWrap(w,h,s);
-}
+
 /* 解三角形：顶点 + 边 + 中线 */
 function figTri(){
   const w=360,h=250;
@@ -4179,154 +4171,18 @@ function figFlow(ts){
   return svgWrap(w,h,s);
 }
 /* 正方体里的三棱锥（外接球同球心） */
-function figSolid(){
-  const w=360,h=230;
-  const P=(x,y,z)=>[150+x*70-y*70,150+x*30+y*30-z*76];
-  const V={'A':P(0,0,0),'B':P(1,0,0),'C':P(1,1,0),'D':P(0,1,0),
-           'A1':P(0,0,1),'B1':P(1,0,1),'C1':P(1,1,1),'D1':P(0,1,1)};
-  let s='';
-  const ed=[[ 'A','B'],['B','C'],['C','D'],['D','A'],['A1','B1'],['B1','C1'],['C1','D1'],['D1','A1'],
-            ['A','A1'],['B','B1'],['C','C1'],['D','D1']];
-  ed.forEach(e=>{s+=fL(V[e[0]][0],V[e[0]][1],V[e[1]][0],V[e[1]][1],{c:FC.ink,w:2});});
-  /* 三棱锥 A-B1-C-D1？选 A, B, C, D1 四点 */
-  const tet=[['A','B'],['B','C'],['C','D1'],['D1','A'],['A','C']];
-  tet.forEach(e=>{s+=fL(V[e[0]][0],V[e[0]][1],V[e[1]][0],V[e[1]][1],{c:FC.red,w:2.6});});
-  Object.keys(V).forEach(k=>{s+=fC(V[k][0],V[k][1],3,{f:'#fff',c:FC.ink,w:1.6});});
-  const o=V['C'];
-  s+=fC(V['A'][0]+(V['C'][0]-V['A'][0])/2,V['A'][1]+(V['C'][1]-V['A'][1])/2+(0),8,{f:'none',c:FC.gold,w:1.8,d:'5 4'});
-  s+=fT(V['A1'][0]-22,V['A1'][1]-8,'A₁',{s:13,b:1});
-  s+=fT(V['B1'][0]+16,V['B1'][1]-8,'B₁',{s:13,b:1});
-  s+=fT(V['C1'][0]+18,V['C1'][1]-4,'C₁',{s:13,b:1});
-  s+=fT(V['D1'][0]-20,V['D1'][1]-4,'D₁',{s:13,b:1});
-  s+=fT(V['A'][0]-14,V['A'][1]+16,'A',{s:13,b:1,c:FC.red});
-  s+=fT(V['B'][0]+16,V['B'][1]+16,'B',{s:13,b:1,c:FC.red});
-  s+=fT(V['C'][0]+18,V['C'][1]+14,'C',{s:13,b:1,c:FC.red});
-  s+=fT(300,212,'棱长 2',{s:13,c:FC.sub});
-  return svgWrap(w,h,s);
-}
 
-/* ============ 物理 ============ */
 /* 斜面 + 物块 + 底端弹簧 */
-function figSlopeSpring(){
-  const w=360,h=230;
-  const O=[40,190],E=[310,190],T=[40,70];
-  let s=fPoly([O,E,T],{c:FC.ink,w:2.6});
-  s+=fL(30,190,330,190,{c:FC.axis,w:1.8});
-  /* 30° 角弧 */
-  s+=fPath('M 90 190 A 50 50 0 0 0 83 163',{c:FC.green,w:1.8});
-  s+=fT(104,178,'30°',{s:13,c:FC.green});
-  /* 物块沿斜面 */
-  const ux=(E[0]-T[0])/Math.hypot(E[0]-T[0],E[1]-T[1]),uy=(E[1]-T[1])/Math.hypot(E[0]-T[0],E[1]-T[1]);
-  const px=T[0]+ux*118,py=T[1]+uy*118;
-  const nx=-uy,ny=ux*-1;
-  s+=fPath('M '+fx(px+nx*14)+' '+fx(py+ny*14)+' L '+fx(px+nx*14+ux*34)+' '+fx(py+ny*14+uy*34)
-    +' L '+fx(px+nx*14+ux*34-nx*28)+' '+fx(py+ny*14+uy*34-ny*28)
-    +' L '+fx(px+nx*14-nx*28)+' '+fx(py+ny*14-ny*28)+' Z',{f:FC.fill,c:FC.blue,w:2.2});
-  s+=fT(px+nx*14+ux*17-nx*14+6,py+ny*14+uy*17-ny*14+2,'m',{s:13,c:FC.ink,b:1});
-  /* 弹簧（锯齿） */
-  let sp='M '+T[0]+' '+T[1];
-  for(let i=1;i<=8;i++){
-    const t=i/8*54;
-    sp+=' L '+fx(T[0]+ux*t+(i%2?nx*9:-nx*9))+' '+fx(T[1]+uy*t+(i%2?ny*9:-ny*9));
-  }
-  s+=fPath(sp,{c:FC.red,w:2.2});
-  s+=fT(T[0]+46,T[1]+40,'轻弹簧',{s:12,c:FC.red});
-  s+=fL(px+nx*14+ux*17,py+ny*14+uy*17,px+nx*14+ux*17+uy*40,py+ny*14+uy*17-ux*40,{c:FC.green,w:1.8,d:1,m:'fg'});
-  s+=fT(px+30,py-46,'v',{s:13,c:FC.green,i:1});
-  s+=fL(300,70,300,190,{c:FC.gray,w:1.6,d:'6 4'});
-  s+=fT(300,62,'h',{s:13,c:FC.sub,i:1});
-  return svgWrap(w,h,s);
-}
+
 /* 板块模型 */
-function figBlock(){
-  const w=360,h=210;
-  let s=fR(40,140,280,26,{f:FC.fill,c:FC.ink,w:2.2,r:3});
-  s+=fR(96,104,74,36,{f:'#dbeafe',c:FC.blue,w:2.2,r:3});
-  s+=fL(24,166,336,166,{c:FC.axis,w:2});
-  s+=fT(180,196,'地面光滑',{s:12,c:FC.sub});
-  s+=fL(133,90,193,90,{c:FC.green,w:2.4,m:'fg'});
-  s+=fT(163,80,'v₀',{s:13,c:FC.green,i:1});
-  s+=fT(133,126,'m',{s:13,b:1});
-  s+=fT(272,158,'M',{s:13,b:1});
-  s+=fL(40,120,40,166,{c:FC.gray,w:1.4,d:'4 3'});
-  s+=fL(320,120,320,166,{c:FC.gray,w:1.4,d:'4 3'});
-  s+=fT(180,60,'μ = 0.2 · 木板足够长',{s:13,c:FC.sub});
-  return svgWrap(w,h,s);
-}
+
 /* 竖直圆轨道 */
-function figLoop(){
-  const w=300,h=250,cx=150,cy=130,r=88;
-  let s=fC(cx,cy,r,{c:FC.ink,w:2.6});
-  s+=fC(cx,cy,4,{f:FC.sub,c:FC.sub});
-  s+=fC(cx,cy-r,5,{f:FC.red,c:FC.red,w:2});
-  s+=fC(cx,cy+r,5,{f:FC.blue,c:FC.blue,w:2});
-  s+=fT(cx,cy-r-12,'最高点',{s:12,c:FC.red});
-  s+=fT(cx,cy+r+22,'最低点',{s:12,c:FC.blue});
-  s+=fT(cx+r+16,cy+4,'R',{s:13,c:FC.sub,i:1});
-  /* 一段弧上放个小球 */
-  const ang=3.5;
-  s+=fC(cx+r*Math.cos(ang),cy+r*Math.sin(ang),7,{f:FC.gold,c:'#8a5a00',w:2});
-  s+=fT(cx+r*Math.cos(ang)-22,cy+r*Math.sin(ang)-10,'P',{s:13,b:1});
-  s+=fT(cx,cy+r+40,'光滑圆轨道 · 半径 R',{s:12,c:FC.sub});
-  return svgWrap(w,h,s);
-}
+
 /* 导轨 + 磁场 + 导体棒 */
-function figRail(){
-  const w=360,h=220;
-  let s=fR(30,40,300,140,{c:FC.ink,w:2.4,r:2});
-  s+=fR(150,40,64,140,{f:'#f2f6fa',c:'none',w:0});
-  s+=fR(150,40,64,140,{c:FC.grid,w:1.4,d:'3 3'});
-  /* 磁场叉 */
-  for(let x=166;x<=206;x+=20)for(let y=58;y<=170;y+=24){
-    s+=fL(x-5,y-5,x+5,y+5,{c:FC.green,w:1.6})+fL(x-5,y+5,x+5,y-5,{c:FC.green,w:1.6});
-  }
-  s+=fR(158,92,48,10,{f:FC.blue,c:FC.blue,w:2,r:2});
-  s+=fT(182,80,'ab',{s:13,b:1,c:FC.blue});
-  s+=fL(182,102,182,124,{c:FC.red,w:2.4,m:'fr'});
-  s+=fT(196,120,'v',{s:13,c:FC.red,i:1});
-  s+=fR(280,58,30,26,{f:'none',c:FC.ink,w:2.2,r:2});
-  s+=fT(295,80,'R',{s:13,b:1});
-  s+=fT(80,64,'B',{s:13,c:FC.green,b:1,i:1});
-  s+=fT(182,196,'间距 L · 磁感应强度 B',{s:12,c:FC.sub});
-  return svgWrap(w,h,s);
-}
+
 /* 质谱仪：加速电场 + 磁场半圆 */
-function figMassSpec(){
-  const w=360,h=220;
-  let s=fR(40,60,8,100,{f:FC.ink,c:FC.ink,w:1.6});
-  s+=fR(76,60,8,100,{f:FC.ink,c:FC.ink,w:1.6});
-  s+=fT(62,50,'U',{s:13,c:FC.sub,i:1});
-  s+=fL(84,110,118,110,{c:FC.blue,w:2,m:'fb'});
-  s+=fT(100,100,'v',{s:12,c:FC.blue,i:1});
-  /* 磁场区域 */
-  s+=fR(120,30,210,160,{f:'#f4f8fb',c:FC.grid,w:1.4,d:'4 4'});
-  for(let x=140;x<=310;x+=22)for(let y=48;y<=176;y+=24){
-    s+=fL(x-5,y-5,x+5,y+5,{c:FC.green,w:1.4})+fL(x-5,y+5,x+5,y-5,{c:FC.green,w:1.4});
-  }
-  s+=fPath('M 130 110 A 78 78 0 0 1 286 110',{c:FC.red,w:2.6});
-  s+=fC(130,110,4,{f:FC.red,c:FC.red});
-  s+=fC(286,110,4,{f:FC.red,c:FC.red});
-  s+=fT(208,152,'d',{s:13,c:FC.red,i:1});
-  s+=fT(190,44,'B',{s:13,c:FC.green,b:1,i:1});
-  return svgWrap(w,h,s);
-}
+
 /* 卫星变轨：低圆轨道 → 椭圆转移 → 高圆轨道 */
-function figOrbit(){
-  const w=330,h=240,cx=165,cy=120;
-  let s=fC(cx,cy,14,{f:FC.gold,c:'#a8760a',w:2});
-  s+=fC(cx,cy,44,{c:FC.blue,w:2.2});
-  s+=fE(cx,cy,116,72,{c:FC.green,w:2.2,d:'7 5'});
-  s+=fC(cx,cy,116,{c:FC.gray,w:1.6,d:'3 4'});
-  const a=cx+44,b=cy;
-  s+=fC(a,b,5,{f:FC.blue,c:FC.blue,w:1.6});
-  s+=fT(a,b-12,'1',{s:12,c:FC.blue,b:1});
-  const p=cx+116*Math.cos(-0.55),q=cy+72*Math.sin(-0.55);
-  s+=fC(p,q,5,{f:FC.green,c:FC.green,w:1.6});
-  s+=fT(p+2,q-12,'2',{s:12,c:FC.green,b:1});
-  s+=fT(cx,cy+34,'地球',{s:12,c:'#8a5a00'});
-  s+=fT(238,206,'r₁ : r₂ = 1 : 4',{s:12,c:FC.sub});
-  return svgWrap(w,h,s);
-}
 
 /* ============ 化学 ============ */
 /* 浓度—时间图（三段式的图） */
@@ -4545,29 +4401,7 @@ function figPhoto(){
   return svgWrap(ax.w,ax.h,s,'photo');
 }
 /* 分裂过程中 DNA / 染色体 数量变化 */
-function figDiv(){
-  const w=360,h=210;
-  const bx=50,by=170,bw=260,bh=110;
-  let s=fL(bx,by,bx+bw,by,{c:FC.axis,w:2,m:'fa'});
-  s+=fL(bx,by,bx,30,{c:FC.axis,w:2,m:'fa'});
-  const xs=[70,120,170,220,270];
-  const dna=[8,16,16,8,8],ch=[8,8,16,8,8];
-  for(let i=0;i<4;i++){
-    const x0=xs[i],x1=xs[i+1];
-    s+=fPoly([[x0,by-dna[i]/16*bh],[x1,by-dna[i+1]/16*bh]],{c:FC.blue,w:2.6});
-    s+=fPoly([[x0,by-ch[i]/16*bh],[x1,by-ch[i+1]/16*bh]],{c:FC.red,w:2.2,d:'6 4'});
-  }
-  const labs=['间期','前中','后期','末'];
-  xs.forEach((x,i)=>{s+=fT(x,by+18,labs[i]||'',{s:11,c:FC.sub});});
-  s+=fT(bx-8,by-8,'8',{s:12,c:FC.sub,a:'end'});
-  s+=fT(bx-8,by-bh+4,'16',{s:12,c:FC.sub,a:'end'});
-  s+=fT(300,60,'DNA',{s:13,c:FC.blue,b:1,a:'start'});
-  s+=fT(300,84,'染色体',{s:13,c:FC.red,b:1,a:'start'});
-  s+=fT(180,204,'2n = 8',{s:12,c:FC.sub});
-  s+=fL(bx,by,bx,30,{c:FC.gold,w:1.6,d:'4 3'}).replace('<line','<line data-a="scan"');
-  s+=fT(180,26,'',{s:12,c:FC.gold,b:1}).replace('<text','<text data-a="hud"');
-  return svgWrap(w,h,s,'div');
-}
+
 /* 食物网 */
 function figFood(){
   const w=360,h=220;
@@ -5123,11 +4957,7 @@ function ladderSession(id){
   drillSession(L.s,{tier:ks[0].d||2,queue:ks,lad:id});
 }
 
-/* 该科该档有多少道大题 */
-function bigCount(sid,tier){
-  return BIG.filter(q=>q.subject===sid&&(tier==null||q.d===tier)).length;
-}
-function bigList(sid,tier){return BIG.filter(q=>q.subject===sid&&(tier==null||q.d===tier));}
+
 /* 抽一道大题：先按档、再按专题；实在没有就返回 null（调用方退回旧题库） */
 function bigDraw(sid,tier,rid,tid,recent){
   let pool=BIG.filter(q=>q.subject===sid);
@@ -5620,11 +5450,9 @@ function qf(svg,c,k){
   if(c[k]===undefined)c[k]=svg.querySelector('[data-a="'+k+'"]');
   return c[k];
 }
-function qfSet(el,attr,v){if(el)el.setAttribute(attr,v);}
+
 function qfTxt(el,t){if(el&&el.textContent!==t)el.textContent=t;}
-function qfMove(el,x,y){
-  if(el)el.setAttribute('transform','translate('+fx(x)+','+fx(y)+')');
-}
+
 /* 缓动：加速 / 减速 */
 const easeIn=p=>p*p, easeOut=p=>1-(1-p)*(1-p);
 function clamp01(p){return p<0?0:p>1?1:p;}
@@ -10692,10 +10520,20 @@ function drawProp(c,st,x,y,r,rot,color,alpha){
 /* ---------- 实体层 ---------- */
 const ENT={layer:null,map:new Map()};
 function entInit(){ENT.layer=document.getElementById('ents')||null;fxInit();}
-function entReset(){
+/* 摘掉实体层与特效层里的全部节点。
+   用途一：换世界（entReset 调它）。
+   用途二：同一个世界里换场 —— 基地 ⇄ 战场（4.0.13）。
+   以前只有换世界才清，于是营地那枚 🎖️ 指挥部会**粘在战场上不动**
+   （实体只在"这一帧还被画到"时才更新，不再画到的节点没人收拾），
+   反过来打完回基地，战场上那些箱子 / 守卫也会一路留在营地上。
+   这里不动 crystalSeen：换场时结晶数没变过，不必让它再弹一次。 */
+function entWipe(){
   ENT.map.forEach(n=>{if(n.parentNode)n.parentNode.removeChild(n);});
   ENT.map.clear();
   fxClear();
+}
+function entReset(){
+  entWipe();
   crystalPending=null;crystalSeen=-1;   // 换世界后别让旧数字多弹一次
 }
 function entNode(key){
@@ -12356,42 +12194,7 @@ function save(){
   catch(e){storageOK=false;return false;}   // 无痕模式 / 存储被禁用时退回内存
 }
 /* 老存档或手改过的存档可能缺字段，统一补齐，避免 undefined 报错 */
-function healState(){
-  const isObj=v=>v&&typeof v==='object'&&!Array.isArray(v);
-  if(!isObj(state.badges))state.badges={};
-  if(!isObj(state.caught))state.caught={};
-  if(!isObj(state.solved))state.solved={};
-  if(!isObj(state.loose))state.loose={};
-  if(!isObj(state.tier))state.tier={};
-  if(!isObj(state.read))state.read={};      // 史诗模式：已读篇章
-  if(!isObj(state.quiz))state.quiz={};      // 史诗模式：已通过的时空考题
-  if(!isObj(state.stat))state.stat={};      // 各岛答题统计（学习报告）
-  if(!isObj(state.tstat))state.tstat={};    // 各知识点答题统计
-  if(!isObj(state.astat))state.astat={};    // 各知识点思路选择统计
-  if(!isObj(state.drill))state.drill={};    // 练枪场：各科 / 各知识点统计
-  if(!isObj(state.drillTier))state.drillTier={};
-  if(!isObj(state.drillTopic))state.drillTopic={};
-  if(!Array.isArray(state.wrongBook))state.wrongBook=[];
-  if(!Array.isArray(state.wrongDone))state.wrongDone=[];
-  if(!isObj(state.wbRev))state.wbRev={};
-  wbHealAll();          // 1.7.0：给老存档的错题补上熟炼度 / 复习日期
-  if(typeof state.daily!=='string')state.daily='';
-  if(typeof state.dailyStreak!=='number'||!isFinite(state.dailyStreak))state.dailyStreak=0;
-  if(typeof state.crystals!=='number'||!isFinite(state.crystals))state.crystals=0;
-  if(typeof state.hint!=='number'||!isFinite(state.hint))state.hint=2;
-  state.hint=Math.max(0,Math.round(state.hint));   // 手改过的存档可能留下负数
-  if(typeof state.totalRight!=='number')state.totalRight=0;
-  if(typeof state.totalWrong!=='number')state.totalWrong=0;
-  if(typeof state.streak!=='number')state.streak=0;
-  if(typeof state.bestStreak!=='number'||!isFinite(state.bestStreak))state.bestStreak=0;
-  if(typeof state.sound!=='boolean')state.sound=true;
-  if(typeof state.x!=='number'||!isFinite(state.x))state.x=0;
-  if(typeof state.y!=='number'||!isFinite(state.y))state.y=0;
-  REGIONS.forEach(r=>{if(!state.tier[r.id])state.tier[r.id]=1;});
-  /* 用"="而不是"||="：切换世界时要把上一个世界留下的 got 标记清干净 */
-  LOOSE.forEach(c=>{c.got=!!state.loose[c.id];});
-  if(typeof state.era!=='string')state.era='';
-}
+
 function load(){
   let s=null;
   try{localStorage.setItem(curKey+'__t','1');localStorage.removeItem(curKey+'__t');}
@@ -13596,7 +13399,7 @@ function loop(now){
 const $=id=>document.getElementById(id);
 const TIER_NAME={1:'普通',2:'中档',3:'高考',4:'🔥 攻坚'};
 /* 攻坚档只有练枪场有：题更长、带图、解析摊开讲，提示给足 3~4 步 */
-function tierLabel(t){return t>=4?'攻坚':TIER_NAME[t]||'';}
+
 /* 顶栏 📕 的待复习角标：有到期题就挂红点，按钮自己也开始呼吸 */
 function updateWbBadge(){
   const el=$('wbDot'),b=$('btnWb'),el2=$('wbDot2');
@@ -13621,21 +13424,6 @@ function updateWbBadge(){
   if(b){try{b.classList.toggle('pend',n>0);}catch(e){}}
 }
 
-function updateHUD(){
-  updateWbBadge();
-  if(CUR===EPIC)return updateHudEpic();
-  const reg=REGIONS.find(r=>r.id===state.region)||REGIONS[0];
-  $('regionChip').innerHTML='📍 <span class="txt">'+esc(reg.name)+'</span>';
-  const tv=state.tier[state.region]||1;
-  $('diffChip').innerHTML='<span class="txt">'+TIER_NAME[tv]+'题</span>';
-  $('diffChip').style.color=tv>=3?'#ffb0b0':(tv===2?'#ffd76a':'');
-  const cv=crystalShown();
-  $('crystalChip').innerHTML='🪙 <span class="mono">'+cv+'</span>';
-  $('crystalChip').style.color='#ffd76a';
-  watchCrystal(cv);                       // 数字变多时顶栏弹一下
-  setQuestText(questText());
-  measureTopbar();
-}
 let questTopH=0;
 /* 顶栏换行时任务条要跟着下移。写进 CSS 变量，一次测量全局生效；
    顺带用 ResizeObserver 兜住「字体加载完 / 旋转屏幕」导致的高度变化。 */
@@ -13651,24 +13439,7 @@ function measureTopbar(){
 if(window.ResizeObserver&&document.getElementById('topbar')){
   try{new ResizeObserver(measureTopbar).observe(document.getElementById('topbar'));}catch(e){}
 }
-function questText(){
-  if(CUR===BLAZE)return questTextBlaze();
-  if(CUR===EPIC)return questTextEpic();
-  if(CUR===DRILL)return questTextDrill();
-  /* 到期题攒多了就提醒一句，别让错题本白攒 */
-  const dueN=wbDueList().length;
-  if(dueN>=8)return `📕 错题本有 ${dueN} 题到期，去「错题中心 → 今日复习」`;
-  const reg=REGIONS.find(r=>r.id===state.region)||REGIONS[0];
-  if(!state.badges[reg.id]){
-    const tot=SPOTS.filter(s=>s.r===reg.id&&s.t==='stele').length;
-    const left=SPOTS.filter(s=>s.r===reg.id&&s.t==='stele'&&!state.solved[s.x+','+s.y]).length;
-    if(left>0)return `点亮${reg.name}的石碑 ${tot-left}/${tot}，再挑战守护者`;
-    return `石碑全亮！去挑战${reg.name}守护者`;
-  }
-  const next=REGIONS.find(r=>!state.badges[r.id]);
-  if(next)return `已获${reg.name}徽章，前往${next.name}`;
-  return '十四域徽章集齐！你已走遍四国 🏆';
-}
+
 /* 任务条一律「闪现」：显示 QUEST_SHOW_MS 毫秒后淡出，不再常驻挡视野。
    只有文案真的变了才重新显示并重新计时——否则每捡一颗星尘都会把它叫回来。
    force=true 用于玩家手动点 🎯 按钮召回。 */
@@ -13699,28 +13470,6 @@ function showBanner(a,b){
   el.style.opacity=1;bannerTimer=2100;
 }
 let actBtnCache='',actHintCache='';
-function updateActBtn(spot){
-  const btn=$('actBtn'),hint=$('actHint');
-  if(CUR&&CUR.actBtn){CUR.actBtn(spot,btn,hint);return;}
-  let nearLocked=null;
-  for(const b of BRIDGES){
-    if(!b.need||state.badges[b.need])continue;
-    const cx=b.rect[0]+b.rect[2]/2,cy=b.rect[1]+b.rect[3]/2;
-    if(dist(state.x,state.y,cx,cy)<150)nearLocked=b;
-  }
-  if(nearLocked){
-    const h='🔒 需要'+((REGIONS.find(r=>r.id===nearLocked.need)||{}).name||'')+'徽章才能通行';
-    if(h!==actHintCache){hint.textContent=h;actHintCache=h;}
-    hint.classList.add('show');btn.classList.remove('show');return;
-  }
-  if(spot){
-    hint.classList.remove('show');btn.classList.add('show');
-    const t=spot.t==='guard'?'⚔️ 挑战':spot.t==='spirit'?'✨ 收服':spot.t==='hermit'?'💬 请教':'🗿 解谜';
-    if(t!==actBtnCache){btn.textContent=t;actBtnCache=t;}
-    return;
-  }
-  btn.classList.remove('show');hint.classList.remove('show');
-}
 
 /* =========================================================
    答题会话
@@ -13778,9 +13527,7 @@ function visLen(s){
   }
   return w;
 }
-function fitSplit(s,re){
-  return String(s).replace(new RegExp(re.source,'g'),m=>m+'\u0001').split('\u0001');
-}
+
 function fitSplit(s,re){
   return String(s).replace(new RegExp(re.source,'g'),m=>m+'\u0001').split('\u0001');
 }
@@ -14174,6 +13921,54 @@ function closePanel(){
   /* intro 标记不在这里清：交给 openPanel 处理，
      这样"intro 被别的入口顶掉"也能记成已读，不会反复弹。 */
 }
+/* =========================================================
+   游戏内确认弹窗（4.0.14）
+   ---------------------------------------------------------
+   以前这些"要不要卖"的确认走的是浏览器原生 confirm()。
+   它在手机上会**把全屏踢掉**：卖一次东西 → 弹一次原生框 → 全屏没了 →
+   回来还得再点一次「⛶ 全屏」。频繁交易时，这件事比点错按钮还烦。
+
+   换成面板里的一张卡：不碰浏览器 UI，全屏状态原地不动。
+   顺带比原生 confirm 多给两样东西：
+     · 明细行（卖的是哪几样、各多少件、各值多少）
+     · **到手金额用大字标出来** —— 这才是玩家真正要看的那个数
+   ---------------------------------------------------------
+   o = {icon,title,sub,lines:[{e,n,c,v}],maxLines,total:{label,v,unit,sub},
+        note,warn,ok,no}
+   cbOk / cbNo 是回调（和工程里其它面板一个路子）。两个回调都要负责
+   "把上一屏画回来"（交易站的惯例是 re()）；没给 cbNo 就只是关掉弹窗。
+   ========================================================= */
+function uiConfirm(o,cbOk,cbNo){
+  if(!o)o={};
+  const keep=panel.scrollTop||0;     // 上一屏滚到哪：交易站一屏列不完，回来别从头翻
+  const all=o.lines||[];
+  const shown=all.slice(0,o.maxLines||6);
+  const more=all.length-shown.length;
+  const lines=shown.map(L=>`<div class="cf-line">
+      <span class="e">${L.e||''}</span>
+      <span class="n">${esc(L.n||'')}${L.c?` <b>${esc(L.c)}</b>`:''}</span>
+      <span class="v">${L.v==null?'':L.v}</span></div>`).join('')
+    +(more>0?`<div class="cf-line cf-more">… 另有 ${more} 种物资</div>`:'');
+  const t=o.total;
+  openPanel(`
+    <h2>${o.icon||'❓'} ${esc(o.title||'确认一下')}</h2>
+    ${o.sub?`<div class="sub">${o.sub}</div>`:''}
+    ${lines?`<div class="cf-list">${lines}</div>`:''}
+    ${t?`<div class="cf-total"><div class="lb">${esc(t.label||'到手')}</div>
+      <div class="big">${t.v==null?'':t.v}<span class="u">${t.unit||''}</span></div>
+      ${t.sub?`<div class="sm">${t.sub}</div>`:''}</div>`:''}
+    ${o.note?`<div class="cf-note">${o.note}</div>`:''}
+    ${o.warn?`<div class="cf-warn">⚠️ ${o.warn}</div>`:''}
+    <div class="row">
+      <button class="btn" id="ucNo">${esc(o.no||'取消')}</button>
+      <button class="btn primary" id="ucOk">${esc(o.ok||'确认')}</button>
+    </div>`);
+  /* 回调里通常会重画上一屏（re() 会把滚动位置清零），画完再把位置放回去 */
+  const rewind=()=>{try{if(panelOpen())panel.scrollTop=keep;}catch(e){}};
+  $('ucNo').onclick=()=>{closePanel();if(cbNo)cbNo();rewind();};
+  $('ucOk').onclick=()=>{audioKick();closePanel();if(cbOk)cbOk();rewind();};
+}
+
 /* 「没走按钮」的关闭（Esc / 点遮罩）统一走这里收尾。
    烽火里一堆面板是靠按钮复位的：按钮点了才会 BZ.busy=false、才会结算。
    直接从旁边关掉的话，busy 一直卡着 —— 互动键不亮、巡逻队不动、撤离点也点不了，
@@ -14864,30 +14659,7 @@ function openHermit(s){
 }
 
 /* ---------------- 图鉴 / 错题本 ---------------- */
-function showDex(){
-  const got=SPIRITS.filter(s=>state.caught[s.id]).length;
-  const badges=REGIONS.map(r=>`<div class="bd ${state.badges[r.id]?'on':''}"><div class="e">${state.badges[r.id]?r.emoji:'🔒'}</div><div class="n">${r.name}</div></div>`).join('');
-  openPanel(`
-    <h2>📖 图鉴与徽章</h2>
-    <div class="sub">精灵 ${got} / ${SPIRITS.length} · 徽章 ${Object.keys(state.badges).length} / ${REGIONS.length}</div>
-    <div class="badges">${badges}</div>
-    <div class="pbar"><i style="width:${got/SPIRITS.length*100}%"></i></div>
-    <div class="grid6" style="margin-top:14px">
-      ${SPIRITS.map(s=>`<div class="sp ${state.caught[s.id]?'got':''}"><div class="e">${state.caught[s.id]?s.e:'❔'}</div><div class="n">${state.caught[s.id]?s.n:'未收服'}</div><div class="k">${s.k}</div></div>`).join('')}
-    </div>
-    <div class="center" style="margin-top:14px;font-size:var(--fs-sm);color:#9cc0e0">
-      累计答对 ${state.totalRight} 题 · 答错 ${state.totalWrong} 题 · 错题本 ${state.wrongBook.length} / ${WRONG_CAP} 题${(state.wrongDone||[]).length?' · 已掌握 '+(state.wrongDone||[]).length+' 题':''}
-    </div>
-    <div class="row"><button class="btn" id="wb">📕 错题中心${wbDueList().length?'（'+wbDueList().length+'）':''}</button><button class="btn" id="rp">📊 学习报告</button><button class="btn" id="rs">重开</button><button class="btn primary" id="ok">关闭</button></div>
-  `);
-  $('ok').onclick=closePanel;
-  $('rp').onclick=showReport;
-  $('rs').onclick=()=>{
-  if(confirm('确定清空【闯关模式】的进度重新开始吗？\n\n会清掉：四国的结晶、徽章、精灵、错题本、石碑记录、传送塔\n科学编年史的进度不受影响\n\n（建议先到「💾 存档」导出一份存档码留底）'))
-    resetSave();
-};
-  $('wb').onclick=showWrongBook;
-}
+
 $('btnDex').onclick=()=>{audioKick();if(CUR===EPIC)showChronicle();else showDex();};
 /* 错题本：容量 WRONG_CAP（200），并按四科筛选。
    老存档里的题没有 subject 字段，用 rid 反查科目补齐。 */
@@ -16798,7 +16570,7 @@ function wbDel(w){
   state.wrongDone=state.wrongDone.filter(x=>x.text!==w.text);
 }
 /* 老版本「答对就划掉」的同名入口，1.7.0 起改走熟炼度归档 */
-function wbDrop(q){wbGrade(q,true);}
+
 /* 复习流水账：连续复习天数（同一天重复练不重复计数） */
 function wbRevTick(n){
   if(!state.wbRev||typeof state.wbRev!=='object')state.wbRev={};
@@ -17504,63 +17276,12 @@ function showReport(){
   $('rpDr').onclick=showDrill;
 }
 
-/* ---------- 公式速查 ----------
-   考前扫一眼比翻书快：按域分组，只收最常用的那几条。
-   上下标用 ^ / _ 写，避免小屏字体缺字符。 */
-function showFormula(rid){
-  const ids=Object.keys(FORMULAS);
-  if(!rid||!FORMULAS[rid])rid=ids.indexOf(state.region)>=0?state.region:ids[0];
-  const reg=REGIONS.find(r=>r.id===rid);
-  const list=FORMULAS[rid]||[];
-  openPanel(`
-    <h2>📐 公式速查</h2>
-    <div class="sub">${reg?esc(reg.emoji+' '+reg.name+' · '+reg.sub):esc(rid)}</div>
-    <div class="row" style="margin-top:0;margin-bottom:12px;gap:7px">
-      ${ids.map(k=>{const r=REGIONS.find(v=>v.id===k);
-        return `<button class="btn ${k===rid?'primary':''}" id="fm_${k}"
-          style="flex:0 0 auto;min-width:0;padding:7px 11px">${r?r.emoji:k}</button>`;}).join('')}
-    </div>
-    ${list.map(f=>`<div class="wb-item">
-      <div class="wb-t">${esc(f.t)}</div>
-      <div class="wb-e" style="color:#dbeafe">${esc(f.v)}</div></div>`).join('')}
-    <div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin-top:10px;line-height:var(--lh-base)">
-      只收最常考的几条，用来考前扫一眼；<br>真要吃透还得回到题目里练
-    </div>
-    <div class="row"><button class="btn primary" id="ok">关闭</button></div>
-  `);
-  $('ok').onclick=closePanel;
-  ids.forEach(k=>{const b=$('fm_'+k);if(b)b.onclick=()=>{audioKick();showFormula(k);};});
-}
 
 /* ---------- 引路标 ----------
    地图 2400×1900，跑图全靠腿。点一下就告诉你最近的目标在哪、往哪走，
    再给一支跟着人走的箭头，走岔了也能掰回来。 */
 let guideTarget=null,guideTimer=0;
-function spotNameOf(s){
-  if(CUR===EPIC&&typeof epicSpotLabel==='function')return epicSpotLabel(s);
-  if(s.t==='stele')return '🗿 智慧石碑';
-  if(s.t==='guard')return '🛡️ '+(s.name||'守护者');
-  if(s.t==='spirit'){const sp=SPIRITS.find(v=>v.id===s.sid);return sp?sp.e+' '+sp.n:'✨ 野生精灵';}
-  if(s.t==='hermit')return '🧙 引路人';
-  return s.name||'目标';
-}
-function guideCandidates(){
-  const out=[];
-  SPOTS.forEach(s=>{
-    /* 引路人不进候选：它只给提示、不产生进度，指过去没意义，
-       而且它永远"未完成"，会把真正要打的石碑、精灵挤到后面 */
-    if(s.t==='hermit')return;
-    /* 史诗模式的卷宗读完也算"没做完"，这里用 read 判断，避免反复指已读篇目 */
-    if(CUR===EPIC){if(state.read[s.sid])return;}
-    else if(spotDone(s))return;
-    out.push({x:s.x,y:s.y,kind:s.t,name:spotNameOf(s),emoji:s.t==='guard'?'🛡️':(s.t==='stele'?'🗿':(s.t==='spirit'?'✨':'🧙'))});
-  });
-  LOOSE.forEach(c=>{
-    if(c.got)return;
-    out.push({x:c.x,y:c.y,kind:'crystal',name:'💎 散落的结晶',emoji:'💎'});
-  });
-  return out;
-}
+
 function dirName(dx,dy){
   /* 屏幕坐标 y 向下为正，所以 atan2(dy,dx)=0 是东、π/2 是南 */
   const a=((Math.atan2(dy,dx)*180/Math.PI)+360)%360;
@@ -19674,45 +19395,6 @@ function findSpawnIn(reg){
       if(walkable(x+dx,y+dy))return {x:x+dx,y:y+dy};
   return {x:x+w/2,y:y+h/2};
 }
-function teleportTo(rid){
-  const reg=REGIONS.find(r=>r.id===rid);if(!reg)return;
-  const p=findSpawnIn(reg);if(!p)return;
-  state.x=p.x;state.y=p.y;
-  cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
-  cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));
-  state.region=rid;
-  save();updateHUD();SFX.unlock();
-  showBanner(reg.emoji+' '+reg.name,reg.sub);
-  flashQuest(true);
-}
-function showTeleport(){
-  const ids=unlockedRegions();
-  openPanel(`
-    <h2>🌀 传送阵</h2>
-    <div class="sub">已开通 ${ids.length} / ${REGIONS.length} 座域，选一座直接过去</div>
-    <div class="menu-list">
-      ${ids.map(id=>{
-        const r=REGIONS.find(v=>v.id===id);if(!r)return '';
-        const tot=SPOTS.filter(s=>s.r===id&&s.t==='stele').length;
-        const lit=SPOTS.filter(s=>s.r===id&&s.t==='stele'&&state.solved[s.x+','+s.y]).length;
-        const sp=SPIRITS.filter(v=>v.r===id&&state.caught[v.id]).length;
-        const spAll=SPIRITS.filter(v=>v.r===id).length;
-        return `<button class="menu-li" id="tp_${id}"><span class="e">${r.emoji}</span>
-          <span class="tx">${esc(r.name)}
-            <div class="d">${state.badges[id]?'🏅 徽章已到手':'🛡️ 守护者未通过'}
-              · 石碑 ${lit}/${tot} · 精灵 ${sp}/${spAll}
-              ${state.region===id?' · 📍你在这里':''}</div></span></button>`;
-      }).join('')}
-    </div>
-    <div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin-top:10px;line-height:var(--lh-base)">
-      通往新域的桥要靠徽章打通，<br>打赢守护者之后这里就会多出一座
-    </div>
-    <div class="row"><button class="btn primary" id="ok">关闭</button></div>
-  `);
-  $('ok').onclick=closePanel;
-  ids.forEach(id=>{const b=$('tp_'+id);if(b)b.onclick=()=>{closePanel();teleportTo(id);};});
-}
-
 /* ---------------- 商行 ---------------- */
 function showShop(){
   function render(){
@@ -19776,85 +19458,7 @@ $('btnGoal').onclick=()=>{audioKick();flashQuest(true);};
 /* ---------------- ☰ 菜单（窄屏的功能入口） ----------------
    顶栏在 360px 宽的屏幕上最多放得下三四个按钮，挤满七个会换行成三层，
    把整个地图顶掉。窄屏下把次要功能收进这里，顶栏恒定一行。 */
-function showMenu(){
-  const ep=CUR===EPIC;
-  const modeTxt=ep?'⚔️ 回到闯关模式':'📜 科学编年史 · 科学长河';
-  const dexTxt =ep?'📜 编年史（回顾全部篇章）':'📖 图鉴与徽章';
-  const sndTxt =state.sound?'🔊 音效：开':'🔇 音效：关';
-  openPanel(`
-    <h2>☰ 菜单</h2>
-    <div class="sub">${ep?'科学编年史 · 科学长河':'格物纪元 · 四国远征'}</div>
-    <div class="menu-list">
-      <button class="menu-li" id="mMode"><span class="e">${ep?'⚔️':'📜'}</span>
-        <span class="tx">${modeTxt}<div class="d">${ep?'回去刷四国十四域的题':'读数学、物理、化学、生物交织的科学史，两边进度分开存'}</div></span></button>
-      <button class="menu-li" id="mDex"><span class="e">${ep?'📜':'📖'}</span>
-        <span class="tx">${dexTxt}<div class="d">${ep?'已读篇章 · 未读的可一键传送'
-          :'精灵 '+SPIRITS.filter(v=>state.caught[v.id]).length+'/'+SPIRITS.length
-            +' 已收服 · 徽章 '+Object.keys(state.badges).length+'/'+REGIONS.length}</div></span></button>
-      ${ep
-        ?`<button class="menu-li" id="mAid"><span class="e">⏳</span>
-        <span class="tx">时空交易所<div class="d">用时间星尘换支援券，带给烽火与闯关 · 手上 ${aidTotal()} 张</div></span></button>`
-        :`<button class="menu-li" id="mShop"><span class="e">🏪</span>
-        <span class="tx">结晶商行<div class="d">启示灯 / 错题重练 / 专项训练</div></span></button>
-        <button class="menu-li" id="mAid"><span class="e">⏳</span>
-        <span class="tx">时空交易所<div class="d">用编年史的时间星尘换支援券 · 手上 ${aidTotal()} 张</div></span></button>`}
-      ${ep?'':`<button class="menu-li" id="mDaily"><span class="e">🎯</span>
-        <span class="tx">每日一练<div class="d">${state.daily===todayStr()?'今天已完成 ✓ 明天刷新':'5 道跨域混合题 · 奖励 20 🪙'}</div></span></button>`}
-      <button class="menu-li" id="mStudy"><span class="e">📚</span>
-        <span class="tx">自习室<div class="d">不知道该练哪块？按薄弱程度替你排好了 · 打开就能学</div></span></button>
-      <button class="menu-li" id="mLadder"><span class="e">🧗</span>
-        <span class="tx">母题阶梯<div class="d">${ladderList(null).length} 个课本模型 · 母题 → 变式 → 出其不意，三级按顺序连刷</div></span></button>
-      ${ep?'':`<button class="menu-li" id="mReport"><span class="e">📊</span>
-        <span class="tx">学习报告<div class="d">各域 / 各知识点正确率，找出该补哪里</div></span></button>`}
-      ${!bz&&!ep?`<button class="menu-li${wbDueList().length?' pend-item':''}" id="mWb"><span class="e">📕</span>
-        <span class="tx">📕 错题中心${wbDueList().length?`<span class="wb-dot">${wbDueList().length>99?'99+':wbDueList().length}</span>`:''}<div class="d">${wbDueList().length?'🔥 今日待复习 '+wbDueList().length+' 题 · ':''}本子 ${state.wrongBook.length} 题 · 已掌握 ${(state.wrongDone||[]).length} 题</div></span></button>`:''}
-      <button class="menu-li" id="mFormula"><span class="e">📐</span>
-        <span class="tx">公式速查<div class="d">十四个域的核心公式，考前扫一眼</div></span></button>
-      ${ep?'':`<button class="menu-li" id="mTeleport"><span class="e">🌀</span>
-        <span class="tx">传送阵<div class="d">四国并列，随时可去任意一国 · 也能跳到该国已点亮的传送塔</div></span></button>`}
-      <button class="menu-li" id="mGoal"><span class="e">🎯</span>
-        <span class="tx">当前目标<div class="d">把任务条重新叫出来</div></span></button>
-      <button class="menu-li" id="mAcct"><span class="e">☁️</span>
-        <span class="tx">账号与同步<div class="d">${acctMenuDesc()}</div></span></button>
-      <button class="menu-li" id="mSave"><span class="e">💾</span>
-        <span class="tx">存档管理<div class="d">导出 / 导入存档码 · 清档重开</div></span></button>
-      <button class="menu-li" id="mNews"><span class="e">📣</span>
-        <span class="tx">更新公告<div class="d">练枪入口合一 · 旧版会提醒刷新 · 一键全屏怎么开</div></span></button>
-      <button class="menu-li" id="mSound"><span class="e">${state.sound?'🔊':'🔇'}</span>
-        <span class="tx">${sndTxt}<div class="d">答题与拾取的提示音</div></span></button>
-    </div>
-    <div class="row"><button class="btn primary" id="ok">关闭</button></div>
-  `);
-  $('ok').onclick=closePanel;
-  $('mMode').onclick =()=>{closePanel();switchMode();};
-  $('mDex').onclick  =()=>{closePanel();audioKick();ep?showChronicle():showDex();};
-  const mw=$('mWb');
-  if(mw)mw.onclick=()=>{closePanel();audioKick();showWrongBook();};
-  const ms=$('mShop');
-  /* 商行按钮在史诗下会变成交易所，这里直接调函数，别绕 btnShop 的分派 */
-  if(ms)ms.onclick  =()=>{closePanel();audioKick();showShop();};
-  const ma=$('mAid');
-  if(ma)ma.onclick  =()=>{closePanel();audioKick();showAidShop();};
-  const md=$('mDaily'),mr=$('mReport'),mf=$('mFormula'),mt=$('mTeleport');
-  const mst=$('mStudy');
-  if(mst)mst.onclick=()=>{closePanel();audioKick();showStudyRoom();};
-  const mld=$('mLadder');
-  if(mld)mld.onclick=()=>{closePanel();audioKick();showLadder();};
-  if(md)md.onclick  =()=>{closePanel();audioKick();showDaily();};
-  if(mr)mr.onclick  =()=>{closePanel();audioKick();showReport();};
-  if(mf)mf.onclick  =()=>{closePanel();audioKick();showFormula();};
-  if(mt)mt.onclick  =()=>{closePanel();audioKick();showTeleport();};
-  const mk=$('mKeys');
-  if(mk)mk.onclick  =()=>{closePanel();audioKick();showKeyHelp();};
-  $('mGoal').onclick =()=>{closePanel();flashQuest(true);};
-  $('mSave').onclick =()=>{closePanel();audioKick();showSavePanel();};
-  $('mAcct').onclick =()=>{closePanel();audioKick();showAccountPanel();};
-  const mn=$('mNews');
-  /* 从菜单看公告不标记"已读"以外的东西：它和进场弹的是同一个，
-     看完照样记成看过（下次进场不再自动弹） */
-  if(mn)mn.onclick=()=>{closePanel();audioKick();setTimeout(showNews,90);};
-  $('mSound').onclick=()=>{closePanel();$('btnSound').onclick();setTimeout(showMenu,60);};
-}
+
 $('btnMenu').onclick=()=>{audioKick();showMenu();};
 /* 练枪 / 错题本在 ☰ 里也有，这里提一项到顶栏：宽屏下少点两层 */
 $('btnDrill').onclick=()=>{audioKick();showDrill();};
@@ -19868,24 +19472,6 @@ const TA_STYLE='width:100%;height:150px;background:rgba(255,255,255,.06);color:#
   'touch-action:auto;'+
   '-webkit-touch-callout:default;font-family:ui-monospace,Menlo,Consolas,monospace';
 
-function saveSummary(){
-  if(CUR===EPIC){
-    const tot=EPIC_SPOTS.length,rd=EPIC_SPOTS.filter(s=>state.read[s.sid]).length;
-    const qz=Object.keys(state.quiz||{}).length;
-    const bd=Object.keys(state.badges||{}).length;
-    const ep=EPOCHS.find(r=>r.id===state.region)||EPOCHS[0];
-    return `📍 ${ep.name} · ✨ ${state.crystals} 星尘 · 🎖️ ${bd}/${EPOCHS.length} 纪元章<br>`+
-           `📜 已读 ${rd}/${tot} 篇 · 时空考题通过 ${qz} 道 · 答对 ${state.totalRight} / 答错 ${state.totalWrong}`;
-  }
-  const got=SPIRITS.filter(s=>state.caught[s.id]).length;
-  const allReg=NATIONS.reduce((a,n)=>a.concat(n.regions),[]);
-  const bd=allReg.filter(r=>state.badges[r.id]).length;
-  const bdHere=REGIONS.filter(r=>state.badges[r.id]).length;
-  const reg=REGIONS.find(r=>r.id===state.region)||REGIONS[0];
-  return `📍 ${reg.name} · 🪙 ${state.crystals} 结晶 · 🏅 ${bd}/${allReg.length} 徽章（本国 ${bdHere}/${REGIONS.length}）<br>`+
-         `✨ ${got}/${SPIRITS.length} 精灵 · 答对 ${state.totalRight} / 答错 ${state.totalWrong} · 错题本 ${state.wrongBook.length} / ${WRONG_CAP} 题<br>`+
-         `🎯 每日一练连续 ${state.dailyStreak||0} 天${state.daily?'（'+esc(state.daily)+' 已完成）':''}`;
-}
 function copyText(t){
   return new Promise(res=>{
     if(navigator.clipboard&&window.isSecureContext){
@@ -20208,7 +19794,7 @@ const BLAZE_NAKED_MUL=0.8;  // 跑刀进图：带回来的货只能按 8 折入�
    打开一看最差也是绿的，高价值箱最差是蓝的。
    〔三档梯度〕
    小保险箱（蓝卡房白送 / 红卡房第二座）→ 保险箱（黄卡房 · 保险箱房主力）
-   → 高价值保险箱（钥匙卡 · 指挥部 4 级解锁），件数与保底一档一档往上抬。 */
+   → 高价值保险箱（刷一张房卡 · 指挥部 4 级解锁），件数与保底一档一档往上抬。 */
 const BLAZE_DROP={
   loose   :{n:1,boost:0.5},   // 散落的物资：路边顺手捡的，成色最差
   crate   :{n:1,boost:1.0},   // 📦 物资箱
@@ -20554,7 +20140,6 @@ const BLAZE_GEAR=[
  {id:'beacon', e:'📡',n:'撤离信标',  price:260,d:'本局额外开启 1 个撤离点'},
  {id:'bag',    e:'🎒',n:'扩容背包',  price:220,d:'背包 +10 格 · 物资估值 +20% · 稀有度权重 +15%'},
  {id:'ins',    e:'📄',n:'行动保险',  price:160,d:'阵亡时保住背包里最贵的 2 件物资（可与保密箱叠加）'},
- {id:'key',    e:'🔑',n:'保险箱钥匙卡',price:380,d:'开启 💠 高价值保险箱（4 件 · 保底 🟦 · 每局消耗 1 张）'},
  {id:'scan',   e:'📟',n:'情报终端',  price:300,d:'开局就在地图上标出保险箱房与全部容器'},
  {id:'medkit', e:'💊',n:'战地医疗包',price:240,d:'交火中第一次答错不掉信号值'},
  {id:'luck',   e:'🍀',n:'幸运硬币',  price:480,d:'本局开箱稀有度权重 +40%'}
@@ -20578,6 +20163,22 @@ const BLAZE_CARD_OF={};BLAZE_CARDS.forEach(c=>{BLAZE_CARD_OF[c.lv]=c;c.id='kc'+c
 /* 房卡也是一种可采购物资，直接挂进战备清单，采购与携带逻辑全部复用 */
 BLAZE_CARDS.forEach(c=>BLAZE_GEAR.push({id:c.id,e:c.e,n:c.n,price:c.price,
   d:c.d,kind:'card',open:c.lv}));
+/* 索引要重建一次：上面那份 BLAZE_GEAR_OF 是在 push 之前建的，房卡压根不在表里。
+   （4.0.12 之前采购页写了 it=BLAZE_GEAR_OF[c.id] 但一次都没用到这个变量，
+     所以这个洞一直没暴露；改成统一渲染器当场就撞上了。） */
+BLAZE_GEAR.forEach(g=>{BLAZE_GEAR_OF[g.id]=g;});
+/* 手里等级最低的那张房卡。
+   💠 高价值保险箱用它开 —— 一张卡开一扇门，或者开一座箱子，是同一笔账。
+   取最低的那张：红卡是留着开红门的，不该因为开个箱子被吃掉。
+   （4.0.12 之前这个箱子要单独的「保险箱钥匙卡」，和房卡两套东西，玩家看不懂。） */
+function blazeLowestCard(gear){
+  let best=null;
+  BLAZE_CARDS.forEach(c=>{
+    if(!gear||!((gear[c.id]|0)>0))return;
+    if(!best||c.lv<best.lv)best=c;
+  });
+  return best;
+}
 
 /* =========================================================
    特勤处 —— 学三角洲那套：花哈夫币（🪙）和稀有物资换长期能力
@@ -20595,7 +20196,7 @@ const BLAZE_DEPT=[
   desc:'管全局。能买到什么、每局能开出几座保险箱，都看这里。',
   lv:[
    {cost:0,    need:null,      perk:'解锁基础部署'},
-   {cost:2200, need:{r:2,n:3}, perk:'开箱稀有度权重 +12% · 解锁「🔑 钥匙卡」「🔵 蓝色房卡」'},
+   {cost:2200, need:{r:2,n:3}, perk:'开箱稀有度权重 +12% · 解锁「🔵 蓝色房卡」'},
    {cost:9500, need:{r:3,n:3}, perk:'开箱稀有度权重 +25% · 解锁「🟡 黄色房卡」「🍀 幸运硬币」'},
    {cost:29000,need:{r:4,n:3}, perk:'每局多 1 座保险箱 · 解锁「🔴 红色房卡」'}
  ]},
@@ -20710,7 +20311,9 @@ function hqGuardLess(){return deptLevel('arms')>=4?1:0;}
 function hqSecured(){return deptLevel('log')>=4;}
 /* 采购折扣（情报处） */
 function hqDiscount(){return deptLevel('intel')>=4?0.8:1;}
-/* 采购项解锁：各部门各自管一摊 */
+/* 采购项解锁：各部门各自管一摊。
+   （'key' 这一支是 4.0.12 之前的「保险箱钥匙卡」，物资已并进房卡；
+     留着是因为时空交易所那张房卡券的 id 仍叫 key —— 见 11_world.js） */
 function hqShopUnlocked(id){
   if(id==='key')   return deptLevel('cmd')>=2;
   if(id==='kc1')   return deptLevel('cmd')>=2;
@@ -20996,37 +20599,6 @@ function useWorld(w){
   WORLD_TITLE=w.title;WORLD_SUB=w.sub;
   REGIONS=w.regions;BRIDGES=w.bridges;SPOTS=w.spots;LOOSE=w.loose;SPIRITS=w.spirits;
   state=w.st;curKey=w.save;
-}
-function syncModeButtons(){
-  const ep=CUR===EPIC;
-  const shop=$('btnShop'),dex=$('btnDex'),mode=$('btnMode');
-  if(shop){shop.style.display='';shop.textContent=ep?'⏳ 交易所':'🏪 商行';}
-  if(dex)dex.textContent=ep?'📜 编年史':'📖 图鉴';
-  if(mode)mode.textContent=ep?'⚔️ 闯关':'📜 史诗';
-}
-function switchMode(){
-  if(panel&&panel.dataset.lock==='1'){toast('先把这道题做完');return;}
-  save();
-  release();
-  closePanel();
-  const target=(CUR===ADV)?EPIC:ADV;
-  entReset();
-  useWorld(target);
-  load();healState();
-  resize();buildStatic();
-  if((state.x===0&&state.y===0)||!walkable(state.x,state.y)){
-    const p=findSpawn();state.x=p.x;state.y=p.y;
-  }
-  const reg=currentRegion(state.x,state.y);
-  state.region=reg?reg.id:REGIONS[0].id;
-  if(CUR===EPIC&&reg&&reg.kind!=='river')state.era=reg.id;
-  cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
-  cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));
-  updateHUD();syncModeButtons();save();
-  showBanner(WORLD_TITLE,WORLD_SUB);
-  flashQuest(true);          // 换模式后强制亮一次目标，避免沿用上一个世界的旧文案
-  SFX.open();
-  maybeIntro(600);
 }
 
 /* ---------------- 判定与标签 ---------------- */
@@ -21334,12 +20906,13 @@ function aidApply(id){
     else if(!patchSave(SAVE_KEY,o=>{o.hint=Math.max(0,(o.hint|0))+1;}))
       {toast('闯关模式还没有存档，先去那边开局');return false;}
   }else if(id==='key'){
-    if(CUR===BLAZE){
-      if(!BLAZE_STATE.gear||typeof BLAZE_STATE.gear!=='object')BLAZE_STATE.gear={};
-      BLAZE_STATE.gear.key=(BLAZE_STATE.gear.key|0)+1;save();
-    }else if(!patchSave(SAVE_KEY_BLAZE,o=>{
-        if(!o.gear||typeof o.gear!=='object')o.gear={};
-        o.gear.key=(o.gear.key|0)+1;}))
+    /* 房卡补给：发一张蓝色房卡（kc1）。id 仍叫 key 是历史包袱 —— 见 11_world.js 的说明 */
+    const grant=o=>{
+      if(!o.gear||typeof o.gear!=='object')o.gear={};
+      o.gear.kc1=(o.gear.kc1|0)+1;
+    };
+    if(CUR===BLAZE){grant(BLAZE_STATE);save();}
+    else if(!patchSave(SAVE_KEY_BLAZE,grant))
       {toast('烽火地带还没有存档，先去那边建个号');return false;}
   }else if(id==='compass'){
     if(CUR!==EPIC){toast('卷宗罗盘要回 📜 科学编年史才用得上');return false;}
@@ -21507,14 +21080,7 @@ function epicIntroHtml(){
 /* =========================================================
    启动
    ========================================================= */
-function findSpawn(){
-  const r=REGIONS[0];
-  const [x,y,w,h]=r.rect;
-  for(let dy=60;dy<h-60;dy+=40)
-    for(let dx=60;dx<w-60;dx+=40)
-      if(walkable(x+dx,y+dy))return {x:x+dx,y:y+dy};
-  return {x:x+w/2,y:y+h/2};
-}
+
 function startGame(){
   if(!CUR)useWorld(ADV);
   /* 清档重开后回到玩家刚才所在的世界（一次性标记，读完即清） */
@@ -21570,7 +21136,7 @@ startGame();
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.0.10-eeafdffa';
+const NEWS_KEY='genji_news', NEWS_VER='v4.0.15-82da181b';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
@@ -22316,53 +21882,9 @@ function showFormula(rid){
 }
 
 /* ---------------- 覆盖：模式切换（回闯关时回到刚才的国度） ---------------- */
-function switchMode(){
-  if(panel&&panel.dataset.lock==='1'){toast('先把这道题做完');return;}
-  save();
-  if(CUR===ADV)savePos();          // 离开闯关模式前先记下该国的坐标
-  release();
-  closePanel();
-  const target=(CUR===ADV)?EPIC:ADV;
-  entReset();
-  useWorld(target);
-  load();healState();
-  /* load() 会把存档里那一份 x/y 读回 state，而存档记的是「离开闯关模式时
-     所在国度」的坐标——所以必须先 load 再 useNation，由它按国度取回正确坐标 */
-  if(target===ADV)useNation(state.nation||'math');   // 回到刚才那一国
-  resize();buildStatic();
-  if((state.x===0&&state.y===0)||!walkable(state.x,state.y)){
-    const p=findSpawn();state.x=p.x;state.y=p.y;
-    if(CUR===ADV)savePos();
-  }
-  const reg=currentRegion(state.x,state.y);
-  state.region=reg?reg.id:REGIONS[0].id;
-  if(CUR===EPIC&&reg&&reg.kind!=='river')state.era=reg.id;
-  cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
-  cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));
-  updateHUD();syncModeButtons();save();
-  showBanner(WORLD_TITLE,WORLD_SUB);
-  flashQuest(true);
-  SFX.open();
-  maybeIntro(600);
-}
 
 /* ---------------- 引路标：传送塔与引路人不进候选 ---------------- */
-function guideCandidates(){
-  const out=[];
-  SPOTS.forEach(s=>{
-    if(s.t==='hermit'||s.t==='totem')return;
-    if(CUR===EPIC){if(state.read[s.sid])return;}
-    else if(spotDone(s))return;
-    out.push({x:s.x,y:s.y,kind:s.t,name:spotNameOf(s),emoji:s.t==='guard'?'🛡️':(s.t==='stele'?'🗿':(s.t==='spirit'?'✨':'🧙'))});
-  });
-  /* 散落的结晶也算目标：☰ 菜单里就是这么写的。
-     这里不截断——showGuide 自己会按距离排序，"还剩几个"要用真实总数。 */
-  LOOSE.forEach(c=>{
-    if(c.got)return;
-    out.push({x:c.x,y:c.y,kind:'crystal',name:'💎 散落的结晶',emoji:'💎'});
-  });
-  return out;
-}
+
 function spotNameOf(s){
   if(CUR===EPIC&&typeof epicSpotLabel==='function')return epicSpotLabel(s);
   if(s.t==='stele')return '🗿 智慧石碑';
@@ -22417,6 +21939,14 @@ function blazeSigBar(){
 /* =========================================================
    地图绘制：军事风战场
    ========================================================= */
+/* 这一屏是「战场」还是「营地」？
+   判据很干脆：有地形数据（BZ.map.poly）才是战场。
+   掩体方块与地表碎石只画在战场上 —— 营地上铺这两层，
+   玩家从基地进图时会看到"特勤处地面的石子还在、跟地图叠在一起"（4.0.13）。
+   抽成函数是为了能钉一条冒烟检查，而不是靠人记住。 */
+function bzNeedGroundFurniture(){
+  return !!(BZ.map&&BZ.map.poly&&BZ.map.poly.length>=6);
+}
 function drawBlazeWorld(c,rnd){
   /* ================================================================
      战场底图（173.3 重做）
@@ -22569,7 +22099,12 @@ function drawBlazeWorld(c,rnd){
     });
     c.restore();
 
-    /* 地表：掩体方块 + 装饰（只落在真正能走的地方） */
+    /* 地表家具（掩体方块 + 地表碎石）只属于战场 ——
+       行动基地是营地，没有地形数据（poly 为空），这两层一律不画。
+       以前基地走的是同一个循环，于是营地上也铺满了一圈灰色掩体块与碎石点：
+       它和战场上的掩体长得一模一样，玩家从基地部署进图时，
+       看到的就是「特勤处地面的石子还在，跟地图背景叠在一起」（4.0.13 修）。 */
+    if(!bzNeedGroundFurniture())return;      // forEach 里没有 continue，用 return 收工
     c.save();
     if(poly){c.beginPath();bzPolyPath(c,poly);c.closePath();c.clip();}
     else {roundRect(c,x+10,y+10,w-20,h-20,20);c.clip();}
@@ -22715,7 +22250,7 @@ function blazeActBtn(spot,btn,hint){
   else if(spot.t==='vault'){
     const g=blazeVaultGuards(spot);
     if(g.length){t='🔒 有人守着';blocked=true;}
-    else if(spot.needKey&&!(BZ.gear&&BZ.gear.key)){t='🔑 需要钥匙卡';blocked=true;}
+    else if(spot.needCard&&!blazeLowestCard(BZ.gear)){t='🔑 需要房卡';blocked=true;}
     else t='🔓 开保险箱';
   }
   else if(spot.t==='door'){
@@ -24202,7 +23737,7 @@ function blazeGenMap(siteId,diffId,gear,savedMap){
         name:((BLAZE_CARD_OF[lv]||{}).n||'上锁')+'房守卫',
         dead:false,cd:0,elite:true,room:r,gid:k});
     }
-    /* 房卡房里必有一座「免费」保险箱（不用钥匙卡，刷开门就能开）：
+    /* 房卡房里必有一座「免费」保险箱（不用再刷一张卡，门开了就能开）：
        卡的价钱越贵，屋里的箱子越厚 ——
        🔵 小保险箱 → 🟡 大保险箱 → 🔴 一大一小 / 两大（随机二选一）。
        以前只有红卡房才有保险箱，蓝黄两张卡等于花钱买几个纸箱，
@@ -24309,8 +23844,11 @@ function blazeGenMap(siteId,diffId,gear,savedMap){
       locked:true,looted:false,big:1,room:vr});
     if(hqLevel()>=4){
       const vp2=blazeRoomSpot(vr,96);
+      /* needCard：这座箱子要刷一张房卡才开得动（刷卡即作废）。
+         以前它要一张单独的「保险箱钥匙卡」—— 和房卡是两套东西，
+         采购页上并排卖两支卡，玩家分不清哪个开哪个。 */
       BLAZE_SPOTS.push({t:'vault',x:vp2.x,y:vp2.y,e:'💠',name:'高价值保险箱',
-        locked:true,looted:false,big:2,needKey:1,room:vr});
+        locked:true,looted:false,big:2,needCard:1,room:vr});
     }
   }
 
@@ -24680,23 +24218,25 @@ function blazeOpenVault(s){
     $('ok').onclick=()=>{closePanel();BZ.busy=false;};
     return;
   }
-  if(s.needKey&&!(BZ.gear&&BZ.gear.key)){
-    toast('🔑 需要钥匙卡，去特勤处采购');
+  if(s.needCard&&!blazeLowestCard(BZ.gear)){
+    toast('🔑 需要房卡，去战备采购买一张');
     BZ.busy=true;
     openPanel(`
       <h2>🔑 打不开</h2>
       <div class="sub">${esc(site.name)} · 高价值保险箱</div>
       <div class="center" style="font-size:52px;margin:6px 0">💠</div>
       <div class="center" style="line-height:var(--lh-loose)">
-        这个箱子要 <b style="color:#ffd76a">🔑 保险箱钥匙卡</b> 才开得动。<br>
-        <span style="color:#9cc0e0;font-size:var(--fs-sm)">特勤处升到 2 级后，在「🏪 战备采购」里买</span>
+        这座箱子要 <b style="color:#ffd76a">刷一张房卡</b> 才开得动（刷卡即作废）。<br>
+        <span style="color:#9cc0e0;font-size:var(--fs-sm)">
+          房卡在「🏪 战备采购」买，部署前勾选携带 ——<br>
+          一张卡开一扇门，或者开这一座箱子，你自己掂量哪头划算</span>
       </div>
       <div class="row"><button class="btn primary" id="ok">知道了</button></div>`);
     $('ok').onclick=()=>{closePanel();BZ.busy=false;};
     return;
   }
   const site2=site;
-  /* big 0 = 房卡房里白送的小保险箱 · 1 = 保险箱 · 2 = 要钥匙卡的高价值箱 */
+  /* big 0 = 房卡房里白送的小保险箱 · 1 = 保险箱 · 2 = 要刷一张房卡的高价值箱 */
   const cfg=(s.big===2)?BLAZE_DROP.vaultBig
            :((s.big===1)?BLAZE_DROP.vault:BLAZE_DROP.vaultSmall);
   const fl=cfg.floor||0;
@@ -24715,10 +24255,18 @@ function blazeOpenVault(s){
         toast('💥 破解失败，警报响起！信号值 '+Math.max(0,BZ.sig));
         blazeAfter();return;
       }
-      if(s.needKey&&BZ.gear.key)BZ.gear.key=0;   // 钥匙卡一次性的
+      /* 高价值箱：刷掉手里等级最低的那张房卡（红卡留着开红门）。
+         只在破解成功时扣 —— 和门一样，刷卡才消耗。 */
+      if(s.needCard){
+        const usedCard=blazeLowestCard(BZ.gear);
+        if(usedCard){
+          BZ.gear[usedCard.id]=(BZ.gear[usedCard.id]|0)-1;
+          toast(usedCard.e+' '+usedCard.n+' 刷开了高价值保险箱');
+        }
+      }
       s.looted=true;BZ.opened++;
       /* 保险箱里塞的是成堆的物资，不是一小摞结晶：
-         小保险箱 2 件 / 保险箱 3 件 / 高价值箱（要钥匙卡）4 件，
+         小保险箱 2 件 / 保险箱 3 件 / 高价值箱（要一张房卡）4 件，
          稀有度加权与保底档位也一档比一档高 —— 见 BLAZE_DROP */
       const R2=blazeRollInto(site2,diff,cfg.boost,cfg.luck||0,cfg.n,fl);
       SFX.win();
@@ -25029,6 +24577,9 @@ function blazeDeploy(){
 
   const sp=blazeGenMap(site.id,diff.id,g);
   state.x=sp.spawnX;state.y=sp.spawnY;state.region='zone';
+  /* 换场先清实体层：营地那枚 🎖️ 指挥部不会跟着上飞机，
+     战场上那些箱子 / 守卫也不会跟着回基地（4.0.13） */
+  entWipe();
   buildStatic();
   blazeCamTo(state.x,state.y);
   blazeSaveRun();updateHUD();
@@ -25203,6 +24754,8 @@ function blazeToLobby(silent){
   BLAZE_STATE.run=null;
   blazeBuildLobby();
   state.x=800;state.y=590;state.region='base';
+  /* 回营地同样清一次：战场上的箱子 / 保险箱 / 巡逻队不能跟着回来（4.0.13） */
+  entWipe();
   buildStatic();
   blazeCamTo(state.x,state.y);
   save();updateHUD();
@@ -25344,7 +24897,6 @@ function questTextBlaze(){
   if(BZ.gear.beacon) perk+=' 📡';
   if(BZ.gear.bag)    perk+=' 🎒';
   if(BZ.gear.ins)    perk+=' 📄';
-  if(BZ.gear.key)    perk+=' 🔑';
   if(BZ.gear.scan)   perk+=' 📟';
   if(BZ.gear.medkit) perk+=' 💊';
   if(BZ.gear.luck)   perk+=' 🍀';
@@ -25476,22 +25028,31 @@ function blazeDexHtml(){
    到手 = 估值 × 回收折率（BLAZE_SELL_RATE）× 情报处谈价加成。
    估值那么好看、到手却要打折，是刻意的：摸金的爽感在「摸到什么」，
    哈夫币的节奏则由回收行情决定 —— 不打折的话，一局就能买穿整条养成线。 */
+/* 只看价不落账：一条库存记录 + 要卖几件 → 实到手多少（4.0.14）。
+   抽出来是为了**把价说准**：确认弹窗里那个数字，必须和真正入账的数字
+   出自同一套公式。否则界面写 1240、到账 1180，比不显示还糟。
+   （「一键清空仓库」原来写的是"约到手"，因为它自己复算了一遍估的；
+     现在两边同一个函数，写"到手"就是准数。） */
+function blazeSellCalc(rec,take){
+  if(!rec||!(rec.cnt>0))return {take:0,gain:0};
+  const n=Math.max(0,Math.min(take,rec.cnt));
+  const rawUnit=Math.max(1,Math.round(rec.val/Math.max(1,rec.cnt)));
+  const unit=rec.nt?Math.max(1,Math.round(rawUnit*0.4)):rawUnit;
+  return {take:n,gain:Math.max(n,Math.round(unit*n*hqSellMul()*BLAZE_SELL_RATE))};
+}
 function blazeSell(key,n){
   const st=BLAZE_STATE.stash||{};
   const rec=st[key];
-  if(!rec||rec.cnt<=0)return 0;
-  const take=Math.min(n,rec.cnt);
+  const cal=blazeSellCalc(rec,n);
+  if(cal.take<=0)return 0;
+  /* 账面价值按原价扣（rawUnit），不然折价卖过一次后剩下的会被越算越贵 */
   const rawUnit=Math.max(1,Math.round(rec.val/Math.max(1,rec.cnt)));
-  let unit=rawUnit;
-  if(rec.nt)unit=Math.max(1,Math.round(unit*0.4));
-  const gain=Math.max(take,Math.round(unit*take*hqSellMul()*BLAZE_SELL_RATE));
-  /* 账面价值按原价扣，不然折价卖过一次后剩下的会被越算越贵 */
-  rec.cnt-=take;rec.val=Math.max(0,rec.val-rawUnit*take);
+  rec.cnt-=cal.take;rec.val=Math.max(0,rec.val-rawUnit*cal.take);
   if(rec.cnt<=0)delete st[key];
-  BLAZE_STATE.crystals=(BLAZE_STATE.crystals|0)+gain;
-  BLAZE_STATE.sold=(BLAZE_STATE.sold|0)+take;
-  BLAZE_STATE.soldVal=(BLAZE_STATE.soldVal|0)+gain;
-  return gain;
+  BLAZE_STATE.crystals=(BLAZE_STATE.crystals|0)+cal.gain;
+  BLAZE_STATE.sold=(BLAZE_STATE.sold|0)+cal.take;
+  BLAZE_STATE.soldVal=(BLAZE_STATE.soldVal|0)+cal.gain;
+  return cal.gain;
 }
 /* 整档出手：把某一稀有度及以下的仓库存货一次卖光 */
 function blazeSellRarity(rid){
@@ -25640,26 +25201,41 @@ function blazeDeptUpgrade(did){
                '，收藏柜里只有 '+blazeStashCount(nx.need.r)+' 件');
     return;
   }
-  if(!confirm('升级「'+d.n+'」到 '+(deptLevel(did)+1)+' 级？\n\n'+
-    '花费 '+nx.cost+' 🪙'+
-    (nx.need?('\n并上缴 '+(RAR_OF[nx.need.r]||RARITY[0]).n+'物资 ×'+nx.need.n):'')+
-    '\n\n升级后这些结晶与物资不再退还。'))return;
-  BLAZE_STATE.crystals=(BLAZE_STATE.crystals|0)-nx.cost;
-  if(nx.need)blazeStashConsume(nx.need.r,nx.need.n);
-  deptSet(did,deptLevel(did)+1);
-  BLAZE_STATE.spent=(BLAZE_STATE.spent|0)+nx.cost;
-  BLAZE_STATE.spentItem=(BLAZE_STATE.spentItem|0)+(nx.need?nx.need.n:0);
-  save();SFX.win();
-  toast(d.e+' '+d.n+' → '+deptLevel(did)+' 级');
-  blazeLobbyTab=3;blazeRenderLobby();
+  /* 确认走游戏内弹窗（4.0.14）：原生 confirm 会把全屏踢掉 */
+  const rr=RAR_OF[nx.need&&nx.need.r]||RARITY[0];
+  uiConfirm({
+    icon:d.e||'🏛️',
+    title:'把「'+d.n+'」升到 '+(deptLevel(did)+1)+' 级？',
+    sub:'Lv'+deptLevel(did)+' → Lv'+(deptLevel(did)+1),
+    lines:[{e:'🪙',n:'花费哈夫币',v:nx.cost+' 🪙'}]
+      .concat(nx.need?[{e:rr.e,n:rr.n+' 物资',c:'×'+nx.need.n,v:'一并上缴'}]:[]),
+    total:{label:'本次花费',v:nx.cost,unit:'🪙'},
+    warn:'升级后这些结晶与物资不再退还',
+    ok:'确认升级'},()=>{
+    BLAZE_STATE.crystals=(BLAZE_STATE.crystals|0)-nx.cost;
+    if(nx.need)blazeStashConsume(nx.need.r,nx.need.n);
+    deptSet(did,deptLevel(did)+1);
+    BLAZE_STATE.spent=(BLAZE_STATE.spent|0)+nx.cost;
+    BLAZE_STATE.spentItem=(BLAZE_STATE.spentItem|0)+(nx.need?nx.need.n:0);
+    save();SFX.win();
+    toast(d.e+' '+d.n+' → '+deptLevel(did)+' 级');
+    blazeLobbyTab=3;blazeRenderLobby();
+  },()=>{blazeLobbyTab=3;blazeRenderLobby();});   // 取消也要把特勤处那一屏画回来
 }
 
-/* 采购行：战备物资的统一渲染（折扣价与解锁提示都在这里算） */
-function blazeShopRow(it,gear){
+/* 采购行：战备物资的统一渲染（折扣价与解锁提示都在这里算）。
+   accent 是房卡用的强调色 —— 只换边框与底色，**结构与按钮一律和物资行相同**。
+   4.0.12 之前房卡是另写一套 .kcard 标记，那颗购买按钮因此没落到 .item .buy
+   的金色样式上，成了一颗浏览器默认灰按钮（同一页上两种长相）。
+   一个渲染器就不会再长出第二套长相。 */
+function blazeShopRow(it,gear,accent){
   const unlocked=hqShopUnlocked(it.id);
   const price=Math.round(it.price*hqDiscount());
   const poor=(BLAZE_STATE.crystals|0)<price;
-  return `<div class="item"${unlocked?'':' style="opacity:.5"'}>
+  const style=accent?(' style="border-color:'+accent+'66;background:'+accent+'12'+
+                      (unlocked?'':';opacity:.5')+'"')
+                    :(unlocked?'':' style="opacity:.5"');
+  return `<div class="item"${style}>
     <div class="ic">${unlocked?it.e:'🔒'}</div>
     <div style="flex:1;min-width:0">
       <div class="nm">${esc(it.n)}
@@ -25712,7 +25288,6 @@ function blazeRenderLobby(){
     if(carry.beacon) perk.push('多 1 个撤离点');
     if(carry.bag)    perk.push('背包 +10 格 · 估值 +20% · 稀有度 +15%');
     if(carry.ins)    perk.push('阵亡保住最贵 2 件');
-    if(carry.key)    perk.push('可开高价值保险箱');
     if(carry.scan)   perk.push('保险箱房上小地图');
     if(carry.medkit) perk.push('首次中弹不掉信号');
     if(carry.luck)   perk.push('稀有度 +40%');
@@ -25819,25 +25394,13 @@ function blazeRenderLobby(){
     <div class="sub" style="text-align:left;margin:0 0 8px">🎒 战备物资</div>
     ${BLAZE_GEAR.filter(it=>it.kind!=='card').map(it=>blazeShopRow(it,gear)).join('')}
     <div class="sub" style="text-align:left;margin:14px 0 8px">🔑 房卡
-      <span style="opacity:.7">（进游戏前买好，勾选携带，刷卡开门即消耗）</span></div>
-    ${BLAZE_CARDS.map(c=>{
-      const it=BLAZE_GEAR_OF[c.id];
-      const unlocked=hqShopUnlocked(c.id);
-      const price=Math.round(c.price*hqDiscount());
-      const poor=(BLAZE_STATE.crystals|0)<price;
-      return `<div class="kcard" style="background:${unlocked?'rgba(255,255,255,.05)':'rgba(255,255,255,.03)'};
-        border-color:${unlocked?c.c+'66':'rgba(255,255,255,.1)'};${unlocked?'':'opacity:.62'}">
-        <span class="e">${unlocked?c.e:'🔒'}</span>
-        <span style="flex:1;min-width:0">
-          <div class="nm">${esc(c.n)} <span style="font-size:var(--fs-xs);color:#9cc0e0">仓库 ×${gear[c.id]|0}</span></div>
-          <div class="ds">${unlocked?esc(c.d):('🔒 '+deptUnlockHint(c.id))}</div>
-        </span>
-        <button class="buy" id="buy_${c.id}" ${(unlocked&&!poor)?'':'disabled'}>${price} 🪙</button>
-      </div>`;}).join('')}
+      <span style="opacity:.7">（进游戏前买好，勾选携带，刷卡即消耗）</span></div>
+    ${BLAZE_CARDS.map(c=>blazeShopRow(BLAZE_GEAR_OF[c.id],gear,c.c)).join('')}
     <div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin:10px 0;line-height:var(--lh-base)">
       物资与房卡买进仓库后，要在「部署」页勾选携带才会生效；<br>
       带进战场就用掉了，无论撤离成功还是阵亡都不会退还。<br>
-      房卡刷开的是<b style="color:#ffd76a">上锁房间的铁门</b>，一扇门一张卡。
+      房卡两种用法：刷开<b style="color:#ffd76a">上锁房间的铁门</b>，或者开<b style="color:#ffd76a">💠 高价值保险箱</b>
+      —— 一扇门 / 一座箱子各一张卡，<b>手里哪张等级最低就先扣哪张</b>。
     </div>
     <div class="row">
       <button class="btn" id="back">← 返回部署</button>
@@ -25883,9 +25446,10 @@ function blazeRenderLobby(){
       🔍 <b>搜</b>：📦 物资箱答题开箱，开出的是<b>物资</b>，稀有度从普通到神话<br>
       💱 <b>交易</b>：战场上只掉物资，<b>一文现金都没有</b> ——
         回基地到「💱 交易站」卖掉，才变成哈夫币<br>
-      🔐 <b>保险箱房</b>：最远的那间楼，<b>门口与屋里都有守卫，不打赢别想开箱</b><br>
-      🔑 <b>房卡</b>：有些房间的门被焊死，
-        <b>进游戏前</b>在「🏪 战备采购」买卡、部署时勾选携带，走到门口刷卡才能进<br>
+      🔐 <b>保险箱房</b>：最远的那间楼，<b>门口与屋里都有守卫，不打赢别想开箱</b> ——
+        最里面那座 💠 高价值保险箱另外要<b>刷一张房卡</b><br>
+      🔑 <b>房卡</b>：两种用法 —— 刷开<b>上锁房间的铁门</b>，或者开 💠 <b>高价值保险箱</b>；
+        <b>进游戏前</b>在「🏪 战备采购」买卡、部署时勾选携带，刷卡即作废一张<br>
       💥 <b>打</b>：撞上 👾 巡逻队打三题，错两道当场阵亡；打赢从他们身上搜出物资<br>
       🚁 <b>撤</b>：到撤离点开始撤离，路上每波一题，
         <b>错一道，背包里的东西一件都带不走</b><br>
@@ -25899,7 +25463,7 @@ function blazeRenderLobby(){
         五个部门各自升级，花的是哈夫币 + 上缴的稀有物资<br>
       🎒 <b>背包</b>：按<b>格数</b>算（不是件数），满了会挤掉<b>单格价值最低</b>的<br>
       ⏳ <b>时空交易所</b>：☰ 菜单里用 📜 编年史的时间星尘换支援券 ——
-        🎟️ 免一次行动经费 · 🔑 白拿一张钥匙卡 · 📟 开局报点<br>
+        🎟️ 免一次行动经费 · 🔑 白拿一张蓝色房卡 · 📟 开局报点<br>
       ⚠️ 战利品只有<b>活着走出去</b>才入账、<b>卖掉了</b>才变成钱
     </div>
     <div class="row"><button class="btn primary" id="back">← 返回部署</button></div>`;
@@ -25970,50 +25534,89 @@ function blazeRenderLobby(){
     if(b)b.onclick=()=>{
       audioKick();
       const c=v.cnt;
-      if(!confirm('把仓库里 '+v.e+v.n+' ×'+c+' 全部卖出？'))return;
-      const g=blazeSell(v.n,c);
-      SFX.coin();save();updateHUD();toast('💱 卖出 '+c+' 件 ＋'+g+' 🪙');re();
+      const cal=blazeSellCalc(v,c);        // 先说准价，再动手
+      uiConfirm({
+        icon:'💱',
+        title:'把这一摞全卖掉？',
+        lines:[{e:v.e,n:v.n,c:'×'+c,v:cal.gain+' 🪙'}],
+        total:{label:'到手',v:cal.gain,unit:'🪙',
+          sub:'估值 '+v.val+' 🪙 × 行情 '+BLAZE_SELL_RATE.toFixed(2)
+             +' × 谈价 '+hqSellMul().toFixed(2)+(v.nt?' × 任务材料 0.4':'')},
+        warn:'卖掉一件，🏛️ 特勤处就少一件升级材料',
+        ok:'确认卖出'},()=>{
+        const g=blazeSell(v.n,c);
+        if(g>0){SFX.coin();save();updateHUD();toast('💱 卖出 '+c+' 件 ＋'+g+' 🪙');}
+        re();
+      },re);
     };
   });
   RARITY.forEach(r=>{
     const b=$('sr_'+r.id);
     if(b)b.onclick=()=>{
       audioKick();
-      const cnt=blazeStashList().filter(v=>v.r===r.id).reduce((a,x)=>a+x.cnt,0);
+      const items=blazeStashList().filter(v=>v.r===r.id);
+      const cnt=items.reduce((a,x)=>a+x.cnt,0);
       if(cnt<=0){toast('这一档没有存货');return;}
-      if(!confirm('把全部「'+r.e+' '+r.n+'」物资（'+cnt+' 件）卖掉？\n\n卖掉后 🏛️ 特勤处就少这些升级材料了。'))return;
-      const res=blazeSellRarity(r.id);
-      SFX.coin();save();updateHUD();toast('💱 '+r.n+' 卖出 '+res.n+' 件 ＋'+res.g+' 🪙');re();
+      const gain=items.reduce((a,x)=>a+blazeSellCalc(x,x.cnt).gain,0);
+      uiConfirm({
+        icon:r.e,
+        title:'整档卖掉「'+r.n+'」物资？',
+        sub:cnt+' 件 · '+items.length+' 种',
+        lines:items.map(x=>({e:x.e,n:x.n,c:'×'+x.cnt,v:blazeSellCalc(x,x.cnt).gain+' 🪙'})),
+        total:{label:'到手',v:gain,unit:'🪙'},
+        warn:'卖掉后 🏛️ 特勤处就少这些升级材料',
+        ok:'确认卖 '+cnt+' 件'},()=>{
+        const res=blazeSellRarity(r.id);
+        SFX.coin();save();updateHUD();toast('💱 '+r.n+' 卖出 '+res.n+' 件 ＋'+res.g+' 🪙');re();
+      },re);
     };
   });
   const dump=$('dump');
   if(dump)dump.onclick=()=>{
     audioKick();
+    const list=blazeStashList();
     const total=blazeStashCount(0);
     if(total<=0){toast('仓库是空的');return;}
-    const worth=Math.round(blazeStashList()
-      .reduce((a,b)=>a+b.val*(b.nt?0.4:1)*BLAZE_SELL_RATE,0)*hqSellMul());
-    if(!confirm('把仓库里全部 '+total+' 件物资卖掉？\n\n约到手 '+worth+' 🪙\n\n注意：卖光之后 🏛️ 特勤处就没有升级材料了。'))return;
-    let g=0;
-    blazeStashList().forEach(v=>{g+=blazeSell(v.n,v.cnt);});
-    SFX.win();save();updateHUD();toast('💱 清空仓库 ＋'+g+' 🪙');re();
+    /* 到手价逐件算完再加总 —— 和真正卖出去时是同一个函数。
+       以前这里写的是"约到手"：它自己复算了一遍，天生会和账目差一点 */
+    const worth=list.reduce((a,v)=>a+blazeSellCalc(v,v.cnt).gain,0);
+    const slots=list.reduce((a,b)=>a+Math.max(1,b.slot|0||1)*b.cnt,0);
+    uiConfirm({
+      icon:'📦',
+      title:'把仓库全部卖掉？',
+      sub:total+' 件 · '+list.length+' 种 · 占 '+slots+' 格',
+      lines:list.map(v=>({e:v.e,n:v.n,c:'×'+v.cnt,v:blazeSellCalc(v,v.cnt).gain+' 🪙'})),
+      total:{label:'到手',v:worth,unit:'🪙'},
+      warn:'卖光之后 🏛️ 特勤处就没有升级材料了',
+      ok:'确认清空'},()=>{
+      let g=0;
+      blazeStashList().forEach(v=>{g+=blazeSell(v.n,v.cnt);});
+      SFX.win();save();updateHUD();toast('💱 清空仓库 ＋'+g+' 🪙');re();
+    },re);
   };
   const cash=$('cash');
   if(cash)cash.onclick=()=>{
     audioKick();
     const n=BLAZE_STATE.crystals|0;
     if(n<=0){toast('仓库里没有结晶');return;}
+    const rate=Math.round(1/BLAZE_REMIT_RATE);
     const got=Math.floor(n*BLAZE_REMIT_RATE);
-    if(!confirm('把仓库里的 '+n+' 枚结晶上缴到「闯关模式」？\n\n'
-      +'烽火与闯关的物价差着一个量级，按 '+Math.round(1/BLAZE_REMIT_RATE)
-      +' 🪙 换 1 枚的行情，到手 '+got+' 枚。\n'
-      +'上缴后可以在闯关模式的商行使用。\n（单向，不可转回）'))return;
-    BLAZE_STATE.crystals=n-got*Math.round(1/BLAZE_REMIT_RATE);
-    ADV_STATE.crystals=(ADV_STATE.crystals|0)+got;
-    save();
-    try{localStorage.setItem(SAVE_KEY,JSON.stringify(ADV_STATE));}catch(e){}
-    SFX.win();toast('已上缴 '+n+' 🪙 → 闯关 ＋'+got+' 枚结晶');
-    blazeLobbyTab=0;re();
+    uiConfirm({
+      icon:'💱',
+      title:'把结晶上缴到闯关模式？',
+      sub:'烽火与闯关的物价差着一个量级',
+      lines:[{e:'🪙',n:'仓库结晶',c:'×'+n,v:n+' 🪙'},
+             {e:'💎',n:'闯关结晶',c:'×'+got,v:'上缴后到账'}],
+      total:{label:'闯关模式到手',v:got,unit:'枚',sub:'按 '+rate+' 🪙 换 1 枚的行情'},
+      warn:'单向操作：转过去就转不回来了',
+      ok:'确认上缴'},()=>{
+      BLAZE_STATE.crystals=n-got*rate;
+      ADV_STATE.crystals=(ADV_STATE.crystals|0)+got;
+      save();
+      try{localStorage.setItem(SAVE_KEY,JSON.stringify(ADV_STATE));}catch(e){}
+      SFX.win();toast('已上缴 '+n+' 🪙 → 闯关 ＋'+got+' 枚结晶');
+      blazeLobbyTab=0;re();
+    },re);
   };
   $('close').onclick=()=>{closePanel();if(!BZ.active&&CUR===BLAZE)flashQuest(true);};
   const go=$('go');
@@ -26031,7 +25634,7 @@ function blazeIntroHtml(){
     <div class="it-list"><div class="il">🎖️ <b>基地</b>：走进 🎖️ 指挥部，选行动地点与难度</div><div class="il">🗺️ <b>战场</b>：边界不规则，外面是焦土禁区；建筑能进、墙穿不过、岩石挡路</div><div class="il">🔑 <b>房卡</b>：部分房间门被焊死，先在「🏪 战备采购」买卡、部署时勾选携带</div><div class="il">🗺️ <b>四个行动地点</b>：📐 零点演算场 · ⚡ 长弓变电站 · 🔥 灰烬精炼厂 · 🌿 静默培养区</div><div class="il">🎚️ <b>三档难度</b>：🟢 常规 ×1 · 🟡 中档 ×2 · 🔴 高考 ×4（物资估值倍率）</div><div class="il">🎖️ <b>入局条件</b>：战备值达标 + 交<b>行动经费</b>才放你上机 ——
       <b style="color:#ffd76a">${BLAZE_DIFF.map(d=>d.emoji+d.name+' 🎖️'+d.req+' · 🎟️'+d.fee+'🪙').join('　')}</b></div><div class="il">🪖 <b>跑刀</b>：没钱可以光着进去捡垃圾 —— 免票，但估值 ×${BLAZE_NAKED_MUL}、
       阵亡<b>零保底</b>、信号值 -1，而且<b>只够进常规场</b></div><div class="il">🔍 <b>搜</b>：走到 📦 物资箱答题，答对开出<b>物资</b>，
-      答错触发警报、慌乱中还从背包掉一件</div><div class="il">🔐 <b>保险箱房</b>：最远那间楼有守卫把守，<b>必须打赢才打得开箱子</b></div><div class="il">💥 <b>打</b>：撞上 👾 巡逻队打三题，错两道当场阵亡；打赢从他们身上搜出物资</div><div class="il">🚁 <b>撤</b>：到 🚁 撤离点开始撤离，路上每波一题，
+      答错触发警报、慌乱中还从背包掉一件</div><div class="il">🔐 <b>保险箱房</b>：最远那间楼有守卫把守，<b>必须打赢才打得开箱子</b>；最里面那座 💠 高价值箱另外要<b>刷一张房卡</b></div><div class="il">💥 <b>打</b>：撞上 👾 巡逻队打三题，错两道当场阵亡；打赢从他们身上搜出物资</div><div class="il">🚁 <b>撤</b>：到 🚁 撤离点开始撤离，路上每波一题，
       <b>错一道，背包里的东西一件都带不走</b></div><div class="il">📶 <b>信号值</b>：答错就掉，归零直接被锁定淘汰</div><div class="il">🎒 <b>背包</b>：<b>按格数算，不是按件数</b> —— 一个 12 格的大红顶六件小货</div><div class="il">满了会挤掉<b>单格价值最低</b>的那件，装不下就先撤</div><div class="il">🏪 <b>战备采购</b>：电池 / 信标 / 背包 / 保险 / <b>房卡</b>，带进去就没了</div><div class="il">💱 <b>交易站</b>：战场上只掉物资，<b>一文现金都没有</b> ——
       活着回基地，把东西卖给回收商才变成哈夫币</div><div class="il">🏛️ <b>特勤处</b>：指挥部 · 后勤处 · 医疗站 · 情报处 · 军械库，
       花哈夫币 + 上缴稀有物资升级（卖光了就没材料了）</div><div class="il">⚠️ <b>核心规则</b>：战利品只有<b>活着走出去</b>才入账，<b>卖掉了</b>才变成钱</div><div class="il">💱 <b>上缴</b>：仓库结晶可以转回闯关模式花</div><div class="il">🔀 <b>切模式</b>：顶部「⚔️ 闯关」回去刷题，三个模式进度分开保存
@@ -26404,7 +26007,7 @@ function showMenu(){
   const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'格物纪元 · 四国远征'));
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
-     没经过构建（4.0.10 占位）时不显示，免得把占位符贴到界面上。 */
+     没经过构建（4.0.15 占位）时不显示，免得把占位符贴到界面上。 */
   const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
     ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
@@ -26433,6 +26036,8 @@ function showMenu(){
   const sndTxt=state.sound?'🔊 音效：开':'🔇 音效：关';
   /* 全屏开关的当前状态：读它来决定菜单里那颗按钮写"全屏"还是"退出全屏" */
   const fsOn=(typeof fullscreenOn==='function')&&fullscreenOn();
+  /* 帧率角标开关的当前状态（默认关，4.0.11） */
+  const fpsOn=(typeof fpsBadgeOn==='function')&&fpsBadgeOn();
   /* 错题中心那一项的 HTML：有到期题时**排到菜单最上面**。
      原因见 updateWbBadge 的注释 —— 顶栏 ☰ 顶着「4」，点开菜单却要
      滚动半屏才在功能列表里找到「错题中心」，红点照样是悬空的。
@@ -26458,7 +26063,7 @@ function showMenu(){
       <button class="menu-li" id="mAid"><span class="e">⏳</span>
         <span class="tx">时空交易所<div class="d">${
           ep?'用时间星尘换支援券，带给烽火与闯关'
-            :'用 📜 编年史的时间星尘换支援券：🎟️ 抵用券 · 🔑 钥匙卡 · 📟 情报 · 💡 启示灯'
+            :'用 📜 编年史的时间星尘换支援券：🎟️ 抵用券 · 🔑 房卡 · 📟 情报 · 💡 启示灯'
           } · 手上 ${aidTotal()} 张</div></span></button>
       ${!bz&&!ep&&!dr?`<button class="menu-li" id="mDaily"><span class="e">🎯</span>
         <span class="tx">每日一练<div class="d">${state.daily===todayStr()?'今天已完成 ✓ 明天刷新':'5 道跨域混合题 · 奖励 20 🪙'}</div></span></button>`:''}
@@ -26495,6 +26100,8 @@ function showMenu(){
         <span class="tx">${fsOn?'退出全屏':'⛶ 全屏'}<div class="d">${fsOn
           ?'回到窗口模式 · 也可以按 F11（Mac 是 ⌃⌘F）'
           :'铺满整屏、去掉地址栏 · iPhone 请从「添加到主屏幕」的图标进（Safari 不给网页全屏）'}</div></span></button>
+      <button class="menu-li" id="mFps"><span class="e">${fpsOn?'📊':'📉'}</span>
+        <span class="tx">帧率角标：${fpsOn?'开':'关'}<div class="d">右上角显示「渲染 fps · 每帧耗时」，超预算变黄 · 要完整诊断就在网址后面加 ?dbg=1</div></span></button>
     </div>
     <div class="row"><button class="btn primary" id="ok">关闭</button></div>
   `);
@@ -26538,6 +26145,10 @@ function showMenu(){
      看完照样记成看过（下次进场不再自动弹） */
   if(mn)mn.onclick=()=>{closePanel();audioKick();setTimeout(showNews,90);};
   $('mSound').onclick=()=>{closePanel();$('btnSound').onclick();setTimeout(showMenu,60);};
+  /* 帧率角标：点一下就切，切完重开菜单 —— 那一行写着「开/关」，
+     状态得是切换后的，不然玩家不知道自己到底开了没 */
+  const mfps=$('mFps');
+  if(mfps)mfps.onclick=()=>{closePanel();setFpsBadge(!fpsBadgeOn());setTimeout(showMenu,60);};
   const mfs=$('mFs');
   /* ⛶ 全屏（4.0.6 从更新公告里搬出来的独立入口）：
      点一下就切，切完把菜单重开一遍 —— 按钮上写着"全屏 / 退出全屏"，
@@ -27448,7 +27059,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.0.10';
+const BUILD_VER='4.0.15';
 const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
 function upbarSkipped(v){
   try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}
@@ -27504,17 +27115,19 @@ function showUpbar(j){
   setTimeout(check,5000);
 })();
 /* =========================================================
-   调试角标（URL 带 ?dbg=1 才出现）
+   帧率显示 —— 两个版本，别混
    ---------------------------------------------------------
-   实机上排查「为什么这台设备卡」的第一现场：平板、手机浏览器里没有 devtools，
-   看不到 devicePixelRatio、后备画布多大、一帧到底花了几毫秒。
-   这个角标把这几个数直接摆到屏幕上，一眼就能分辨是
-   「每帧超预算」（该降分辨率）还是「被系统/浏览器限了刷新率」（该去改设置）。
+   ① 玩家版（4.0.11 起）：#fps，**右上角一行**，☰ 菜单 → 帧率角标 开关，
+      开关记在本机。默认关着（绝大多数玩家不需要看这个）。
+      一行就两个数：渲染 fps · 每帧耗时 ms。
+      每帧耗时超过这一档的预算时变黄 —— 那一格才是"该降画质了"的信号。
+   ② 诊断版：URL 带 ?dbg=1 时的 #dbg，屏幕左侧六行。
+      实机上排查「为什么这台设备卡」的第一现场：平板、手机浏览器里没有 devtools，
+      看不到 devicePixelRatio、后备画布多大、一帧到底花了几毫秒。
+      它把这几个数直接摆到屏幕上，一眼就能分辨是
+      「每帧超预算」（该降分辨率）还是「被系统/浏览器限了刷新率」（该去改设置）。
 
-   只在 ?dbg=1 时创建，正常玩家什么都看不到：
-   元素和样式都在这里从 JS 注入，不占 HTML / CSS 模块，不要了整块删掉即可。
-
-   读数说明（配合 src/js/36_loop.js 里的 PERF）：
+   两个版本共用一个数据源（src/js/36_loop.js 里的 PERF），读数说明：
      屏 1400×984 dpr2  —— CSS 视口 · 设备像素比
      画布 1600×1125    —— 后备画布实际像素 = 每帧要光栅化的量
      节拍 144Hz 抽2    —— 实测 rAF 节拍 · 每几个 vsync 出一帧。
@@ -27526,6 +27139,66 @@ function showUpbar(j){
      每帧 8.4ms/13.9ms —— 主线程耗时 / 这一档的预算，超了就该降档
      迟到 3/30         —— 本批评里迟到的帧数
    ========================================================= */
+
+/* ---------- ① 玩家版：右上角一行 ---------- */
+const FPS_KEY='genji_fps';
+function fpsBadgeOn(){
+  try{return localStorage.getItem(FPS_KEY)==='1';}catch(e){return false;}
+}
+let fpsEl=null,fpsTimer=null,fpsT0=0,fpsD0=0;
+/* fps 传 null 表示"还没攒够一个统计窗口"—— 那种时候只画每帧耗时。
+   一开开关就先摊个空壳、等半秒才有字，看着像坏了。 */
+function fpsBadgePaint(fps){
+  if(!fpsEl)return;
+  const work=Math.round(PERF.work*10)/10;
+  const budget=PERF.vs*PERF.multi;
+  fpsEl.textContent=(fps==null?'—':fps)+'fps · '+work+'ms';
+  /* 超预算才变黄：一直是绿色等于没信息，变黄才是"该降一档了" */
+  fpsEl.style.color=(budget>0&&work>budget)?'#ffd76a':'#bfe9ff';
+}
+function fpsBadgeTick(){
+  if(!fpsEl)return;
+  const now=performance.now(),ms=now-fpsT0;
+  if(ms<=0)return;
+  const fps=Math.round((PERF.drawn-fpsD0)*1000/ms);
+  fpsT0=now;fpsD0=PERF.drawn;
+  fpsBadgePaint(fps);
+}
+function fpsBadgeApply(){
+  /* 关掉时元素和计时器一起拆掉 —— 不留一个每秒跑两次的定时器 */
+  if(fpsBadgeOn()){
+    if(!fpsEl){
+      if(!document.getElementById('fpsStyle')){
+        const st=document.createElement('style');
+        st.id='fpsStyle';
+        st.textContent='#fps{position:absolute;right:calc(var(--safeR) + 10px);'+
+          'top:calc(var(--safeT) + var(--upH) + var(--topH) + 6px);z-index:34;'+
+          'pointer-events:none;font:700 10.5px/1.4 ui-monospace,Consolas,monospace;'+
+          'white-space:nowrap;color:#bfe9ff;background:rgba(4,12,24,.62);'+
+          'border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 9px;'+
+          'letter-spacing:.3px;transition:color .3s}';
+        document.head.appendChild(st);
+      }
+      fpsEl=document.createElement('div');
+      fpsEl.id='fps';
+      appEl.appendChild(fpsEl);
+      fpsT0=performance.now();fpsD0=PERF.drawn;   // 先取基准，第一格才不会算出天量 fps
+      fpsBadgePaint(null);                        // 先把每帧耗时摊出来，fps 半秒后再填
+    }
+    if(!fpsTimer)fpsTimer=setInterval(fpsBadgeTick,500);
+  }else{
+    if(fpsTimer){clearInterval(fpsTimer);fpsTimer=null;}
+    if(fpsEl){fpsEl.remove();fpsEl=null;}
+  }
+}
+function setFpsBadge(v){
+  try{localStorage.setItem(FPS_KEY,v?'1':'0');}catch(e){}
+  fpsBadgeApply();
+}
+/* 开场按上次的选择恢复（默认关） */
+fpsBadgeApply();
+
+/* ---------- ② 诊断版：?dbg=1 ---------- */
 (function(){
   let on=false;
   try{on=new URLSearchParams(location.search).get('dbg')==='1';}catch(e){}

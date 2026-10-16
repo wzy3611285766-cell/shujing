@@ -329,23 +329,25 @@ function blazeOpenVault(s){
     $('ok').onclick=()=>{closePanel();BZ.busy=false;};
     return;
   }
-  if(s.needKey&&!(BZ.gear&&BZ.gear.key)){
-    toast('🔑 需要钥匙卡，去特勤处采购');
+  if(s.needCard&&!blazeLowestCard(BZ.gear)){
+    toast('🔑 需要房卡，去战备采购买一张');
     BZ.busy=true;
     openPanel(`
       <h2>🔑 打不开</h2>
       <div class="sub">${esc(site.name)} · 高价值保险箱</div>
       <div class="center" style="font-size:52px;margin:6px 0">💠</div>
       <div class="center" style="line-height:var(--lh-loose)">
-        这个箱子要 <b style="color:#ffd76a">🔑 保险箱钥匙卡</b> 才开得动。<br>
-        <span style="color:#9cc0e0;font-size:var(--fs-sm)">特勤处升到 2 级后，在「🏪 战备采购」里买</span>
+        这座箱子要 <b style="color:#ffd76a">刷一张房卡</b> 才开得动（刷卡即作废）。<br>
+        <span style="color:#9cc0e0;font-size:var(--fs-sm)">
+          房卡在「🏪 战备采购」买，部署前勾选携带 ——<br>
+          一张卡开一扇门，或者开这一座箱子，你自己掂量哪头划算</span>
       </div>
       <div class="row"><button class="btn primary" id="ok">知道了</button></div>`);
     $('ok').onclick=()=>{closePanel();BZ.busy=false;};
     return;
   }
   const site2=site;
-  /* big 0 = 房卡房里白送的小保险箱 · 1 = 保险箱 · 2 = 要钥匙卡的高价值箱 */
+  /* big 0 = 房卡房里白送的小保险箱 · 1 = 保险箱 · 2 = 要刷一张房卡的高价值箱 */
   const cfg=(s.big===2)?BLAZE_DROP.vaultBig
            :((s.big===1)?BLAZE_DROP.vault:BLAZE_DROP.vaultSmall);
   const fl=cfg.floor||0;
@@ -364,10 +366,18 @@ function blazeOpenVault(s){
         toast('💥 破解失败，警报响起！信号值 '+Math.max(0,BZ.sig));
         blazeAfter();return;
       }
-      if(s.needKey&&BZ.gear.key)BZ.gear.key=0;   // 钥匙卡一次性的
+      /* 高价值箱：刷掉手里等级最低的那张房卡（红卡留着开红门）。
+         只在破解成功时扣 —— 和门一样，刷卡才消耗。 */
+      if(s.needCard){
+        const usedCard=blazeLowestCard(BZ.gear);
+        if(usedCard){
+          BZ.gear[usedCard.id]=(BZ.gear[usedCard.id]|0)-1;
+          toast(usedCard.e+' '+usedCard.n+' 刷开了高价值保险箱');
+        }
+      }
       s.looted=true;BZ.opened++;
       /* 保险箱里塞的是成堆的物资，不是一小摞结晶：
-         小保险箱 2 件 / 保险箱 3 件 / 高价值箱（要钥匙卡）4 件，
+         小保险箱 2 件 / 保险箱 3 件 / 高价值箱（要一张房卡）4 件，
          稀有度加权与保底档位也一档比一档高 —— 见 BLAZE_DROP */
       const R2=blazeRollInto(site2,diff,cfg.boost,cfg.luck||0,cfg.n,fl);
       SFX.win();

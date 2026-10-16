@@ -1,14 +1,7 @@
 /* =========================================================
    启动
    ========================================================= */
-function findSpawn(){
-  const r=REGIONS[0];
-  const [x,y,w,h]=r.rect;
-  for(let dy=60;dy<h-60;dy+=40)
-    for(let dx=60;dx<w-60;dx+=40)
-      if(walkable(x+dx,y+dy))return {x:x+dx,y:y+dy};
-  return {x:x+w/2,y:y+h/2};
-}
+
 function startGame(){
   if(!CUR)useWorld(ADV);
   /* 清档重开后回到玩家刚才所在的世界（一次性标记，读完即清） */

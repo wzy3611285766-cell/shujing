@@ -67,12 +67,13 @@ function aidApply(id){
     else if(!patchSave(SAVE_KEY,o=>{o.hint=Math.max(0,(o.hint|0))+1;}))
       {toast('闯关模式还没有存档，先去那边开局');return false;}
   }else if(id==='key'){
-    if(CUR===BLAZE){
-      if(!BLAZE_STATE.gear||typeof BLAZE_STATE.gear!=='object')BLAZE_STATE.gear={};
-      BLAZE_STATE.gear.key=(BLAZE_STATE.gear.key|0)+1;save();
-    }else if(!patchSave(SAVE_KEY_BLAZE,o=>{
-        if(!o.gear||typeof o.gear!=='object')o.gear={};
-        o.gear.key=(o.gear.key|0)+1;}))
+    /* 房卡补给：发一张蓝色房卡（kc1）。id 仍叫 key 是历史包袱 —— 见 11_world.js 的说明 */
+    const grant=o=>{
+      if(!o.gear||typeof o.gear!=='object')o.gear={};
+      o.gear.kc1=(o.gear.kc1|0)+1;
+    };
+    if(CUR===BLAZE){grant(BLAZE_STATE);save();}
+    else if(!patchSave(SAVE_KEY_BLAZE,grant))
       {toast('烽火地带还没有存档，先去那边建个号');return false;}
   }else if(id==='compass'){
     if(CUR!==EPIC){toast('卷宗罗盘要回 📜 科学编年史才用得上');return false;}

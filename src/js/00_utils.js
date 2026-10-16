@@ -57,7 +57,7 @@ function sqrtTerm(k,n){
   const kk=k*s.k;
   return s.r===1?String(kk):((kk===1?'':kk)+'√'+s.r);
 }
-function piTerm(p,q){const g=gcd(p,q);p/=g;q/=g;return (p===1&&q===1?'π':p+'π'+(q===1?'':'/'+q));}
+
 /* √n 的完整显示串：√4 → 2，√12 → 2√3 */
 function sqrtS(n){
   const s=simplifySqrt(n);

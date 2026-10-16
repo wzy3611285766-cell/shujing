@@ -138,37 +138,6 @@ function useWorld(w){
   REGIONS=w.regions;BRIDGES=w.bridges;SPOTS=w.spots;LOOSE=w.loose;SPIRITS=w.spirits;
   state=w.st;curKey=w.save;
 }
-function syncModeButtons(){
-  const ep=CUR===EPIC;
-  const shop=$('btnShop'),dex=$('btnDex'),mode=$('btnMode');
-  if(shop){shop.style.display='';shop.textContent=ep?'⏳ 交易所':'🏪 商行';}
-  if(dex)dex.textContent=ep?'📜 编年史':'📖 图鉴';
-  if(mode)mode.textContent=ep?'⚔️ 闯关':'📜 史诗';
-}
-function switchMode(){
-  if(panel&&panel.dataset.lock==='1'){toast('先把这道题做完');return;}
-  save();
-  release();
-  closePanel();
-  const target=(CUR===ADV)?EPIC:ADV;
-  entReset();
-  useWorld(target);
-  load();healState();
-  resize();buildStatic();
-  if((state.x===0&&state.y===0)||!walkable(state.x,state.y)){
-    const p=findSpawn();state.x=p.x;state.y=p.y;
-  }
-  const reg=currentRegion(state.x,state.y);
-  state.region=reg?reg.id:REGIONS[0].id;
-  if(CUR===EPIC&&reg&&reg.kind!=='river')state.era=reg.id;
-  cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
-  cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));
-  updateHUD();syncModeButtons();save();
-  showBanner(WORLD_TITLE,WORLD_SUB);
-  flashQuest(true);          // 换模式后强制亮一次目标，避免沿用上一个世界的旧文案
-  SFX.open();
-  maybeIntro(600);
-}
 
 /* ---------------- 判定与标签 ---------------- */
 function spotDone(s){

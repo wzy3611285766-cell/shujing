@@ -1,15 +1,17 @@
 /* =========================================================
-   调试角标（URL 带 ?dbg=1 才出现）
+   帧率显示 —— 两个版本，别混
    ---------------------------------------------------------
-   实机上排查「为什么这台设备卡」的第一现场：平板、手机浏览器里没有 devtools，
-   看不到 devicePixelRatio、后备画布多大、一帧到底花了几毫秒。
-   这个角标把这几个数直接摆到屏幕上，一眼就能分辨是
-   「每帧超预算」（该降分辨率）还是「被系统/浏览器限了刷新率」（该去改设置）。
+   ① 玩家版（4.0.11 起）：#fps，**右上角一行**，☰ 菜单 → 帧率角标 开关，
+      开关记在本机。默认关着（绝大多数玩家不需要看这个）。
+      一行就两个数：渲染 fps · 每帧耗时 ms。
+      每帧耗时超过这一档的预算时变黄 —— 那一格才是"该降画质了"的信号。
+   ② 诊断版：URL 带 ?dbg=1 时的 #dbg，屏幕左侧六行。
+      实机上排查「为什么这台设备卡」的第一现场：平板、手机浏览器里没有 devtools，
+      看不到 devicePixelRatio、后备画布多大、一帧到底花了几毫秒。
+      它把这几个数直接摆到屏幕上，一眼就能分辨是
+      「每帧超预算」（该降分辨率）还是「被系统/浏览器限了刷新率」（该去改设置）。
 
-   只在 ?dbg=1 时创建，正常玩家什么都看不到：
-   元素和样式都在这里从 JS 注入，不占 HTML / CSS 模块，不要了整块删掉即可。
-
-   读数说明（配合 src/js/36_loop.js 里的 PERF）：
+   两个版本共用一个数据源（src/js/36_loop.js 里的 PERF），读数说明：
      屏 1400×984 dpr2  —— CSS 视口 · 设备像素比
      画布 1600×1125    —— 后备画布实际像素 = 每帧要光栅化的量
      节拍 144Hz 抽2    —— 实测 rAF 节拍 · 每几个 vsync 出一帧。
@@ -21,6 +23,66 @@
      每帧 8.4ms/13.9ms —— 主线程耗时 / 这一档的预算，超了就该降档
      迟到 3/30         —— 本批评里迟到的帧数
    ========================================================= */
+
+/* ---------- ① 玩家版：右上角一行 ---------- */
+const FPS_KEY='genji_fps';
+function fpsBadgeOn(){
+  try{return localStorage.getItem(FPS_KEY)==='1';}catch(e){return false;}
+}
+let fpsEl=null,fpsTimer=null,fpsT0=0,fpsD0=0;
+/* fps 传 null 表示"还没攒够一个统计窗口"—— 那种时候只画每帧耗时。
+   一开开关就先摊个空壳、等半秒才有字，看着像坏了。 */
+function fpsBadgePaint(fps){
+  if(!fpsEl)return;
+  const work=Math.round(PERF.work*10)/10;
+  const budget=PERF.vs*PERF.multi;
+  fpsEl.textContent=(fps==null?'—':fps)+'fps · '+work+'ms';
+  /* 超预算才变黄：一直是绿色等于没信息，变黄才是"该降一档了" */
+  fpsEl.style.color=(budget>0&&work>budget)?'#ffd76a':'#bfe9ff';
+}
+function fpsBadgeTick(){
+  if(!fpsEl)return;
+  const now=performance.now(),ms=now-fpsT0;
+  if(ms<=0)return;
+  const fps=Math.round((PERF.drawn-fpsD0)*1000/ms);
+  fpsT0=now;fpsD0=PERF.drawn;
+  fpsBadgePaint(fps);
+}
+function fpsBadgeApply(){
+  /* 关掉时元素和计时器一起拆掉 —— 不留一个每秒跑两次的定时器 */
+  if(fpsBadgeOn()){
+    if(!fpsEl){
+      if(!document.getElementById('fpsStyle')){
+        const st=document.createElement('style');
+        st.id='fpsStyle';
+        st.textContent='#fps{position:absolute;right:calc(var(--safeR) + 10px);'+
+          'top:calc(var(--safeT) + var(--upH) + var(--topH) + 6px);z-index:34;'+
+          'pointer-events:none;font:700 10.5px/1.4 ui-monospace,Consolas,monospace;'+
+          'white-space:nowrap;color:#bfe9ff;background:rgba(4,12,24,.62);'+
+          'border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 9px;'+
+          'letter-spacing:.3px;transition:color .3s}';
+        document.head.appendChild(st);
+      }
+      fpsEl=document.createElement('div');
+      fpsEl.id='fps';
+      appEl.appendChild(fpsEl);
+      fpsT0=performance.now();fpsD0=PERF.drawn;   // 先取基准，第一格才不会算出天量 fps
+      fpsBadgePaint(null);                        // 先把每帧耗时摊出来，fps 半秒后再填
+    }
+    if(!fpsTimer)fpsTimer=setInterval(fpsBadgeTick,500);
+  }else{
+    if(fpsTimer){clearInterval(fpsTimer);fpsTimer=null;}
+    if(fpsEl){fpsEl.remove();fpsEl=null;}
+  }
+}
+function setFpsBadge(v){
+  try{localStorage.setItem(FPS_KEY,v?'1':'0');}catch(e){}
+  fpsBadgeApply();
+}
+/* 开场按上次的选择恢复（默认关） */
+fpsBadgeApply();
+
+/* ---------- ② 诊断版：?dbg=1 ---------- */
 (function(){
   let on=false;
   try{on=new URLSearchParams(location.search).get('dbg')==='1';}catch(e){}

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>数境169 · 玻璃按键演示（当前 vs 增强）</title>
+<style>
+/* =========================================================================
+   玻璃按键演示 · 2026-10-15
+   -------------------------------------------------------------------------
+   左边是「现在游戏里那颗按钮」的逐字复刻（token 取自 src/css/00_base.css
+   的 --gb-* 那一组，3.4.0 的 iOS 玻璃按键系统），右边是增强版。
+   三态（默认 / 悬停 / 按下）同时摆出来 —— 不用把鼠标戳上去也能看清。
+
+   玻璃能不能看出来，八成取决于"身后有什么"：
+   身后越细碎（网格、字、彩块），模糊与折射才越明显；一片纯色上，
+   玻璃和塑料长得一模一样。所以下面铺的那层背景是刻意做细的。
+   ========================================================================= */
+*{box-sizing:border-box}
+:root{
+  --ink:#eaf4ff; --dim:#9cc0e0; --dim2:#7d94ab;
+  --gold:#ffd76a; --gold2:#f5b23c;
+  --card:rgba(10,22,38,.62);
+  --line:rgba(255,255,255,.12);
+  --mono:ui-monospace,Consolas,"Cascadia Mono",monospace;
+}
+html,body{margin:0;background:#060d17;color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 18px 70px}
+
+/* ---------- 顶栏 ---------- */
+header{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;
+  padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:20px}
+header h1{margin:0;font-size:23px;letter-spacing:.3px}
+header p{margin:6px 0 0;color:var(--dim);font-size:13.5px;max-width:760px}
+.fps{margin-left:auto;text-align:right;font-size:12px;color:var(--dim2);white-space:nowrap}
+.fps b{font-family:var(--mono);font-size:22px;color:#7ee0ff;display:block;line-height:1.1}
+
+/* ---------- 控制条 ---------- */
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:18px;
+  backdrop-filter:blur(10px)}
+.bar .lab{font-size:12.5px;color:var(--dim2);margin-right:2px}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--dim);font:inherit;font-size:12.5px;
+  padding:5px 13px;cursor:pointer;font-weight:600}
+.seg button.on{background:rgba(126,224,255,.16);color:#bfe9ff}
+.seg button:hover{color:#fff}
+
+/* ---------- 章节 ---------- */
+h2{font-size:17px;margin:30px 0 6px;padding-left:11px;border-left:4px solid #2f6fd0}
+h2 small{font-weight:400;color:var(--dim2);font-size:12.5px;margin-left:8px}
+.note{font-size:13px;color:var(--dim);margin:6px 0 14px;max-width:900px}
+.note code{font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.07);
+  border-radius:5px;padding:1px 5px;color:#bfe9ff}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+
+/* =========================================================================
+   ① 「现在」的玻璃：逐字复刻游戏里的 .btn / #topbar .btn
+   ========================================================================= */
+.g{position:relative;isolation:isolate;border:0;cursor:pointer;font:inherit;
+  color:var(--ink);display:inline-flex;align-items:center;gap:6px;
+  white-space:nowrap;transition:transform .12s ease-out,filter .15s,box-shadow .15s;
+  -webkit-tap-highlight-color:transparent}
+.g.now{
+  border-radius:999px;padding:10px 20px;font-size:15px;font-weight:600;
+  background:linear-gradient(180deg,rgba(24,46,74,.82) 0%,rgba(10,24,40,.72) 100%);
+  -webkit-backdrop-filter:blur(16px) saturate(180%);
+  backdrop-filter:blur(16px) saturate(180%);
+  box-shadow:inset 0 .5px 0 rgba(255,255,255,.18),inset 0 -.5px 0 rgba(0,0,0,.34),
+    0 0 0 .5px rgba(255,255,255,.10),
+    0 1px 2px rgba(0,0,0,.34),0 8px 20px -10px rgba(0,0,0,.55)}
+.g.now::before{content:"";position:absolute;inset:0;border-radius:inherit;
+  pointer-events:none;z-index:-1;
+  background:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.04) 42%,rgba(255,255,255,0) 62%)}
+.g.now:active,.g.now.s-active{transform:scale(.96);filter:brightness(.96);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.40),0 0 0 .5px rgba(255,255,255,.10)}
+.g.now:hover,.g.now.s-hover{filter:brightness(1.1)}
+
+/* =========================================================================
+   ② 增强版「液体玻璃」
+   三层玻璃 → 七层：
+     底折射（更厚的模糊 + 饱和 + 提亮）
+     + 上缘镜面 / 下缘反光（玻璃是透的，光从下面也会返上来）
+     + 内部折射辉光（贴着下沿的一圈冷光）
+     + 色散边缘（暖 / 冷各一道 1px，模拟折射分光）
+     + 扫光（悬停时从左上扫到右下）
+     + 双层投影（接触影 + 环境影，玻璃才有"浮起来"的重量）
+     + 镜面热点（左上角一个椭圆高光）
+   ========================================================================= */
+.g.new{
+  border-radius:999px;padding:10px 20px;font-size:15px;font-weight:600;
+  -webkit-backdrop-filter:blur(22px) saturate(215%) brightness(1.09) contrast(1.03);
+  backdrop-filter:blur(22px) saturate(215%) brightness(1.09) contrast(1.03);
+  background:
+    radial-gradient(130% 150% at 50% -40%,rgba(255,255,255,.34),rgba(255,255,255,.07) 46%,rgba(255,255,255,0) 72%),
+    linear-gradient(180deg,rgba(44,76,116,.46) 0%,rgba(14,30,50,.34) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.62),
+    inset 0 -1px 0 rgba(255,255,255,.17),
+    inset 0 -9px 16px -11px rgba(150,215,255,.65),
+    inset 0 1px 9px -3px rgba(255,255,255,.5),
+    0 0 0 .5px rgba(255,255,255,.24),
+    0 1px 1px rgba(0,0,0,.36),
+    0 2px 6px -2px rgba(0,0,0,.46),
+    0 14px 30px -14px rgba(0,0,0,.75);
+  transition:transform .18s cubic-bezier(.2,.8,.3,1),box-shadow .25s,filter .2s}
+/* 扫光：默认停在左侧外面，悬停扫过去 */
+.g.new::before{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:linear-gradient(104deg,rgba(255,255,255,0) 32%,rgba(255,255,255,.30) 45%,
+    rgba(255,255,255,.42) 50%,rgba(255,255,255,.08) 58%,rgba(255,255,255,0) 70%);
+  transform:translateX(-46%);transition:transform .8s cubic-bezier(.2,.75,.2,1)}
+/* 色散边缘：暖色在上、冷色在下，各 1px —— 这一层最容易"看起来像玻璃" */
+.g.new::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  mix-blend-mode:screen;
+  box-shadow:inset 1px 1px 0 rgba(255,196,142,.34),
+             inset -1px -1px 0 rgba(128,200,255,.34)}
+.g.new:hover,.g.new.s-hover{transform:translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.78),
+    inset 0 -1px 0 rgba(255,255,255,.20),
+    inset 0 -9px 18px -11px rgba(150,215,255,.8),
+    inset 0 1px 10px -3px rgba(255,255,255,.6),
+    0 0 0 .5px rgba(255,255,255,.34),
+    0 2px 2px rgba(0,0,0,.36),
+    0 3px 9px -2px rgba(0,0,0,.46),
+    0 20px 40px -18px rgba(0,0,0,.8)}
+.g.new:hover::before,.g.new.s-hover::before{transform:translateX(44%)}
+.g.new:active,.g.new.s-active{transform:scale(.955) translateY(0);
+  -webkit-backdrop-filter:blur(18px) saturate(235%) brightness(1.16) contrast(1.06);
+  backdrop-filter:blur(18px) saturate(235%) brightness(1.16) contrast(1.06);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.34),
+    inset 0 -1px 0 rgba(255,255,255,.12),
+    inset 0 3px 12px -2px rgba(0,0,0,.42),
+    inset 0 -8px 18px -12px rgba(150,215,255,.9),
+    0 0 0 .5px rgba(255,255,255,.28),
+    0 1px 1px rgba(0,0,0,.5),
+    0 4px 12px -6px rgba(0,0,0,.6)}
+.g.new:active::before,.g.new.s-active::before{transform:translateX(-6%) scaleY(.6);opacity:.5}
+/* 镜面热点：左上角一颗压扁的椭圆，玻璃上的"灯" */
+.g .spec{position:absolute;left:11%;top:9%;width:32%;height:20%;border-radius:50%;
+  pointer-events:none;z-index:-1;opacity:.75;
+  background:radial-gradient(closest-side,rgba(255,255,255,.85),rgba(255,255,255,0));
+  filter:blur(1.5px);transition:opacity .2s,transform .2s}
+.g.new:hover .spec{opacity:.95;transform:translateX(6%)}
+.g.new:active .spec,.g.new.s-active .spec{opacity:.42;transform:scaleY(.55)}
+
+/* ---------- 变体：金 / 成功 / 危险 / 图标 / 圆角矩形 ---------- */
+.g.new.gold{
+  color:#241a06;font-weight:800;
+  -webkit-backdrop-filter:blur(20px) saturate(200%) brightness(1.06);
+  backdrop-filter:blur(20px) saturate(200%) brightness(1.06);
+  background:
+    radial-gradient(130% 150% at 50% -40%,rgba(255,255,255,.55),rgba(255,255,255,.10) 46%,rgba(255,255,255,0) 72%),
+    linear-gradient(180deg,rgba(255,215,106,.92),rgba(245,159,43,.86));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    inset 0 -1px 0 rgba(255,255,255,.28),
+    inset 0 -10px 18px -12px rgba(255,255,255,.9),
+    0 0 0 .5px rgba(255,214,110,.55),
+    0 2px 6px -2px rgba(0,0,0,.4),
+    0 16px 34px -16px rgba(245,159,43,.85)}
+.g.new.gold::after{box-shadow:inset 1px 1px 0 rgba(255,255,255,.5),
+  inset -1px -1px 0 rgba(255,140,60,.45)}
+.g.new.ok{background:
+    radial-gradient(130% 150% at 50% -40%,rgba(255,255,255,.34),rgba(255,255,255,.07) 46%,rgba(255,255,255,0) 72%),
+    linear-gradient(180deg,rgba(52,199,123,.34),rgba(52,199,123,.18));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(255,255,255,.16),
+    inset 0 -9px 16px -11px rgba(110,231,183,.75),0 0 0 .5px rgba(110,231,183,.45),
+    0 2px 6px -2px rgba(0,0,0,.4),0 14px 30px -14px rgba(0,0,0,.7)}
+.g.new.bad{background:
+    radial-gradient(130% 150% at 50% -40%,rgba(255,255,255,.32),rgba(255,255,255,.07) 46%,rgba(255,255,255,0) 72%),
+    linear-gradient(180deg,rgba(255,107,107,.32),rgba(255,107,107,.16));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(255,255,255,.16),
+    inset 0 -9px 16px -11px rgba(255,150,150,.7),0 0 0 .5px rgba(255,138,128,.45),
+    0 2px 6px -2px rgba(0,0,0,.4),0 14px 30px -14px rgba(0,0,0,.7)}
+.g.sq{border-radius:16px;padding:11px 18px}
+.g.ico{border-radius:18px;padding:11px 13px;font-size:17px}
+
+/* ---------- 「省电版」：不发模糊，靠渐变 + 边缘把玻璃演出来 ---------- */
+.g.lite{background:
+    radial-gradient(130% 150% at 50% -40%,rgba(255,255,255,.32),rgba(255,255,255,.06) 46%,rgba(255,255,255,0) 72%),
+    linear-gradient(180deg,rgba(46,79,120,.78) 0%,rgba(16,34,56,.72) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(255,255,255,.14),
+    0 0 0 .5px rgba(255,255,255,.2),0 2px 6px -2px rgba(0,0,0,.45),
+    0 14px 30px -14px rgba(0,0,0,.7)}
+.g.lite::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  mix-blend-mode:screen;box-shadow:inset 1px 1px 0 rgba(255,196,142,.22),
+  inset -1px -1px 0 rgba(128,200,255,.22)}
+
+/* =========================================================================
+   布局：一行 = 一个变体 × 三态
+   ========================================================================= */
+.rows{display:flex;flex-direction:column;gap:12px}
+.row{display:grid;grid-template-columns:120px repeat(3,1fr);gap:12px;align-items:center}
+.row .rl{font-size:12.5px;color:var(--dim2);line-height:1.4}
+.cell{display:flex;align-items:center;justify-content:center;min-height:74px;border-radius:13px;
+  position:relative;overflow:hidden}
+.cell .tag{position:absolute;left:7px;top:5px;font-size:10.5px;color:rgba(255,255,255,.5);
+  font-family:var(--mono);letter-spacing:.5px}
+@media (max-width:760px){
+  .row{grid-template-columns:1fr;gap:8px}
+  .cell{min-height:66px}
+}
+
+/* ---------- 背景：三层任选，都是"细碎"的，才能检验玻璃 ---------- */
+.stage{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--line)}
+.bg{position:absolute;inset:0;z-index:0}
+.bg.map{background:
+  radial-gradient(38% 30% at 18% 26%,rgba(126,224,255,.55),transparent 70%),
+  radial-gradient(32% 26% at 74% 18%,rgba(255,215,106,.45),transparent 70%),
+  radial-gradient(42% 34% at 62% 74%,rgba(132,227,166,.42),transparent 72%),
+  radial-gradient(36% 30% at 24% 80%,rgba(157,180,255,.48),transparent 72%),
+  linear-gradient(150deg,#0d2138 0%,#0a1729 55%,#08111f 100%)}
+.bg.color{background:
+  conic-gradient(from 210deg at 30% 30%,#ff6b6b,#f5b23c,#84e3a6,#7ee0ff,#9db4ff,#ff6b6b)}
+.bg.dark{background:linear-gradient(160deg,#0b1524,#060d17)}
+/* 细网格 + 小字：模糊和折射只在这种细碎背景上才看得出来 */
+.bg::after{content:"";position:absolute;inset:0;opacity:.5;
+  background-image:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.10) 0 1px,transparent 1px 26px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.10) 0 1px,transparent 1px 26px),
+    repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 2px,transparent 2px 9px)}
+.stage-in{position:relative;z-index:1;padding:22px 18px}
+.stage.hide-detail .bg::after{opacity:0}
+
+/* ---------- 逐层拆解 ---------- */
+.lys{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px}
+.lys label{display:flex;align-items:center;gap:6px;color:var(--dim);cursor:pointer;user-select:none}
+.lys input{accent-color:#7ee0ff;width:15px;height:15px}
+.stage.no-blur   .g.new{-webkit-backdrop-filter:none;backdrop-filter:none}
+.stage.no-rim    .g.new{box-shadow:inset 0 -1px 0 rgba(255,255,255,.17),
+  inset 0 -9px 16px -11px rgba(150,215,255,.65),inset 0 1px 9px -3px rgba(255,255,255,.5),
+  0 1px 1px rgba(0,0,0,.36),0 2px 6px -2px rgba(0,0,0,.46),0 14px 30px -14px rgba(0,0,0,.75)}
+.stage.no-disp   .g.new::after{display:none}
+.stage.no-top    .g.new{box-shadow:inset 0 -1px 0 rgba(255,255,255,.17),
+  inset 0 -9px 16px -11px rgba(150,215,255,.65),
+  0 0 0 .5px rgba(255,255,255,.24),0 1px 1px rgba(0,0,0,.36),
+  0 2px 6px -2px rgba(0,0,0,.46),0 14px 30px -14px rgba(0,0,0,.75)}
+.stage.no-sheen  .g.new::before{display:none}
+.stage.no-glow   .g.new{box-shadow:inset 0 1px 0 rgba(255,255,255,.62),
+  0 0 0 .5px rgba(255,255,255,.24),0 1px 1px rgba(0,0,0,.36),
+  0 2px 6px -2px rgba(0,0,0,.46),0 14px 30px -14px rgba(0,0,0,.75)}
+.stage.no-drop   .g.new{box-shadow:inset 0 1px 0 rgba(255,255,255,.62),
+  inset 0 -1px 0 rgba(255,255,255,.17),inset 0 -9px 16px -11px rgba(150,215,255,.65),
+  inset 0 1px 9px -3px rgba(255,255,255,.5),0 0 0 .5px rgba(255,255,255,.24)}
+.stage.no-spec   .spec{display:none}
+
+/* ---------- 结论 ---------- */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.cmp{grid-template-columns:1fr}}
+.cmp .panel h3{margin:0 0 8px;font-size:14.5px;color:#fff}
+.cmp ul{margin:6px 0;padding-left:20px;font-size:13px;color:var(--dim)}
+.cmp li{margin:5px 0}
+.ok{color:#84e3a6;font-weight:700}
+.warn{color:#ffd76a;font-weight:700}
+footer{margin-top:34px;color:var(--dim2);font-size:12px;text-align:center;line-height:1.9}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>玻璃按键演示 · 当前 vs 增强</h1>
+    <p>左边是现在游戏里那颗按钮（token 逐字取自 <b>src/css/00_base.css</b> 的 <code>--gb-*</code> 系列），
+       右边是往「液体玻璃」推一版的增强版。三态并排摆着，不用把鼠标戳上去也能看。
+       背景铺了细网格和彩块 —— 玻璃只有在细碎的东西上才看得出是玻璃。</p>
+  </div>
+  <div class="fps"><b id="fpsV">—</b>fps（本页实时）</div>
+</header>
+
+<div class="bar">
+  <span class="lab">背景</span>
+  <div class="seg" id="segBg">
+    <button data-bg="map" class="on">🗺 夜航地图色</button>
+    <button data-bg="color">🌈 彩色渐变</button>
+    <button data-bg="dark">⬛ 纯深色</button>
+  </div>
+  <span class="lab" style="margin-left:8px">细网格</span>
+  <div class="seg" id="segDetail">
+    <button data-d="1" class="on">开</button>
+    <button data-d="0">关</button>
+  </div>
+  <span class="lab" style="margin-left:8px">逐层拆解</span>
+  <div class="seg" id="segOnly">
+    <button data-only="all" class="on">全部层</button>
+    <button data-only="no-blur">不发模糊</button>
+    <button data-only="no-disp">去掉色散</button>
+    <button data-only="no-sheen">去掉扫光</button>
+    <button data-only="no-glow">去掉内辉光</button>
+    <button data-only="no-drop">去掉外投影</button>
+    <button data-only="no-rim">去掉上缘镜面</button>
+    <button data-only="no-spec">去掉镜面热点</button>
+  </div>
+  <div class="note" style="flex:1 0 100%;margin:8px 0 0">
+    <b>两段演示区共用同一层背景</b>：切背景时一起换 —— 同一块玻璃换个背景就是另一个人，
+    分开换会看花眼；默认两边都是「夜航地图色」，先在同一条起跑线上比。
+  </div>
+</div>
+
+<h2>一、现在的游戏里（3.4.0 的三层玻璃）<small>底面模糊 → 发丝边 → 顶部高光</small></h2>
+<div class="note">三层结构：<code>backdrop-filter: blur(16px) saturate(180%)</code> 的底、
+上亮下暗的 0.5px 发丝边、以及一道自上而下衰减的镜面渐变。按下是 <code>scale(.96)</code> + 内阴影下沉。</div>
+
+<div id="stage" class="stage">
+  <div class="bg map" id="bgLayer"></div>
+  <div class="stage-in">
+    <div class="rows">
+      <div class="row">
+        <div class="rl">胶囊按钮<br>（顶栏那种）</div>
+        <div class="cell"><span class="tag">默认</span><button class="g now">📖 图鉴</button></div>
+        <div class="cell"><span class="tag">悬停</span><button class="g now s-hover">📖 图鉴</button></div>
+        <div class="cell"><span class="tag">按下</span><button class="g now s-active">📖 图鉴</button></div>
+      </div>
+      <div class="row">
+        <div class="rl">面板里的<br>主按钮</div>
+        <div class="cell"><span class="tag">默认</span><button class="g now" style="background:linear-gradient(180deg,rgba(255,215,106,.94),rgba(245,159,43,.92));color:#20180a;font-weight:800;box-shadow:inset 0 .5px 0 rgba(255,255,255,.42),0 0 0 .5px rgba(255,214,110,.42),0 8px 22px -8px rgba(245,159,43,.55)">开始探索</button></div>
+        <div class="cell"><span class="tag">悬停</span><button class="g now s-hover" style="background:linear-gradient(180deg,rgba(255,215,106,.94),rgba(245,159,43,.92));color:#20180a;font-weight:800;box-shadow:inset 0 .5px 0 rgba(255,255,255,.42),0 0 0 .5px rgba(255,214,110,.42),0 8px 22px -8px rgba(245,159,43,.55)">开始探索</button></div>
+        <div class="cell"><span class="tag">按下</span><button class="g now s-active" style="background:linear-gradient(180deg,rgba(255,215,106,.94),rgba(245,159,43,.92));color:#20180a;font-weight:800">开始探索</button></div>
+      </div>
+      <div class="row">
+        <div class="rl">图标按钮<br>（☰ / 🔊）</div>
+        <div class="cell"><span class="tag">默认</span><button class="g now" style="width:46px;height:46px;justify-content:center;padding:0;font-size:18px">☰</button></div>
+        <div class="cell"><span class="tag">悬停</span><button class="g now s-hover" style="width:46px;height:46px;justify-content:center;padding:0;font-size:18px">☰</button></div>
+        <div class="cell"><span class="tag">按下</span><button class="g now s-active" style="width:46px;height:46px;justify-content:center;padding:0;font-size:18px">☰</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>二、增强版「液体玻璃」<small>三层 → 七层，悬停有扫光，按下像压一颗水珠</small></h2>
+<div class="note">
+  加的四层里，<b>色散边缘</b>（暖色在上、冷色在下各 1px）和<b>下缘反光</b>是"看起来像玻璃"贡献最大的两笔 ——
+  它们让人眼读出"这东西有厚度、光从里面透过"。扫光与镜面热点负责"活"，双层投影负责"浮起来的重量"。
+</div>
+
+<div id="stage2" class="stage">
+  <div class="bg map" id="bgLayer2"></div>
+  <div class="stage-in">
+    <div class="rows">
+      <div class="row">
+        <div class="rl">胶囊按钮</div>
+        <div class="cell"><span class="tag">默认</span><button class="g new">📖 图鉴<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">悬停</span><button class="g new s-hover">📖 图鉴<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">按下</span><button class="g new s-active">📖 图鉴<i class="spec"></i></button></div>
+      </div>
+      <div class="row">
+        <div class="rl">金色主按钮<br>（tinted glass）</div>
+        <div class="cell"><span class="tag">默认</span><button class="g new gold">开始探索<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">悬停</span><button class="g new gold s-hover">开始探索<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">按下</span><button class="g new gold s-active">开始探索<i class="spec"></i></button></div>
+      </div>
+      <div class="row">
+        <div class="rl">圆角矩形<br>（面板里的键）</div>
+        <div class="cell"><span class="tag">默认</span><button class="g new sq">📕 错题中心<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">悬停</span><button class="g new sq s-hover">📕 错题中心<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">按下</span><button class="g new sq s-active">📕 错题中心<i class="spec"></i></button></div>
+      </div>
+      <div class="row">
+        <div class="rl">图标按钮</div>
+        <div class="cell"><span class="tag">默认</span><button class="g new ico">☰<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">悬停</span><button class="g new ico s-hover">☰<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">按下</span><button class="g new ico s-active">☰<i class="spec"></i></button></div>
+      </div>
+      <div class="row">
+        <div class="rl">对错反馈<br>（绿 / 红玻璃）</div>
+        <div class="cell"><span class="tag">答对</span><button class="g new ok">✅ 收服了<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">悬停</span><button class="g new ok s-hover">✅ 收服了<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">答错</span><button class="g new bad">❌ 再想想<i class="spec"></i></button></div>
+      </div>
+      <div class="row">
+        <div class="rl">省电版<br>（不发模糊）</div>
+        <div class="cell"><span class="tag">默认</span><button class="g new lite">📖 图鉴<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">悬停</span><button class="g new lite s-hover">📖 图鉴<i class="spec"></i></button></div>
+        <div class="cell"><span class="tag">按下</span><button class="g new lite s-active">📖 图鉴<i class="spec"></i></button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>三、逐层开关<small>上面控制条里那排「逐层拆解」，一格一格关掉看哪层在干活</small></h2>
+<div class="panel">
+  <div class="lys">
+    <label><input type="checkbox" checked disabled> 底折射（模糊 + 饱和 + 提亮）</label>
+    <label><input type="checkbox" checked disabled> 上缘镜面</label>
+    <label><input type="checkbox" checked disabled> 下缘反光</label>
+    <label><input type="checkbox" checked disabled> 色散边缘</label>
+    <label><input type="checkbox" checked disabled> 扫光</label>
+    <label><input type="checkbox" checked disabled> 内部折射辉光</label>
+    <label><input type="checkbox" checked disabled> 双层投影</label>
+    <label><input type="checkbox" checked disabled> 镜面热点</label>
+  </div>
+  <div class="note" style="margin:10px 0 0">
+    开关在上面的控制条里（那排按钮就是干这个的）：关掉某一层，第二节所有按钮会一起变 —— 一层一层关，
+    能看出每层的边际贡献。我的判断：<b>最不该省的是色散边缘与下缘反光</b>（省了立刻变回塑料），
+    <b>最该省的是大模糊半径</b>（性能账见下）。
+  </div>
+</div>
+
+<h2>四、值不值得推：三版对比</h2>
+<div class="cmp">
+  <div class="panel">
+    <h3>性能账（先看这条）</h3>
+    <ul>
+      <li>页面右上角有实时 fps。三种玻璃在同屏同面积下的开销差别，主要来自 <b>backdrop-filter 的模糊半径 × 面积</b>。</li>
+      <li>颜色渐变、inset 高光、色散边、投影 <b>几乎不要钱</b>（都是合成层里的一次栅格）。</li>
+      <li>真正的代价在游戏里：地图每帧都在动，玻璃后面每帧都得重新采样模糊 —— 越大的玻璃、越高的刷新率越贵。</li>
+      <li>所以建议：<b>增强版只用在"数量少、面积小、位置固定"的地方</b>（顶栏胶囊、面板主按钮、☰ 图标）；<br>
+          地图上会跟着镜头动的大面积玻璃（芯片组、任务条）继续用省电版。</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>观感账</h3>
+    <ul>
+      <li><span class="ok">增强明显的地方</span>：细网格 / 图 / 文字后面 —— 模糊更厚、色彩更"聚"，边缘那两道暖冷色散让它一眼就是玻璃。</li>
+      <li><span class="ok">悬停的扫光</span>是"活"的来源：一片静止的玻璃迟早被当成灰底，扫一下立刻有材质感。</li>
+      <li><span class="warn">按下的液体感</span>：增强版按下时模糊半径略减、饱和略增（像被压扁的水珠），比单纯缩小更像"液体玻璃"。</li>
+      <li><span class="warn">风险</span>：纯深色背景上，增强版和现在的差别最小（没东西可折射）—— 游戏里大部分场景偏深，<br>
+          真机上大概只有"亮点更多、边缘更亮"这一档提升。</li>
+    </ul>
+  </div>
+</div>
+
+<footer>
+  数境169 · 玻璃按键演示 · 生成于 2026-10-15 · 单文件、无外链、离线可看<br>
+  当前版 token 出自 <code>src/css/00_base.css</code> 的 <code>--gb-*</code>（3.4.0 iOS 玻璃按键系统）
+</footer>
+</div>
+
+<script>
+/* 背景切换：两段演示区各有一层背景，一起换 —— 同一块玻璃在不同背景上差别很大，
+   分开换容易看花眼 */
+document.getElementById('segBg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));
+  ['bgLayer','bgLayer2'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.className='bg '+b.dataset.bg;
+  });
+});
+document.getElementById('segDetail').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));
+  const on=b.dataset.d==='1';
+  document.querySelectorAll('.bg').forEach(el=>el.parentElement.classList.toggle('hide-detail',!on));
+});
+/* 逐层拆解：先在两个演示区上清掉所有 no-* 类，再加当前这个 */
+document.getElementById('segOnly').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));
+  const areas=[document.getElementById('stage'),document.getElementById('stage2')];
+  const keys=['no-blur','no-rim','no-disp','no-top','no-sheen','no-glow','no-drop','no-spec'];
+  areas.forEach(a=>{keys.forEach(k=>a.classList.remove(k));
+    if(b.dataset.only!=='all')a.classList.add(b.dataset.only);});
+});
+/* 实时 fps：玻璃值不值得推，最后都得回到这个数上 */
+(function(){
+  let n=0,t0=performance.now(),el=document.getElementById('fpsV');
+  function tick(){
+    n++;
+    const t=performance.now();
+    if(t-t0>=500){el.textContent=Math.round(n*1000/(t-t0));n=0;t0=t;}
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

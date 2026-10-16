@@ -259,7 +259,7 @@ function blazeGenMap(siteId,diffId,gear,savedMap){
         name:((BLAZE_CARD_OF[lv]||{}).n||'上锁')+'房守卫',
         dead:false,cd:0,elite:true,room:r,gid:k});
     }
-    /* 房卡房里必有一座「免费」保险箱（不用钥匙卡，刷开门就能开）：
+    /* 房卡房里必有一座「免费」保险箱（不用再刷一张卡，门开了就能开）：
        卡的价钱越贵，屋里的箱子越厚 ——
        🔵 小保险箱 → 🟡 大保险箱 → 🔴 一大一小 / 两大（随机二选一）。
        以前只有红卡房才有保险箱，蓝黄两张卡等于花钱买几个纸箱，
@@ -366,8 +366,11 @@ function blazeGenMap(siteId,diffId,gear,savedMap){
       locked:true,looted:false,big:1,room:vr});
     if(hqLevel()>=4){
       const vp2=blazeRoomSpot(vr,96);
+      /* needCard：这座箱子要刷一张房卡才开得动（刷卡即作废）。
+         以前它要一张单独的「保险箱钥匙卡」—— 和房卡是两套东西，
+         采购页上并排卖两支卡，玩家分不清哪个开哪个。 */
       BLAZE_SPOTS.push({t:'vault',x:vp2.x,y:vp2.y,e:'💠',name:'高价值保险箱',
-        locked:true,looted:false,big:2,needKey:1,room:vr});
+        locked:true,looted:false,big:2,needCard:1,room:vr});
     }
   }
 

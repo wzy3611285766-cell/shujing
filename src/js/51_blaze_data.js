@@ -137,7 +137,7 @@ const BLAZE_NAKED_MUL=0.8;  // 跑刀进图：带回来的货只能按 8 折入�
    打开一看最差也是绿的，高价值箱最差是蓝的。
    〔三档梯度〕
    小保险箱（蓝卡房白送 / 红卡房第二座）→ 保险箱（黄卡房 · 保险箱房主力）
-   → 高价值保险箱（钥匙卡 · 指挥部 4 级解锁），件数与保底一档一档往上抬。 */
+   → 高价值保险箱（刷一张房卡 · 指挥部 4 级解锁），件数与保底一档一档往上抬。 */
 const BLAZE_DROP={
   loose   :{n:1,boost:0.5},   // 散落的物资：路边顺手捡的，成色最差
   crate   :{n:1,boost:1.0},   // 📦 物资箱
@@ -483,7 +483,6 @@ const BLAZE_GEAR=[
  {id:'beacon', e:'📡',n:'撤离信标',  price:260,d:'本局额外开启 1 个撤离点'},
  {id:'bag',    e:'🎒',n:'扩容背包',  price:220,d:'背包 +10 格 · 物资估值 +20% · 稀有度权重 +15%'},
  {id:'ins',    e:'📄',n:'行动保险',  price:160,d:'阵亡时保住背包里最贵的 2 件物资（可与保密箱叠加）'},
- {id:'key',    e:'🔑',n:'保险箱钥匙卡',price:380,d:'开启 💠 高价值保险箱（4 件 · 保底 🟦 · 每局消耗 1 张）'},
  {id:'scan',   e:'📟',n:'情报终端',  price:300,d:'开局就在地图上标出保险箱房与全部容器'},
  {id:'medkit', e:'💊',n:'战地医疗包',price:240,d:'交火中第一次答错不掉信号值'},
  {id:'luck',   e:'🍀',n:'幸运硬币',  price:480,d:'本局开箱稀有度权重 +40%'}
@@ -507,6 +506,22 @@ const BLAZE_CARD_OF={};BLAZE_CARDS.forEach(c=>{BLAZE_CARD_OF[c.lv]=c;c.id='kc'+c
 /* 房卡也是一种可采购物资，直接挂进战备清单，采购与携带逻辑全部复用 */
 BLAZE_CARDS.forEach(c=>BLAZE_GEAR.push({id:c.id,e:c.e,n:c.n,price:c.price,
   d:c.d,kind:'card',open:c.lv}));
+/* 索引要重建一次：上面那份 BLAZE_GEAR_OF 是在 push 之前建的，房卡压根不在表里。
+   （4.0.12 之前采购页写了 it=BLAZE_GEAR_OF[c.id] 但一次都没用到这个变量，
+     所以这个洞一直没暴露；改成统一渲染器当场就撞上了。） */
+BLAZE_GEAR.forEach(g=>{BLAZE_GEAR_OF[g.id]=g;});
+/* 手里等级最低的那张房卡。
+   💠 高价值保险箱用它开 —— 一张卡开一扇门，或者开一座箱子，是同一笔账。
+   取最低的那张：红卡是留着开红门的，不该因为开个箱子被吃掉。
+   （4.0.12 之前这个箱子要单独的「保险箱钥匙卡」，和房卡两套东西，玩家看不懂。） */
+function blazeLowestCard(gear){
+  let best=null;
+  BLAZE_CARDS.forEach(c=>{
+    if(!gear||!((gear[c.id]|0)>0))return;
+    if(!best||c.lv<best.lv)best=c;
+  });
+  return best;
+}
 
 /* =========================================================
    特勤处 —— 学三角洲那套：花哈夫币（🪙）和稀有物资换长期能力
@@ -524,7 +539,7 @@ const BLAZE_DEPT=[
   desc:'管全局。能买到什么、每局能开出几座保险箱，都看这里。',
   lv:[
    {cost:0,    need:null,      perk:'解锁基础部署'},
-   {cost:2200, need:{r:2,n:3}, perk:'开箱稀有度权重 +12% · 解锁「🔑 钥匙卡」「🔵 蓝色房卡」'},
+   {cost:2200, need:{r:2,n:3}, perk:'开箱稀有度权重 +12% · 解锁「🔵 蓝色房卡」'},
    {cost:9500, need:{r:3,n:3}, perk:'开箱稀有度权重 +25% · 解锁「🟡 黄色房卡」「🍀 幸运硬币」'},
    {cost:29000,need:{r:4,n:3}, perk:'每局多 1 座保险箱 · 解锁「🔴 红色房卡」'}
  ]},
@@ -639,7 +654,9 @@ function hqGuardLess(){return deptLevel('arms')>=4?1:0;}
 function hqSecured(){return deptLevel('log')>=4;}
 /* 采购折扣（情报处） */
 function hqDiscount(){return deptLevel('intel')>=4?0.8:1;}
-/* 采购项解锁：各部门各自管一摊 */
+/* 采购项解锁：各部门各自管一摊。
+   （'key' 这一支是 4.0.12 之前的「保险箱钥匙卡」，物资已并进房卡；
+     留着是因为时空交易所那张房卡券的 id 仍叫 key —— 见 11_world.js） */
 function hqShopUnlocked(id){
   if(id==='key')   return deptLevel('cmd')>=2;
   if(id==='kc1')   return deptLevel('cmd')>=2;

@@ -468,53 +468,9 @@ function showFormula(rid){
 }
 
 /* ---------------- 覆盖：模式切换（回闯关时回到刚才的国度） ---------------- */
-function switchMode(){
-  if(panel&&panel.dataset.lock==='1'){toast('先把这道题做完');return;}
-  save();
-  if(CUR===ADV)savePos();          // 离开闯关模式前先记下该国的坐标
-  release();
-  closePanel();
-  const target=(CUR===ADV)?EPIC:ADV;
-  entReset();
-  useWorld(target);
-  load();healState();
-  /* load() 会把存档里那一份 x/y 读回 state，而存档记的是「离开闯关模式时
-     所在国度」的坐标——所以必须先 load 再 useNation，由它按国度取回正确坐标 */
-  if(target===ADV)useNation(state.nation||'math');   // 回到刚才那一国
-  resize();buildStatic();
-  if((state.x===0&&state.y===0)||!walkable(state.x,state.y)){
-    const p=findSpawn();state.x=p.x;state.y=p.y;
-    if(CUR===ADV)savePos();
-  }
-  const reg=currentRegion(state.x,state.y);
-  state.region=reg?reg.id:REGIONS[0].id;
-  if(CUR===EPIC&&reg&&reg.kind!=='river')state.era=reg.id;
-  cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
-  cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));
-  updateHUD();syncModeButtons();save();
-  showBanner(WORLD_TITLE,WORLD_SUB);
-  flashQuest(true);
-  SFX.open();
-  maybeIntro(600);
-}
 
 /* ---------------- 引路标：传送塔与引路人不进候选 ---------------- */
-function guideCandidates(){
-  const out=[];
-  SPOTS.forEach(s=>{
-    if(s.t==='hermit'||s.t==='totem')return;
-    if(CUR===EPIC){if(state.read[s.sid])return;}
-    else if(spotDone(s))return;
-    out.push({x:s.x,y:s.y,kind:s.t,name:spotNameOf(s),emoji:s.t==='guard'?'🛡️':(s.t==='stele'?'🗿':(s.t==='spirit'?'✨':'🧙'))});
-  });
-  /* 散落的结晶也算目标：☰ 菜单里就是这么写的。
-     这里不截断——showGuide 自己会按距离排序，"还剩几个"要用真实总数。 */
-  LOOSE.forEach(c=>{
-    if(c.got)return;
-    out.push({x:c.x,y:c.y,kind:'crystal',name:'💎 散落的结晶',emoji:'💎'});
-  });
-  return out;
-}
+
 function spotNameOf(s){
   if(CUR===EPIC&&typeof epicSpotLabel==='function')return epicSpotLabel(s);
   if(s.t==='stele')return '🗿 智慧石碑';

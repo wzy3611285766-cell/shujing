@@ -50,6 +50,24 @@ CHROME_CANDIDATES = [
 COMMON = """
 try{localStorage.setItem('genji_news',newsVer());}catch(e){}   /* 先记成"公告看过了" */
 function quiet(){try{state.sound=false;}catch(e){}}
+/* 往仓库里塞一摞真物资（交易站 / 特勤处那几屏靠它才有东西可看） */
+function seedStash(){
+  try{
+    BLAZE_STATE.stash={};
+    [5,4,4,3,3,2,1,0].forEach(function(rid,i){
+      var L=makeLoot(rid,'math',1.5,1);
+      if(!L)return;
+      var rec=BLAZE_STATE.stash[L.n];
+      if(!rec){
+        rec={n:L.n,e:L.e,r:L.r,val:0,cnt:0,slot:L.slot,cat:L.cat,nt:L.nt?1:0};
+        BLAZE_STATE.stash[L.n]=rec;
+      }
+      var k=1+(i%3);
+      rec.cnt+=k;rec.val+=L.val*k;
+    });
+    save();
+  }catch(e){}
+}
 /* 练枪场里蒙错一题：一题一题往下试，直到 feedback 变红（选项 4 个，8 题内几乎必中） */
 function missOne(){
   try{drillSession('math',{tier:1});}catch(e){return false;}
@@ -103,6 +121,117 @@ setTimeout(function(){
   maybeIntro(0);
 },900);
 """, 6000, "全新玩家的开场：闯关模式说明（现在只出现这一次）"),
+    # 行动基地（特勤处）的地面：4.0.13 修的"石子粒子"就在这儿
+    "基地": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  try{useWorld(BLAZE);blazeEnter();blazeCamTo(state.x,state.y);}catch(e){}
+},1200);
+""", 7000, "行动基地（特勤处）的地面"),
+    # 部署后的战场地面：和基地那张对着看，就能看出残留
+    "战场": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  try{
+    useWorld(BLAZE);
+    BLAZE_STATE.naked=true;                 /* 跑刀：免票免战备值，直接把图开出来 */
+    BLAZE_STATE.pick={site:'math',diff:1};
+    BZ.carry={};
+    blazeDeploy();
+  }catch(e){}
+},1200);
+""", 7000, "部署后的战场地面"),
+    # 战术地图：4.0.13 修的是它"图中间拖不动"（画布吃掉了手势）
+    "战术地图": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  try{
+    useWorld(BLAZE);
+    BLAZE_STATE.naked=true;BLAZE_STATE.pick={site:'math',diff:1};
+    BZ.carry={};
+    blazeDeploy();
+    showTacMap();
+  }catch(e){}
+},1300);
+""", 7000, "战术地图（整块区域都能拖着滚）"),
+    # 卖出确认：4.0.14 起是游戏内弹窗（原生 confirm 会把全屏踢掉）
+    "卖出确认": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  try{
+    useWorld(BLAZE);blazeEnter();
+    seedStash();
+    blazeLobbyTab=2;blazeRenderLobby();
+    /* 第一件是单件（只有「卖 1」），所以扫一遍找第一颗「卖 N」 */
+    var b=document.querySelector('[id^="sa_"]');
+    if(b)b.click();
+  }catch(e){}
+},1400);
+""", 7000, "交易站 · 卖出确认（游戏内弹窗）"),
+    # 一键清空仓库：明细多行 + 到手总额
+    "清空确认": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  try{
+    useWorld(BLAZE);blazeEnter();
+    seedStash();
+    blazeLobbyTab=2;blazeRenderLobby();
+    var d=document.getElementById('dump');
+    if(d)d.click();
+  }catch(e){}
+},1400);
+""", 7000, "一键清空仓库 · 确认（明细 + 到手总额）"),
+    # 特勤处升级确认：和交易站同一套弹窗（4.0.14）
+    "升级确认": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  try{
+    useWorld(BLAZE);blazeEnter();
+    seedStash();
+    BLAZE_STATE.crystals=99999;
+    blazeLobbyTab=3;blazeRenderLobby();
+    var b=document.getElementById('up_cmd');
+    if(b&&!b.disabled)b.click();
+  }catch(e){}
+},1400);
+""", 7000, "特勤处 · 升级确认（同一套游戏内弹窗）"),
+    # 烽火 · 战备采购：房卡那一排（4.0.12 修的是它那颗购买按钮的样式）
+    "战备采购": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  try{
+    if(typeof useWorld==='function')useWorld(BLAZE);
+    BLAZE_STATE.active=false;
+    blazeLobbyTab=1;
+    blazeRenderLobby();
+    /* 房卡在采购页最下面，滚到底才看得见它们的购买按钮 */
+    var p=document.getElementById('panel');if(p)p.scrollTop=p.scrollHeight;
+  }catch(e){}
+},1200);
+""", 7000, "烽火 · 战备采购：物资与房卡现在是同一套购买按钮"),
+    # 帧率角标（4.0.11）：☰ 菜单打开它之后，右上角那一行
+    "帧率角标": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  try{setFpsBadge(true);}catch(e){}
+},900);
+""", 6000, "右上角的帧率角标（☰ 菜单 → 帧率角标）"),
     # 练枪答错那一屏：反馈里那句"又错一次 · 熟炼度打回第一天"是这次改的
     "练枪答错": ("""
 setTimeout(function(){

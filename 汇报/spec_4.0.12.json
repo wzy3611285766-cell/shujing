@@ -1,0 +1,95 @@
+{
+  "name": "更新汇报_v4.0.12",
+  "version": "4.0.12",
+  "date": "2026-10-15",
+  "kicker": "SHUJING · 烽火的卡",
+  "title": "只留一种卡：房卡一卡两用 + 购买按钮归队",
+  "tagline": "你报的两件事都成立，但第一件的<b>口径要修正一下</b>：两张卡严格说不是同一件东西（一张开铁门、一张开高价值保险箱），可在玩家眼里就是并排卖的两支 🔑 卡、分不清哪个开哪个 —— 所以按你的建议合并了。第二件是<b>真 bug</b>，根因还牵出一个潜伏很久的洞。",
+  "pills": ["钥匙卡已并进房卡", "灰按钮已归队", "冒烟 90 项全过"],
+
+  "sections": [
+    {
+      "h": "一、先说口径：两张卡「重复」到底重在哪",
+      "table": {
+        "head": ["", "原来是什么", "合并后"],
+        "rows": [
+          ["房卡（🔵🟡🔴 三档）", "刷开 <code>s.card</code> 的<b>铁门</b>，进屋搜刮，卡是一次性的", "不变 —— 仍是唯一的钥匙资源"],
+          ["保险箱钥匙卡（🔑 380 🪙）", "开 <code>s.needKey</code> 的 <b>💠 高价值保险箱</b>（指挥部 4 级才刷得出，就在保险箱房里）", "<b>删掉</b>。💠 箱子改成<b>刷一张房卡</b>"],
+          ["玩家的困惑", "采购页并排卖两支 🔑 卡、都写着「开箱用」，<b>分不清哪个开哪个</b>", "只剩一种卡：一扇门，或者一座箱子，自己掂量哪头划算"]
+        ]
+      },
+      "steps": [
+        {"b": "① 扣哪张卡：", "html": "新增 <code>blazeLowestCard()</code> —— <b>扣手里等级最低的那张</b>。红卡（2200）是留着开红门的，不该因为开个箱子被吃掉。"},
+        {"b": "② 什么时候扣：", "html": "只在<b>破解成功</b>时扣，和门一样。破解失败不浪费卡。"},
+        {"b": "③ 时空交易所那张券：", "html": "「钥匙卡补给」→「<b>房卡补给</b>」（仓库 +1 张蓝色房卡），花的时间星尘不变。<b>id 仍是 <code>key</code></b>，老存档里买过的券不丢。"}
+      ]
+    },
+
+    {
+      "h": "二、房卡购买按钮：真 bug，根因是「同一页两套标记」",
+      "paras": [
+        "错误报告里的「样式或行为不一致」—— <b>行为其实是对的</b>（两处都由 <code>BLAZE_GEAR</code> 那个循环统一绑定），坏的是<b>样式</b>："
+      ],
+      "table": {
+        "head": ["", "房卡的购买按钮", "物资的购买按钮"],
+        "rows": [
+          ["标记", "<code>&lt;div class=\"kcard\"&gt;</code> 自己一套", "<code>&lt;div class=\"item\"&gt;</code>"],
+          ["样式来源", "无 —— <code>.kcard</code> 里<b>没有</b> <code>.buy</code> 规则", "<code>.item .buy</code>：金色渐变 + 白字 + 阴影"],
+          ["结果", "<b>浏览器默认灰按钮，价格还被截断</b>（截图里是「320 5」）", "正常金色价格按钮"]
+        ]
+      },
+      "note": {
+        "kind": "good",
+        "html": "修法<b>不是</b>补一条 <code>.kcard .buy</code>（那只是把同一个错误抄两遍），而是把房卡并进<b>同一个渲染器</b>：<code>blazeShopRow(it, gear, accent)</code> 加一个强调色参数（只换边框与底色），房卡与物资从此共用一套标记、一颗按钮、一段绑定 —— <b>一个渲染器不会长出第二套长相</b>。"
+      },
+      "shots": [
+        {"file": "shots_auto/o12_战备采购.png", "cap": "改之前：房卡那一排是灰按钮、价格被截断；上面「保险箱钥匙卡」还在卖"},
+        {"file": "shots_auto/n12_战备采购.png", "cap": "改之后：钥匙卡没了，房卡与物资完全同一套行与金色按钮"}
+      ]
+    },
+
+    {
+      "h": "三、顺手挖出的一个潜伏洞",
+      "paras": [
+        "把房卡并进统一渲染器时，采购页<b>当场炸了</b>：<code>Cannot read properties of undefined (reading 'id')</code>。",
+        "根因：<code>BLAZE_GEAR_OF</code> 这张索引表是在「房卡 push 进 <code>BLAZE_GEAR</code>」<b>之前</b>建的 —— 房卡压根不在表里。老代码写了 <code>const it=BLAZE_GEAR_OF[c.id]</code> 但<b>一次都没用到这个变量</b>，所以这个洞一直藏着；一旦真去用它，就是这种「某天突然炸」的错。已在 push 之后重建索引，并留了注释。"
+      ],
+      "note": {
+        "kind": "bad",
+        "html": "这条值得记一笔：<b>取了变量却没用</b>，等于把「表不完整」这个洞埋在那儿等人踩。同一个模式今天已经踩到第二次了（4.0.9 的 <code>maybeIntro</code> 两份、4.0.12 的索引表少一项）—— 建议池 #12「清理被覆盖的同名函数」就是这一类，建议排一次。"
+      }
+    }
+  ],
+
+  "files": [
+    {"path": "src/js/51_blaze_data.js", "delta": "+22 / -2", "note": "删掉钥匙卡采购项；新增 blazeLowestCard()；在 push 房卡之后重建 BLAZE_GEAR_OF 索引；指挥部 2 级文案去掉钥匙卡"},
+    {"path": "src/js/68_quartermaster.js", "delta": "+26 / -28", "note": "blazeShopRow 加 accent 参数；房卡改用同一渲染器；说明与携带加成同步"},
+    {"path": "src/js/63_blaze_play.js", "delta": "+14 / -8", "note": "💠 箱子改成刷一张房卡（成功时扣最低级那张）+ 打不开时的说明改写"},
+    {"path": "src/js/62_map_gen.js", "delta": "+5 / -2", "note": "needKey → needCard（含生成注释）"},
+    {"path": "src/js/59_interact.js", "delta": "+1 / -1", "note": "交互键文案：需要房卡"},
+    {"path": "src/js/66_blaze_hud.js", "delta": "-1 行", "note": "局内携带条去掉 🔑（房卡本来就按张显示）"},
+    {"path": "src/js/54_timemarket.js", "delta": "+7 / -6", "note": "交易所那张券改成发一张蓝色房卡（id 不变，老存档不丢）"},
+    {"path": "src/js/11_world.js", "delta": "+4 / -2", "note": "券名与说明：钥匙卡补给 → 房卡补给"},
+    {"path": "src/css/10_quiz.css", "delta": "-6 行", "note": "删掉死掉的 .kcard 一套样式"},
+    {"path": "tools/smoke.py", "delta": "+36 行", "note": "新增「房卡唯一」「房卡采购行」两条永久检查"},
+    {"path": "tools/shots.py", "delta": "+15 行", "note": "新增场景「战备采购」（滚到房卡那一段）"},
+    {"path": "news.json", "delta": "+1 条公告", "note": "v4.0.12 公告"},
+    {"path": "version.json", "delta": "4.0.11 → 4.0.12", "note": "版本号"}
+  ],
+
+  "checks": [
+    {"name": "构建 + 公告同源", "ok": true, "detail": "74 个模块 · 公告 v4.0.12 · NEWS_VER 与 news.json 逐字一致"},
+    {"name": "房卡唯一（新增）", "ok": true, "detail": "物资里没有钥匙卡 · 房卡 3 张 · 最低级优先（kc1）· 空手返回 null · 交易所券已改成房卡补给"},
+    {"name": "房卡采购行（新增）", "ok": true, "detail": "采购页零 .kcard · 10 行物资/房卡各有购买按钮 · 房卡按钮 class=\"buy\" · 行为已绑"},
+    {"name": "无头浏览器冒烟", "ok": true, "detail": "90 项全过 / 0 失败 · 控制台 0 报错（file:// 与 http:// 各一遍）"},
+    {"name": "静态体检", "ok": true, "detail": "7 项全过：换行符 / 版本号一致 / 更新日志首条 / 归档齐全 / DOM 引用零悬空 / TODO 0 / 汇报页无外链"}
+  ],
+
+  "rollback": "拿 <code>releases/数境169_v4.0.11_2026-10-15.html</code> 覆盖 <code>shujing-app/index.html</code> 即可退回。<br><b>注意</b>：退回后保险箱钥匙卡会回来，但那时地图上的 💠 箱子生成的是 <code>needCard</code> 而老代码读 <code>needKey</code> → 那些箱子会变成「不用卡也能开」。真要退，建议连地图一起重开。存档本身兼容（房卡是同一批 id，老存档里的 <code>gear.key</code> 只是不再被读）。",
+
+  "next": [
+    "建议池 12 条：#12 就是今天连踩两次的那一类（同名函数 / 索引表缺项），建议排一次清理",
+    "体感收益最大仍是 #1 ☰ 菜单搜索、#10 跳过本题",
+    "上线仍未做：线上还是 v4.0.5，已经攒了 7 个版本的公告"
+  ]
+}

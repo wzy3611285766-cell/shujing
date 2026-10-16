@@ -11,22 +11,31 @@
    到手 = 估值 × 回收折率（BLAZE_SELL_RATE）× 情报处谈价加成。
    估值那么好看、到手却要打折，是刻意的：摸金的爽感在「摸到什么」，
    哈夫币的节奏则由回收行情决定 —— 不打折的话，一局就能买穿整条养成线。 */
+/* 只看价不落账：一条库存记录 + 要卖几件 → 实到手多少（4.0.14）。
+   抽出来是为了**把价说准**：确认弹窗里那个数字，必须和真正入账的数字
+   出自同一套公式。否则界面写 1240、到账 1180，比不显示还糟。
+   （「一键清空仓库」原来写的是"约到手"，因为它自己复算了一遍估的；
+     现在两边同一个函数，写"到手"就是准数。） */
+function blazeSellCalc(rec,take){
+  if(!rec||!(rec.cnt>0))return {take:0,gain:0};
+  const n=Math.max(0,Math.min(take,rec.cnt));
+  const rawUnit=Math.max(1,Math.round(rec.val/Math.max(1,rec.cnt)));
+  const unit=rec.nt?Math.max(1,Math.round(rawUnit*0.4)):rawUnit;
+  return {take:n,gain:Math.max(n,Math.round(unit*n*hqSellMul()*BLAZE_SELL_RATE))};
+}
 function blazeSell(key,n){
   const st=BLAZE_STATE.stash||{};
   const rec=st[key];
-  if(!rec||rec.cnt<=0)return 0;
-  const take=Math.min(n,rec.cnt);
+  const cal=blazeSellCalc(rec,n);
+  if(cal.take<=0)return 0;
+  /* 账面价值按原价扣（rawUnit），不然折价卖过一次后剩下的会被越算越贵 */
   const rawUnit=Math.max(1,Math.round(rec.val/Math.max(1,rec.cnt)));
-  let unit=rawUnit;
-  if(rec.nt)unit=Math.max(1,Math.round(unit*0.4));
-  const gain=Math.max(take,Math.round(unit*take*hqSellMul()*BLAZE_SELL_RATE));
-  /* 账面价值按原价扣，不然折价卖过一次后剩下的会被越算越贵 */
-  rec.cnt-=take;rec.val=Math.max(0,rec.val-rawUnit*take);
+  rec.cnt-=cal.take;rec.val=Math.max(0,rec.val-rawUnit*cal.take);
   if(rec.cnt<=0)delete st[key];
-  BLAZE_STATE.crystals=(BLAZE_STATE.crystals|0)+gain;
-  BLAZE_STATE.sold=(BLAZE_STATE.sold|0)+take;
-  BLAZE_STATE.soldVal=(BLAZE_STATE.soldVal|0)+gain;
-  return gain;
+  BLAZE_STATE.crystals=(BLAZE_STATE.crystals|0)+cal.gain;
+  BLAZE_STATE.sold=(BLAZE_STATE.sold|0)+cal.take;
+  BLAZE_STATE.soldVal=(BLAZE_STATE.soldVal|0)+cal.gain;
+  return cal.gain;
 }
 /* 整档出手：把某一稀有度及以下的仓库存货一次卖光 */
 function blazeSellRarity(rid){

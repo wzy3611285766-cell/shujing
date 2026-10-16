@@ -63,11 +63,7 @@ function ladderSession(id){
   drillSession(L.s,{tier:ks[0].d||2,queue:ks,lad:id});
 }
 
-/* 该科该档有多少道大题 */
-function bigCount(sid,tier){
-  return BIG.filter(q=>q.subject===sid&&(tier==null||q.d===tier)).length;
-}
-function bigList(sid,tier){return BIG.filter(q=>q.subject===sid&&(tier==null||q.d===tier));}
+
 /* 抽一道大题：先按档、再按专题；实在没有就返回 null（调用方退回旧题库） */
 function bigDraw(sid,tier,rid,tid,recent){
   let pool=BIG.filter(q=>q.subject===sid);

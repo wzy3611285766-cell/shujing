@@ -94,20 +94,8 @@ function curvePts(f,xmin,xmax,n,X,Y,ymin,ymax,c,w){
   return segs.map(p=>fPoly(p,{c:c||FC.blue,w:w||2.4})).join('');
 }
 
-/* ============ 数学 ============ */
 /* 三次函数：两个极值点 + 一条水平线（看 a 怎么挪） */
-function figCubic(){
-  const ax=mkAx({xmin:-2.2,xmax:3.2,ymin:-3.4,ymax:4.4,xt:[-2,-1,1,2,3],yt:[-2,2,4],xlab:'x',ylab:'y',O:1});
-  const f=x=>x*x*x-3*x;
-  let s=ax.s+curvePts(f,-2.2,3.2,140,ax.X,ax.Y,-3.4,4.4,FC.blue,2.6);
-  s+=fC(ax.X(-1),ax.Y(2),3.6,{f:'#fff',c:FC.red,w:2.2});
-  s+=fC(ax.X(1),ax.Y(-2),3.6,{f:'#fff',c:FC.red,w:2.2});
-  s+=fT(ax.X(-1)-4,ax.Y(2)-9,'极大',{s:12,c:FC.red});
-  s+=fT(ax.X(1)+18,ax.Y(-2)+19,'极小',{s:12,c:FC.red});
-  s+=fT(ax.X(3.0),ax.Y(3.6),'y = x³ − 3x',{s:13,c:FC.blue,a:'end'});
-  s+=fT(ax.X(2.0),ax.Y(-3.0),'P(2, m) 在曲线外',{s:11,c:FC.sub,a:'end'});
-  return svgWrap(ax.w,ax.h,s);
-}
+
 /* 对数 + 二次型：最大值出现在驻点（恒成立问题的示意） */
 function figLnMax(){
   const ax=mkAx({xmin:0.05,xmax:3.4,ymin:-2.6,ymax:0.7,xt:[1,2,3],yt:[-2,-1,0],xlab:'x',ylab:'y',O:1});
@@ -142,37 +130,9 @@ function figPyramid(){
   return svgWrap(w,h,s);
 }
 /* 指数曲线与对数曲线：公切线问题 */
-function figExpLog(){
-  const ax=mkAx({xmin:-1.5,xmax:4.2,ymin:-2.6,ymax:5.4,xt:[1,2,3,4],yt:[2,4],xlab:'x',ylab:'y',O:1});
-  let s=ax.s;
-  s+=curvePts(x=>Math.exp(x)-1,-1.5,1.6,120,ax.X,ax.Y,-2.6,5.4,FC.blue,2.6);
-  s+=curvePts(x=>Math.log(x),0.08,4.2,140,ax.X,ax.Y,-2.6,5.4,FC.red,2.6);
-  s+=fT(ax.X(1.35),ax.Y(2.9)-10,'y=eˣ−1',{s:13,c:FC.blue,a:'start'});
-  s+=fT(ax.X(3.2),ax.Y(1.16)+18,'y=ln x',{s:13,c:FC.red,a:'start'});
-  s+=fC(ax.X(0),ax.Y(0),3.4,{f:'#fff',c:FC.green,w:2});
-  s+=fC(ax.X(1),ax.Y(1),3.4,{f:'#fff',c:FC.green,w:2});
-  return svgWrap(ax.w,ax.h,s);
-}
+
 /* 椭圆 + 焦点弦 */
-function figEllipse(){
-  const w=360,h=220;
-  const cx=180,cy=110,a=130,b=76,c=Math.sqrt(a*a-b*b);
-  let s=fE(cx,cy,a,b,{c:FC.ink,w:2.2});
-  s+=fL(20,cy,340,cy,{c:FC.axis,w:1.6,m:'fa'});
-  s+=fL(cx,20,cx,200,{c:FC.axis,w:1.6,m:'fa'});
-  s+=fT(348,cy+16,'x',{s:13,c:FC.sub,i:1});s+=fT(cx+12,18,'y',{s:13,c:FC.sub,i:1});
-  const A=[cx+a*Math.cos(-0.62),cy-b*Math.sin(0.62)],B=[cx+a*Math.cos(2.05),cy+b*Math.sin(2.05)];
-  s+=fL(cx+c,cy,A[0],A[1],{c:FC.green,w:2.4});
-  s+=fL(cx+c,cy,B[0],B[1],{c:FC.green,w:2.4});
-  s+=fC(cx-c,cy,3.6,{f:FC.red,c:FC.red,w:2});
-  s+=fC(cx+c,cy,3.6,{f:FC.red,c:FC.red,w:2});
-  s+=fT(cx-c,cy-11,'F₁',{s:13,c:FC.red,b:1});
-  s+=fT(cx+c+13,cy-11,'F₂',{s:13,c:FC.red,b:1});
-  s+=fT(A[0]+4,A[1]-8,'A',{s:14,b:1});
-  s+=fT(B[0]+10,B[1]+14,'B',{s:14,b:1});
-  s+=fT(cx,cy+b+20,'x²/4 + y²/3 = 1',{s:13,c:FC.sub});
-  return svgWrap(w,h,s);
-}
+
 /* 解三角形：顶点 + 边 + 中线 */
 function figTri(){
   const w=360,h=250;
@@ -211,154 +171,18 @@ function figFlow(ts){
   return svgWrap(w,h,s);
 }
 /* 正方体里的三棱锥（外接球同球心） */
-function figSolid(){
-  const w=360,h=230;
-  const P=(x,y,z)=>[150+x*70-y*70,150+x*30+y*30-z*76];
-  const V={'A':P(0,0,0),'B':P(1,0,0),'C':P(1,1,0),'D':P(0,1,0),
-           'A1':P(0,0,1),'B1':P(1,0,1),'C1':P(1,1,1),'D1':P(0,1,1)};
-  let s='';
-  const ed=[[ 'A','B'],['B','C'],['C','D'],['D','A'],['A1','B1'],['B1','C1'],['C1','D1'],['D1','A1'],
-            ['A','A1'],['B','B1'],['C','C1'],['D','D1']];
-  ed.forEach(e=>{s+=fL(V[e[0]][0],V[e[0]][1],V[e[1]][0],V[e[1]][1],{c:FC.ink,w:2});});
-  /* 三棱锥 A-B1-C-D1？选 A, B, C, D1 四点 */
-  const tet=[['A','B'],['B','C'],['C','D1'],['D1','A'],['A','C']];
-  tet.forEach(e=>{s+=fL(V[e[0]][0],V[e[0]][1],V[e[1]][0],V[e[1]][1],{c:FC.red,w:2.6});});
-  Object.keys(V).forEach(k=>{s+=fC(V[k][0],V[k][1],3,{f:'#fff',c:FC.ink,w:1.6});});
-  const o=V['C'];
-  s+=fC(V['A'][0]+(V['C'][0]-V['A'][0])/2,V['A'][1]+(V['C'][1]-V['A'][1])/2+(0),8,{f:'none',c:FC.gold,w:1.8,d:'5 4'});
-  s+=fT(V['A1'][0]-22,V['A1'][1]-8,'A₁',{s:13,b:1});
-  s+=fT(V['B1'][0]+16,V['B1'][1]-8,'B₁',{s:13,b:1});
-  s+=fT(V['C1'][0]+18,V['C1'][1]-4,'C₁',{s:13,b:1});
-  s+=fT(V['D1'][0]-20,V['D1'][1]-4,'D₁',{s:13,b:1});
-  s+=fT(V['A'][0]-14,V['A'][1]+16,'A',{s:13,b:1,c:FC.red});
-  s+=fT(V['B'][0]+16,V['B'][1]+16,'B',{s:13,b:1,c:FC.red});
-  s+=fT(V['C'][0]+18,V['C'][1]+14,'C',{s:13,b:1,c:FC.red});
-  s+=fT(300,212,'棱长 2',{s:13,c:FC.sub});
-  return svgWrap(w,h,s);
-}
 
-/* ============ 物理 ============ */
 /* 斜面 + 物块 + 底端弹簧 */
-function figSlopeSpring(){
-  const w=360,h=230;
-  const O=[40,190],E=[310,190],T=[40,70];
-  let s=fPoly([O,E,T],{c:FC.ink,w:2.6});
-  s+=fL(30,190,330,190,{c:FC.axis,w:1.8});
-  /* 30° 角弧 */
-  s+=fPath('M 90 190 A 50 50 0 0 0 83 163',{c:FC.green,w:1.8});
-  s+=fT(104,178,'30°',{s:13,c:FC.green});
-  /* 物块沿斜面 */
-  const ux=(E[0]-T[0])/Math.hypot(E[0]-T[0],E[1]-T[1]),uy=(E[1]-T[1])/Math.hypot(E[0]-T[0],E[1]-T[1]);
-  const px=T[0]+ux*118,py=T[1]+uy*118;
-  const nx=-uy,ny=ux*-1;
-  s+=fPath('M '+fx(px+nx*14)+' '+fx(py+ny*14)+' L '+fx(px+nx*14+ux*34)+' '+fx(py+ny*14+uy*34)
-    +' L '+fx(px+nx*14+ux*34-nx*28)+' '+fx(py+ny*14+uy*34-ny*28)
-    +' L '+fx(px+nx*14-nx*28)+' '+fx(py+ny*14-ny*28)+' Z',{f:FC.fill,c:FC.blue,w:2.2});
-  s+=fT(px+nx*14+ux*17-nx*14+6,py+ny*14+uy*17-ny*14+2,'m',{s:13,c:FC.ink,b:1});
-  /* 弹簧（锯齿） */
-  let sp='M '+T[0]+' '+T[1];
-  for(let i=1;i<=8;i++){
-    const t=i/8*54;
-    sp+=' L '+fx(T[0]+ux*t+(i%2?nx*9:-nx*9))+' '+fx(T[1]+uy*t+(i%2?ny*9:-ny*9));
-  }
-  s+=fPath(sp,{c:FC.red,w:2.2});
-  s+=fT(T[0]+46,T[1]+40,'轻弹簧',{s:12,c:FC.red});
-  s+=fL(px+nx*14+ux*17,py+ny*14+uy*17,px+nx*14+ux*17+uy*40,py+ny*14+uy*17-ux*40,{c:FC.green,w:1.8,d:1,m:'fg'});
-  s+=fT(px+30,py-46,'v',{s:13,c:FC.green,i:1});
-  s+=fL(300,70,300,190,{c:FC.gray,w:1.6,d:'6 4'});
-  s+=fT(300,62,'h',{s:13,c:FC.sub,i:1});
-  return svgWrap(w,h,s);
-}
+
 /* 板块模型 */
-function figBlock(){
-  const w=360,h=210;
-  let s=fR(40,140,280,26,{f:FC.fill,c:FC.ink,w:2.2,r:3});
-  s+=fR(96,104,74,36,{f:'#dbeafe',c:FC.blue,w:2.2,r:3});
-  s+=fL(24,166,336,166,{c:FC.axis,w:2});
-  s+=fT(180,196,'地面光滑',{s:12,c:FC.sub});
-  s+=fL(133,90,193,90,{c:FC.green,w:2.4,m:'fg'});
-  s+=fT(163,80,'v₀',{s:13,c:FC.green,i:1});
-  s+=fT(133,126,'m',{s:13,b:1});
-  s+=fT(272,158,'M',{s:13,b:1});
-  s+=fL(40,120,40,166,{c:FC.gray,w:1.4,d:'4 3'});
-  s+=fL(320,120,320,166,{c:FC.gray,w:1.4,d:'4 3'});
-  s+=fT(180,60,'μ = 0.2 · 木板足够长',{s:13,c:FC.sub});
-  return svgWrap(w,h,s);
-}
+
 /* 竖直圆轨道 */
-function figLoop(){
-  const w=300,h=250,cx=150,cy=130,r=88;
-  let s=fC(cx,cy,r,{c:FC.ink,w:2.6});
-  s+=fC(cx,cy,4,{f:FC.sub,c:FC.sub});
-  s+=fC(cx,cy-r,5,{f:FC.red,c:FC.red,w:2});
-  s+=fC(cx,cy+r,5,{f:FC.blue,c:FC.blue,w:2});
-  s+=fT(cx,cy-r-12,'最高点',{s:12,c:FC.red});
-  s+=fT(cx,cy+r+22,'最低点',{s:12,c:FC.blue});
-  s+=fT(cx+r+16,cy+4,'R',{s:13,c:FC.sub,i:1});
-  /* 一段弧上放个小球 */
-  const ang=3.5;
-  s+=fC(cx+r*Math.cos(ang),cy+r*Math.sin(ang),7,{f:FC.gold,c:'#8a5a00',w:2});
-  s+=fT(cx+r*Math.cos(ang)-22,cy+r*Math.sin(ang)-10,'P',{s:13,b:1});
-  s+=fT(cx,cy+r+40,'光滑圆轨道 · 半径 R',{s:12,c:FC.sub});
-  return svgWrap(w,h,s);
-}
+
 /* 导轨 + 磁场 + 导体棒 */
-function figRail(){
-  const w=360,h=220;
-  let s=fR(30,40,300,140,{c:FC.ink,w:2.4,r:2});
-  s+=fR(150,40,64,140,{f:'#f2f6fa',c:'none',w:0});
-  s+=fR(150,40,64,140,{c:FC.grid,w:1.4,d:'3 3'});
-  /* 磁场叉 */
-  for(let x=166;x<=206;x+=20)for(let y=58;y<=170;y+=24){
-    s+=fL(x-5,y-5,x+5,y+5,{c:FC.green,w:1.6})+fL(x-5,y+5,x+5,y-5,{c:FC.green,w:1.6});
-  }
-  s+=fR(158,92,48,10,{f:FC.blue,c:FC.blue,w:2,r:2});
-  s+=fT(182,80,'ab',{s:13,b:1,c:FC.blue});
-  s+=fL(182,102,182,124,{c:FC.red,w:2.4,m:'fr'});
-  s+=fT(196,120,'v',{s:13,c:FC.red,i:1});
-  s+=fR(280,58,30,26,{f:'none',c:FC.ink,w:2.2,r:2});
-  s+=fT(295,80,'R',{s:13,b:1});
-  s+=fT(80,64,'B',{s:13,c:FC.green,b:1,i:1});
-  s+=fT(182,196,'间距 L · 磁感应强度 B',{s:12,c:FC.sub});
-  return svgWrap(w,h,s);
-}
+
 /* 质谱仪：加速电场 + 磁场半圆 */
-function figMassSpec(){
-  const w=360,h=220;
-  let s=fR(40,60,8,100,{f:FC.ink,c:FC.ink,w:1.6});
-  s+=fR(76,60,8,100,{f:FC.ink,c:FC.ink,w:1.6});
-  s+=fT(62,50,'U',{s:13,c:FC.sub,i:1});
-  s+=fL(84,110,118,110,{c:FC.blue,w:2,m:'fb'});
-  s+=fT(100,100,'v',{s:12,c:FC.blue,i:1});
-  /* 磁场区域 */
-  s+=fR(120,30,210,160,{f:'#f4f8fb',c:FC.grid,w:1.4,d:'4 4'});
-  for(let x=140;x<=310;x+=22)for(let y=48;y<=176;y+=24){
-    s+=fL(x-5,y-5,x+5,y+5,{c:FC.green,w:1.4})+fL(x-5,y+5,x+5,y-5,{c:FC.green,w:1.4});
-  }
-  s+=fPath('M 130 110 A 78 78 0 0 1 286 110',{c:FC.red,w:2.6});
-  s+=fC(130,110,4,{f:FC.red,c:FC.red});
-  s+=fC(286,110,4,{f:FC.red,c:FC.red});
-  s+=fT(208,152,'d',{s:13,c:FC.red,i:1});
-  s+=fT(190,44,'B',{s:13,c:FC.green,b:1,i:1});
-  return svgWrap(w,h,s);
-}
+
 /* 卫星变轨：低圆轨道 → 椭圆转移 → 高圆轨道 */
-function figOrbit(){
-  const w=330,h=240,cx=165,cy=120;
-  let s=fC(cx,cy,14,{f:FC.gold,c:'#a8760a',w:2});
-  s+=fC(cx,cy,44,{c:FC.blue,w:2.2});
-  s+=fE(cx,cy,116,72,{c:FC.green,w:2.2,d:'7 5'});
-  s+=fC(cx,cy,116,{c:FC.gray,w:1.6,d:'3 4'});
-  const a=cx+44,b=cy;
-  s+=fC(a,b,5,{f:FC.blue,c:FC.blue,w:1.6});
-  s+=fT(a,b-12,'1',{s:12,c:FC.blue,b:1});
-  const p=cx+116*Math.cos(-0.55),q=cy+72*Math.sin(-0.55);
-  s+=fC(p,q,5,{f:FC.green,c:FC.green,w:1.6});
-  s+=fT(p+2,q-12,'2',{s:12,c:FC.green,b:1});
-  s+=fT(cx,cy+34,'地球',{s:12,c:'#8a5a00'});
-  s+=fT(238,206,'r₁ : r₂ = 1 : 4',{s:12,c:FC.sub});
-  return svgWrap(w,h,s);
-}
 
 /* ============ 化学 ============ */
 /* 浓度—时间图（三段式的图） */
@@ -577,29 +401,7 @@ function figPhoto(){
   return svgWrap(ax.w,ax.h,s,'photo');
 }
 /* 分裂过程中 DNA / 染色体 数量变化 */
-function figDiv(){
-  const w=360,h=210;
-  const bx=50,by=170,bw=260,bh=110;
-  let s=fL(bx,by,bx+bw,by,{c:FC.axis,w:2,m:'fa'});
-  s+=fL(bx,by,bx,30,{c:FC.axis,w:2,m:'fa'});
-  const xs=[70,120,170,220,270];
-  const dna=[8,16,16,8,8],ch=[8,8,16,8,8];
-  for(let i=0;i<4;i++){
-    const x0=xs[i],x1=xs[i+1];
-    s+=fPoly([[x0,by-dna[i]/16*bh],[x1,by-dna[i+1]/16*bh]],{c:FC.blue,w:2.6});
-    s+=fPoly([[x0,by-ch[i]/16*bh],[x1,by-ch[i+1]/16*bh]],{c:FC.red,w:2.2,d:'6 4'});
-  }
-  const labs=['间期','前中','后期','末'];
-  xs.forEach((x,i)=>{s+=fT(x,by+18,labs[i]||'',{s:11,c:FC.sub});});
-  s+=fT(bx-8,by-8,'8',{s:12,c:FC.sub,a:'end'});
-  s+=fT(bx-8,by-bh+4,'16',{s:12,c:FC.sub,a:'end'});
-  s+=fT(300,60,'DNA',{s:13,c:FC.blue,b:1,a:'start'});
-  s+=fT(300,84,'染色体',{s:13,c:FC.red,b:1,a:'start'});
-  s+=fT(180,204,'2n = 8',{s:12,c:FC.sub});
-  s+=fL(bx,by,bx,30,{c:FC.gold,w:1.6,d:'4 3'}).replace('<line','<line data-a="scan"');
-  s+=fT(180,26,'',{s:12,c:FC.gold,b:1}).replace('<text','<text data-a="hud"');
-  return svgWrap(w,h,s,'div');
-}
+
 /* 食物网 */
 function figFood(){
   const w=360,h=220;

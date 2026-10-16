@@ -1,0 +1,105 @@
+{
+  "name": "更新汇报_v4.0.15",
+  "version": "4.0.15",
+  "date": "2026-10-16",
+  "kicker": "SHUJING · 代码清理",
+  "title": "清掉 600 行永远跑不到的代码",
+  "tagline": "「优化一下屎山代码」——这一轮<strong>先量后动</strong>：每一处删除都给出可验证的判据。玩法零变化：102 项冒烟 + 572 个题目生成器逐项照旧，产物还小了 32 KB。",
+  "pills": ["删 41 个函数 / 约 600 行", "产物 −32.4 KB（−1.70%）", "新增死代码体检"],
+
+  "sections": [
+    {
+      "h": "一、先弄清一件事：同名函数里谁生效",
+      "paras": [
+        "这个工程的产物是<strong>一个</strong> <code>&lt;script&gt;</code>。JS 里函数声明会在脚本实例化阶段<strong>全部提升</strong>；同名重复声明时，<strong>最后一次声明覆盖前面的</strong>——而且是从脚本第一行起就是这个绑定。",
+        "这意味着：<code>37_hud.js</code> 里的 <code>updateHUD</code> 被 <code>57_multination.js</code> 里那份盖住之后，前者<strong>连加载期调用都走不到</strong>。写代码的人改了 37 那个文件，跑起来毫无变化——「改了没反应」就是这么来的。"
+      ],
+      "code": "实测（.tmp_play/_hoist.py，用无头浏览器真跑）：\n\n  before:last     ← 调用写在两份声明之前，拿到的已是后一份\n  middle:last\n  after:last\n  capture:last    ← 按值捕获（f:figXxx 那种）拿到的也是后一份\n  assign:decl/assigned   ← 只有 var 赋值式「覆盖」才依赖书写顺序\n\n结论：被覆盖的那些是纯死代码，删掉**行为不变**；\n      但也正因如此，题图 f:figBlock 这类引用一直用的是新引擎那份。",
+      "note": {
+        "kind": "good",
+        "html": "这条不靠读规范推，是实测的。它决定了后面 552 行的删除是「零风险」还是「动玩法」。"
+      }
+    },
+
+    {
+      "h": "二、量出来：屎山的具体形状",
+      "paras": [
+        "新写了 <code>tools/deadcode.py</code> 做静态分析，先出清单再动手。它查五样：同名函数多处声明、从没被引用的函数、没人用的 CSS 类、同一上下文里打架的 CSS、整条被覆盖的零贡献 CSS。"
+      ],
+      "table": {
+        "head": ["项目", "清理前", "清理后"],
+        "rows": [
+          ["同名函数多处声明", "<b>28 组</b> · 死的那些约 552 行", "0 组"],
+          ["从没被引用的顶层函数", "<b>9 个</b> · 约 52 行（删完又级联出 1 个）", "0 个"],
+          ["CSS 里没人用的类", "0 个（第一版工具误报 13 个）", "0 个"],
+          ["整条被覆盖的 CSS（零贡献）", "<b>3 条</b>", "0 条"],
+          ["同一上下文里打架的 CSS", "10 组", "7 组（合并有风险，留给后续）"]
+        ]
+      },
+      "note": {
+        "html": "第一版工具把<b>构建期生成的公告卡样式</b>误判成「孤儿」（13 个）、把 <code>@media</code> 里的响应式覆盖误判成「打架」、还把注释删了再数行号导致整体偏一位。<b>工具的结论先被核对过三轮，才拿它当删除依据。</b>"
+      }
+    },
+
+    {
+      "h": "三、删了什么（每一类都有判据）",
+      "items": [
+        "<b>同名被覆盖的死代码 28 组</b>：如 <code>addStele/addSpirit/addGuard/addHermit</code>（10_bank_skeleton）、9 个 <code>fig*</code> 图函数（13）、<code>updateHUD/questText/updateActBtn/tierLabel</code>（37）、<code>healState</code>（34）、<code>showFormula/spotNameOf/guideCandidates</code>（46）、<code>showTeleport/showMenu/saveSummary</code>（49）、<code>syncModeButtons/switchMode</code>（53、57）、<code>findSpawn</code>（55）",
+        "<b>从没被引用的函数 9 个</b>：<code>piTerm</code>、<code>bigCount/bigList</code>、<code>qfSet/qfMove</code>、<code>figSolid/figExpLog</code>、<code>wbDrop</code>——删完还<b>级联</b>出第 10 个：<code>teleportTo</code>，它唯一的调用者刚被删掉",
+        "<b>3 条零贡献 CSS</b>：<code>10_quiz.css</code> 里旧版样式被后面的编号章节整段压住，其中这三条规则的<b>每一条属性都被后面同名规则重新写过</b>，对最终样式零贡献",
+        "<b>3 个小节标题</b>：它们下面唯一的住户已经全被删了，留着就是一句悬空的注释"
+      ],
+      "code": "产物体积：1,955,591 → 1,922,437 字节\n           −33,154 字节（−32.4 KB · −1.70%）\n\n顶层函数：613 → 604 个（删 41 个、其中 9 个此前从没被调用）\n模块数不变：74 个"
+    },
+
+    {
+      "h": "四、怎么保证没删错",
+      "steps": [
+        {"b": "① 两种算法交叉验证：", "html": "每个函数的跨度同时用「大括号配平」和「下一个列 0 顶层语句」算；<b>两者不一致就不动手</b>——<code>showFormula</code>、<code>showMenu</code> 因为「模板字面量里又套了一层模板」被挡下，改人工删。"},
+        {"b": "② 字符串先盖掉再配平：", "html": "否则 <code>{t:'stele',…}</code> 这类字面量会把跨度带到<b>下一个函数身上</b>（第一版就切歪了）。"},
+        {"b": "③ 注释归属要判：", "html": "函数上方的注释块只在<b>完整属于它</b>时才一起带走；小节标题一律保留。"},
+        {"b": "④ 构建器的硬约束兜底：", "html": "<code>tools/build.py</code> 要求每个模块<b>以 CRLF 结尾</b>。这轮脚本切行时把 46/49 写成清一色 LF，构建<b>当场拒绝</b>，没有带着坏文件跑下去。"},
+        {"b": "⑤ 跑完全部回归：", "html": "102 项冒烟 + 572 个题目生成器 + 四国直达 + 存档往返 + 错题回流 + 交易弹窗，全部照旧；再抽三屏截图核对观感。"}
+      ],
+      "shots": [
+        {"file": "shots_auto/c15_练枪答错.png", "cap": "答题面板：删掉的三条 CSS 都在这一屏上，选项三态与题干排版与改前一致"},
+        {"file": "shots_auto/c15_公告.png", "cap": "公告卡：构建期生成的样式，工具第一版把它误判成孤儿"},
+        {"file": "shots_auto/c15_菜单.png", "cap": "☰ 菜单：入口齐全，行为不变"}
+      ]
+    },
+
+    {
+      "h": "五、防止再长回来",
+      "paras": [
+        "清理只做一次没用——半年后还会攒出第二座山。<code>tools/deadcode.py</code> 已接进<b>每日体检</b>，并且带一份基线（<code>tools/deadcode_baseline.json</code>）："
+      ],
+      "code": "python tools/deadcode.py          看清单（人看）\npython tools/deadcode.py --check  给巡检用：出现「没登记过」的问题就退回码 1\n\n思路和骨架比对一样：**不禁止覆盖，但不许悄悄变多**。\n今天各项都是 0 —— 以后任何一项从 0 变 1，当天巡检就会报出来。"
+    }
+  ],
+
+  "files": [
+    {"path": "tools/deadcode.py", "delta": "新增 400 行", "note": "静态分析：同名覆盖 / 死函数 / 孤儿 CSS / 打架 CSS / 零贡献 CSS"},
+    {"path": "tools/deadcode_baseline.json", "delta": "新增", "note": "基线：不禁止覆盖，但不许悄悄变多"},
+    {"path": "tools/daily.py", "delta": "+8 / −16", "note": "体检新增「死代码 / 同名覆盖」一项；替掉原来手写的一段同名统计"},
+    {"path": "src/js/（15 个模块）", "delta": "−604 行", "note": "41 个死函数 + 3 个小节标题（含级联删掉的 teleportTo）"},
+    {"path": "src/css/10_quiz.css", "delta": "−4 行", "note": "3 条零贡献规则（属性全被后面的同名规则重新写过）"},
+    {"path": "news.json", "delta": "+1 条公告", "note": "v4.0.15 公告"},
+    {"path": "version.json", "delta": "4.0.14 → 4.0.15", "note": "版本号"}
+  ],
+
+  "checks": [
+    {"name": "构建 + 公告同源", "ok": true, "detail": "74 个模块 · 1,922,437 字节（1.833 MB）· 公告 v4.0.15 · 逐字节比对通过"},
+    {"name": "死代码 / 同名覆盖（新增）", "ok": true, "detail": "同名函数 0 组 / 未引用函数 0 个 / 孤儿类 0 个 / 零贡献规则 0 条"},
+    {"name": "无头浏览器冒烟", "ok": true, "detail": "102 项全过 / 0 失败 · 含 572 个题目生成器 · 控制台 0 报错（file:// 与 http:// 各一遍）"},
+    {"name": "静态体检", "ok": true, "detail": "8 项全过（换行符 / 版本号一致 / 更新日志首条 / 归档齐全 / DOM 引用零悬空 / 死代码 / TODO 0 / 汇报页无外链）"},
+    {"name": "视觉核对", "ok": true, "detail": "答题面板 · 公告卡 · ☰ 菜单 三屏截图与改前一致"}
+  ],
+
+  "rollback": "拿 <code>releases/数境169_v4.0.14_2026-10-15.html</code> 覆盖 <code>shujing-app/index.html</code> 即可退回。<br>退回会把那批死代码一起带回来（玩法同样不变）。存档零影响。",
+
+  "next": [
+    "还剩 7 组「同一上下文里打架」的 CSS：都在 10_quiz.css 的新旧两段之间，<b>合并要拆分选择器组</b>，有视觉风险，得单独一轮 + 截图对照",
+    "结构性重复还很多：4 套同构的答题会话脚手架（39×2 / 49 / 43）、87 处内联面板模板、39 处 save();updateHUD(); —— 这些要真重构，不是删几行，适合单独立项",
+    "上线仍未做：线上还是 v4.0.5，已经攒了 10 个版本的公告"
+  ]
+}

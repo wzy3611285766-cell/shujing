@@ -54,9 +54,7 @@ function visLen(s){
   }
   return w;
 }
-function fitSplit(s,re){
-  return String(s).replace(new RegExp(re.source,'g'),m=>m+'\u0001').split('\u0001');
-}
+
 function fitSplit(s,re){
   return String(s).replace(new RegExp(re.source,'g'),m=>m+'\u0001').split('\u0001');
 }
@@ -450,6 +448,54 @@ function closePanel(){
   /* intro 标记不在这里清：交给 openPanel 处理，
      这样"intro 被别的入口顶掉"也能记成已读，不会反复弹。 */
 }
+/* =========================================================
+   游戏内确认弹窗（4.0.14）
+   ---------------------------------------------------------
+   以前这些"要不要卖"的确认走的是浏览器原生 confirm()。
+   它在手机上会**把全屏踢掉**：卖一次东西 → 弹一次原生框 → 全屏没了 →
+   回来还得再点一次「⛶ 全屏」。频繁交易时，这件事比点错按钮还烦。
+
+   换成面板里的一张卡：不碰浏览器 UI，全屏状态原地不动。
+   顺带比原生 confirm 多给两样东西：
+     · 明细行（卖的是哪几样、各多少件、各值多少）
+     · **到手金额用大字标出来** —— 这才是玩家真正要看的那个数
+   ---------------------------------------------------------
+   o = {icon,title,sub,lines:[{e,n,c,v}],maxLines,total:{label,v,unit,sub},
+        note,warn,ok,no}
+   cbOk / cbNo 是回调（和工程里其它面板一个路子）。两个回调都要负责
+   "把上一屏画回来"（交易站的惯例是 re()）；没给 cbNo 就只是关掉弹窗。
+   ========================================================= */
+function uiConfirm(o,cbOk,cbNo){
+  if(!o)o={};
+  const keep=panel.scrollTop||0;     // 上一屏滚到哪：交易站一屏列不完，回来别从头翻
+  const all=o.lines||[];
+  const shown=all.slice(0,o.maxLines||6);
+  const more=all.length-shown.length;
+  const lines=shown.map(L=>`<div class="cf-line">
+      <span class="e">${L.e||''}</span>
+      <span class="n">${esc(L.n||'')}${L.c?` <b>${esc(L.c)}</b>`:''}</span>
+      <span class="v">${L.v==null?'':L.v}</span></div>`).join('')
+    +(more>0?`<div class="cf-line cf-more">… 另有 ${more} 种物资</div>`:'');
+  const t=o.total;
+  openPanel(`
+    <h2>${o.icon||'❓'} ${esc(o.title||'确认一下')}</h2>
+    ${o.sub?`<div class="sub">${o.sub}</div>`:''}
+    ${lines?`<div class="cf-list">${lines}</div>`:''}
+    ${t?`<div class="cf-total"><div class="lb">${esc(t.label||'到手')}</div>
+      <div class="big">${t.v==null?'':t.v}<span class="u">${t.unit||''}</span></div>
+      ${t.sub?`<div class="sm">${t.sub}</div>`:''}</div>`:''}
+    ${o.note?`<div class="cf-note">${o.note}</div>`:''}
+    ${o.warn?`<div class="cf-warn">⚠️ ${o.warn}</div>`:''}
+    <div class="row">
+      <button class="btn" id="ucNo">${esc(o.no||'取消')}</button>
+      <button class="btn primary" id="ucOk">${esc(o.ok||'确认')}</button>
+    </div>`);
+  /* 回调里通常会重画上一屏（re() 会把滚动位置清零），画完再把位置放回去 */
+  const rewind=()=>{try{if(panelOpen())panel.scrollTop=keep;}catch(e){}};
+  $('ucNo').onclick=()=>{closePanel();if(cbNo)cbNo();rewind();};
+  $('ucOk').onclick=()=>{audioKick();closePanel();if(cbOk)cbOk();rewind();};
+}
+
 /* 「没走按钮」的关闭（Esc / 点遮罩）统一走这里收尾。
    烽火里一堆面板是靠按钮复位的：按钮点了才会 BZ.busy=false、才会结算。
    直接从旁边关掉的话，busy 一直卡着 —— 互动键不亮、巡逻队不动、撤离点也点不了，

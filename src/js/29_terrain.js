@@ -139,10 +139,20 @@ function drawProp(c,st,x,y,r,rot,color,alpha){
 /* ---------- 实体层 ---------- */
 const ENT={layer:null,map:new Map()};
 function entInit(){ENT.layer=document.getElementById('ents')||null;fxInit();}
-function entReset(){
+/* 摘掉实体层与特效层里的全部节点。
+   用途一：换世界（entReset 调它）。
+   用途二：同一个世界里换场 —— 基地 ⇄ 战场（4.0.13）。
+   以前只有换世界才清，于是营地那枚 🎖️ 指挥部会**粘在战场上不动**
+   （实体只在"这一帧还被画到"时才更新，不再画到的节点没人收拾），
+   反过来打完回基地，战场上那些箱子 / 守卫也会一路留在营地上。
+   这里不动 crystalSeen：换场时结晶数没变过，不必让它再弹一次。 */
+function entWipe(){
   ENT.map.forEach(n=>{if(n.parentNode)n.parentNode.removeChild(n);});
   ENT.map.clear();
   fxClear();
+}
+function entReset(){
+  entWipe();
   crystalPending=null;crystalSeen=-1;   // 换世界后别让旧数字多弹一次
 }
 function entNode(key){

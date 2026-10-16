@@ -47,11 +47,9 @@ function qf(svg,c,k){
   if(c[k]===undefined)c[k]=svg.querySelector('[data-a="'+k+'"]');
   return c[k];
 }
-function qfSet(el,attr,v){if(el)el.setAttribute(attr,v);}
+
 function qfTxt(el,t){if(el&&el.textContent!==t)el.textContent=t;}
-function qfMove(el,x,y){
-  if(el)el.setAttribute('transform','translate('+fx(x)+','+fx(y)+')');
-}
+
 /* 缓动：加速 / 减速 */
 const easeIn=p=>p*p, easeOut=p=>1-(1-p)*(1-p);
 function clamp01(p){return p<0?0:p>1?1:p;}

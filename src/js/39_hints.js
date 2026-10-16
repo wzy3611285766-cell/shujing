@@ -654,30 +654,7 @@ function openHermit(s){
 }
 
 /* ---------------- 图鉴 / 错题本 ---------------- */
-function showDex(){
-  const got=SPIRITS.filter(s=>state.caught[s.id]).length;
-  const badges=REGIONS.map(r=>`<div class="bd ${state.badges[r.id]?'on':''}"><div class="e">${state.badges[r.id]?r.emoji:'🔒'}</div><div class="n">${r.name}</div></div>`).join('');
-  openPanel(`
-    <h2>📖 图鉴与徽章</h2>
-    <div class="sub">精灵 ${got} / ${SPIRITS.length} · 徽章 ${Object.keys(state.badges).length} / ${REGIONS.length}</div>
-    <div class="badges">${badges}</div>
-    <div class="pbar"><i style="width:${got/SPIRITS.length*100}%"></i></div>
-    <div class="grid6" style="margin-top:14px">
-      ${SPIRITS.map(s=>`<div class="sp ${state.caught[s.id]?'got':''}"><div class="e">${state.caught[s.id]?s.e:'❔'}</div><div class="n">${state.caught[s.id]?s.n:'未收服'}</div><div class="k">${s.k}</div></div>`).join('')}
-    </div>
-    <div class="center" style="margin-top:14px;font-size:var(--fs-sm);color:#9cc0e0">
-      累计答对 ${state.totalRight} 题 · 答错 ${state.totalWrong} 题 · 错题本 ${state.wrongBook.length} / ${WRONG_CAP} 题${(state.wrongDone||[]).length?' · 已掌握 '+(state.wrongDone||[]).length+' 题':''}
-    </div>
-    <div class="row"><button class="btn" id="wb">📕 错题中心${wbDueList().length?'（'+wbDueList().length+'）':''}</button><button class="btn" id="rp">📊 学习报告</button><button class="btn" id="rs">重开</button><button class="btn primary" id="ok">关闭</button></div>
-  `);
-  $('ok').onclick=closePanel;
-  $('rp').onclick=showReport;
-  $('rs').onclick=()=>{
-  if(confirm('确定清空【闯关模式】的进度重新开始吗？\n\n会清掉：四国的结晶、徽章、精灵、错题本、石碑记录、传送塔\n科学编年史的进度不受影响\n\n（建议先到「💾 存档」导出一份存档码留底）'))
-    resetSave();
-};
-  $('wb').onclick=showWrongBook;
-}
+
 $('btnDex').onclick=()=>{audioKick();if(CUR===EPIC)showChronicle();else showDex();};
 /* 错题本：容量 WRONG_CAP（200），并按四科筛选。
    老存档里的题没有 subject 字段，用 rid 反查科目补齐。 */

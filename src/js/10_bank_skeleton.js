@@ -999,9 +999,4 @@ function approachFor(q){
   return {r:right,opts:shuffle(set),why:why};
 }
 
-/* ---------- 世界数据助手（内容模块调用） ---------- */
-function addStele(x,y,r){SPOTS.push({t:'stele',x,y,r,e:'🗿',name:'智慧石碑'});}
-function addSpirit(x,y,id){const s=SPIRITS.find(v=>v.id===id);SPOTS.push({t:'spirit',x,y,sid:id,r:s?s.r:'',e:s?s.e:'✨',name:s?s.n:'精灵'});}
-function addGuard(x,y,r,n){SPOTS.push({t:'guard',x,y,r,e:'🛡️',name:n});}
-function addHermit(x,y,tip){SPOTS.push({t:'hermit',x,y,e:'🧙',name:'引路人',tip});}
 

@@ -54,7 +54,6 @@ function questTextBlaze(){
   if(BZ.gear.beacon) perk+=' 📡';
   if(BZ.gear.bag)    perk+=' 🎒';
   if(BZ.gear.ins)    perk+=' 📄';
-  if(BZ.gear.key)    perk+=' 🔑';
   if(BZ.gear.scan)   perk+=' 📟';
   if(BZ.gear.medkit) perk+=' 💊';
   if(BZ.gear.luck)   perk+=' 🍀';

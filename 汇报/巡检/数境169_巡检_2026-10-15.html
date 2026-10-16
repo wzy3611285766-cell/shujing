@@ -37,28 +37,28 @@ footer{margin-top:30px;color:#7d94ab;font-size:12px;text-align:center}
 </style></head><body><div class="wrap"><header><div class="k">SHUJING · DAILY HEALTH CHECK</div>
 <h1>每日巡检 · 2026-10-15</h1>
 <p>一条命令跑完四步体检：构建 → 骨架比对 → 无头浏览器真跑一遍 → 静态体检。下面是今天的结果，以及一份可以挑着做的改进建议清单。</p>
-<span class="pill">版本 v4.0.10</span>
-<span class="pill">耗时 7s</span>
+<span class="pill">版本 v4.0.14</span>
+<span class="pill">耗时 21s</span>
 <span class="pill">体检 4 步全过</span>
 <span class="pill">建议 13 条待选</span>
 </header>
 <div class="note">✅ <b>体检全过</b>：构建、公告同源、骨架比对、无头浏览器冒烟、静态体检 —— 没有需要马上动手的问题。下面那 13 条建议，挑一条回「做 #编号」我就开工。</div>
 <h2>一、四步体检</h2><div class="card"><table><tr><th>步骤</th><th>结果</th><th>详情</th></tr>
-<tr><td>① 构建 + 公告同源</td><td class="ok">✅</td><td>版本 v4.0.10 · 模块 74 个 · 1939763 字节 (1.85 MB) · sha256 434bb5a9e12a4ab0 · 公告 v4.0.10 · NEWS_VER v4.0.10-eeafdffa（内容摘要，改公告就会变）</td></tr>
-<tr><td>② 骨架比对（对比拆分前基线）</td><td class="ok">✅</td><td>产物 +13897 字节 · 基线独有 125 行 / 产物独有 376 行（相对基线累计改动）</td></tr>
-<tr><td>③ 无头浏览器冒烟（file:// + http:// 各一遍）</td><td class="ok">✅</td><td>81 项通过 / 0 项失败 · 耗时 7s</td></tr>
+<tr><td>① 构建 + 公告同源</td><td class="ok">✅</td><td>版本 v4.0.14 · 模块 74 个 · 1955591 字节 (1.86 MB) · sha256 77cdb0a8354188bc · 公告 v4.0.14 · NEWS_VER v4.0.14-f45e59d0（内容摘要，改公告就会变）</td></tr>
+<tr><td>② 骨架比对（对比拆分前基线）</td><td class="ok">✅</td><td>产物 +29725 字节 · 基线独有 196 行 / 产物独有 590 行（相对基线累计改动）</td></tr>
+<tr><td>③ 无头浏览器冒烟（file:// + http:// 各一遍）</td><td class="ok">✅</td><td>102 项通过 / 0 项失败 · 耗时 20s</td></tr>
 <tr><td>④ 静态体检</td><td class="ok">✅</td><td>7 项检查 · 0 项未过</td></tr>
 </table></div>
 <h2>二、静态体检明细</h2><div class="card"><table><tr><th>检查项</th><th></th><th>结果</th></tr>
 <tr><td>模块换行符（CRLF 约定 · 74 个模块）</td><td class="ok">✅</td><td>全部合规</td></tr>
-<tr><td>版本号三处一致（version.json / 产物 / 公告）</td><td class="ok">✅</td><td>v4.0.10 · NEWS_VER v4.0.10-eeafdffa</td></tr>
-<tr><td>更新日志首条 = 当前版本</td><td class="ok">✅</td><td>CHANGELOG 顶上就是 v4.0.10（版本谱系与涨号规则也写在开头）</td></tr>
+<tr><td>版本号三处一致（version.json / 产物 / 公告）</td><td class="ok">✅</td><td>v4.0.14 · NEWS_VER v4.0.14-f45e59d0</td></tr>
+<tr><td>更新日志首条 = 当前版本</td><td class="ok">✅</td><td>CHANGELOG 顶上就是 v4.0.14（版本谱系与涨号规则也写在开头）</td></tr>
 <tr><td>releases/ 里有当前版本的归档</td><td class="ok">✅</td><td>已归档，可随时回退</td></tr>
-<tr><td>DOM 引用不悬空（202 处 $('id')）</td><td class="ok">✅</td><td>全部有着落</td></tr>
+<tr><td>DOM 引用不悬空（206 处 $('id')）</td><td class="ok">✅</td><td>全部有着落</td></tr>
 <tr><td>待办标记（TODO / FIXME）</td><td class="ok">✅</td><td>0 处（无）</td></tr>
 <tr><td>汇报页无外链（图片全内联）</td><td class="ok">✅</td><td>汇报页自查：全部通过 ✅</td></tr>
 </table></div>
-<h2>三、冒烟明细（游戏里真跑一遍）</h2><div class="card"><pre>  ✅ 构建版本         4.0.10
+<h2>三、冒烟明细（游戏里真跑一遍）</h2><div class="card"><pre>  ✅ 构建版本         4.0.14
   ✅ 题目生成器        572
   ✅ 国度           5
   ✅ 精灵           15
@@ -73,17 +73,24 @@ footer{margin-top:30px;color:#7d94ab;font-size:12px;text-align:center}
   ✅ 四国直达         四国都能直达出生域（⚡力理亚 → 🔥嬗变利亚 → 🌿生衍利亚 → 📐数理群岛）
   ✅ 顶栏练枪入口       四个世界各 1 个（闯关=1 · 史诗=1 · 练枪场=1 · 烽火=1）
   ✅ 菜单练枪入口       菜单里 1 个（练枪场 · 压轴专训）
-  ✅ 更新公告         v4.0.10-eeafdffa · 全屏按钮回到更新公告里：一次更新，一次提醒
+  ✅ 更新公告         v4.0.14-f45e59d0 · 卖东西的确认框搬进游戏了：不再把你踢出全屏
   ✅ 全屏入口         ☰ #mFs · 公告 #newsFs · 通知栏 #upFs（三处都在、都绑了行为）· 平台说明 5 条
   ✅ 云端对账决策       9 组对账场景 + 防重载模拟全部通过
   ✅ 账号与同步        本地地址：按设计提示不支持登录（线上域名下才可用）
   ✅ 存档面板         开合正常
-  ✅ 菜单版本号        v4.0.10（与 BUILD_VER 一致）
+  ✅ 菜单版本号        v4.0.14（与 BUILD_VER 一致）
+  ✅ 战术地图可拖动      画布 touch-action=pan-y · 面板 pan-y · 图中间可拖 · 画布 342px 高
+  ✅ 换场清实体层       营地不画掩体/碎石 · 部署即清空实体层 · 回营地恢复
+  ✅ 交易走游戏内弹窗     到手 260 🪙 与到账一致 · 全程 0 次浏览器 confirm · 取消不落账
+  ✅ 升级走游戏内弹窗     Lv1→Lv2 · 花费 2200 🪙 写在弹窗里 · 取消不扣钱 · 0 次 confirm
+  ✅ 房卡唯一         物资里没有钥匙卡 · 房卡 3 张 · 最低级优先（kc1）· 交易所券已改成房卡补给
+  ✅ 房卡采购行        10 行同一套标记 · 房卡按钮 class="buy" · 行为已绑
+  ✅ 帧率角标         菜单可开关 · 打开时右上角有数（—fps · 1.9ms）· 关掉即拆干净
   ✅ 错题回流内核       新收 / 打回第一天（box 3→0 · badN+1）/ 从已掌握拉回 —— 三种都对
   ✅ 练枪结算重做       🔁 趁热重做刚错的 1 题 → 面板「🔁 重做刚错的题」4 个选项
   ✅ 首访说明只弹一次     新玩家只弹教学（公告记已读）· 点掉即写已读位 · 重开不再弹 · 老玩家不弹教学
   ✅ 控制台错误        无
-  ✅ 构建版本         4.0.10
+  ✅ 构建版本         4.0.14
   ✅ 题目生成器        572
   ✅ 国度           5
   ✅ 精灵           15
@@ -98,20 +105,27 @@ footer{margin-top:30px;color:#7d94ab;font-size:12px;text-align:center}
   ✅ 四国直达         四国都能直达出生域（⚡力理亚 → 🔥嬗变利亚 → 🌿生衍利亚 → 📐数理群岛）
   ✅ 顶栏练枪入口       四个世界各 1 个（闯关=1 · 史诗=1 · 练枪场=1 · 烽火=1）
   ✅ 菜单练枪入口       菜单里 1 个（练枪场 · 压轴专训）
-  ✅ 更新公告         v4.0.10-eeafdffa · 全屏按钮回到更新公告里：一次更新，一次提醒
+  ✅ 更新公告         v4.0.14-f45e59d0 · 卖东西的确认框搬进游戏了：不再把你踢出全屏
   ✅ 全屏入口         ☰ #mFs · 公告 #newsFs · 通知栏 #upFs（三处都在、都绑了行为）· 平台说明 5 条
   ✅ 云端对账决策       9 组对账场景 + 防重载模拟全部通过
   ✅ 账号与同步        本地地址：按设计提示不支持登录（线上域名下才可用）
   ✅ 存档面板         开合正常
-  ✅ 菜单版本号        v4.0.10（与 BUILD_VER 一致）
+  ✅ 菜单版本号        v4.0.14（与 BUILD_VER 一致）
+  ✅ 战术地图可拖动      画布 touch-action=pan-y · 面板 pan-y · 图中间可拖 · 画布 342px 高
+  ✅ 换场清实体层       营地不画掩体/碎石 · 部署即清空实体层 · 回营地恢复
+  ✅ 交易走游戏内弹窗     到手 260 🪙 与到账一致 · 全程 0 次浏览器 confirm · 取消不落账
+  ✅ 升级走游戏内弹窗     Lv1→Lv2 · 花费 2200 🪙 写在弹窗里 · 取消不扣钱 · 0 次 confirm
+  ✅ 房卡唯一         物资里没有钥匙卡 · 房卡 3 张 · 最低级优先（kc1）· 交易所券已改成房卡补给
+  ✅ 房卡采购行        10 行同一套标记 · 房卡按钮 class="buy" · 行为已绑
+  ✅ 帧率角标         菜单可开关 · 打开时右上角有数（—fps · 0ms）· 关掉即拆干净
   ✅ 错题回流内核       新收 / 打回第一天（box 3→0 · badN+1）/ 从已掌握拉回 —— 三种都对
   ✅ 练枪结算重做       🔁 趁热重做刚错的 1 题 → 面板「🔁 重做刚错的题」4 个选项
   ✅ 读到版本文件       {"name":"格物纪元·四国远征","version":"9.9.9","relea…
   ✅ 首访说明只弹一次     新玩家只弹教学（公告记已读）· 点掉即写已读位 · 重开不再弹 · 老玩家不弹教学
   ✅ 更新推送         已提示刷新
-  ✅ 新版本通知栏       4 条要点 · --upH 128px
+  ✅ 新版本通知栏       4 条要点 · --upH 166px
   ✅ 控制台错误        无
-  ✅ 构建版本         4.0.10
+  ✅ 构建版本         4.0.14
   ✅ 题目生成器        572
   ✅ 国度           5
   ✅ 精灵           15
@@ -126,15 +140,22 @@ footer{margin-top:30px;color:#7d94ab;font-size:12px;text-align:center}
   ✅ 四国直达         四国都能直达出生域（⚡力理亚 → 🔥嬗变利亚 → 🌿生衍利亚 → 📐数理群岛）
   ✅ 顶栏练枪入口       四个世界各 1 个（闯关=1 · 史诗=1 · 练枪场=1 · 烽火=1）
   ✅ 菜单练枪入口       菜单里 1 个（练枪场 · 压轴专训）
-  ✅ 更新公告         v4.0.10-eeafdffa · 全屏按钮回到更新公告里：一次更新，一次提醒
+  ✅ 更新公告         v4.0.14-f45e59d0 · 卖东西的确认框搬进游戏了：不再把你踢出全屏
   ✅ 全屏入口         ☰ #mFs · 公告 #newsFs · 通知栏 #upFs（三处都在、都绑了行为）· 平台说明 5 条
   ✅ 云端对账决策       9 组对账场景 + 防重载模拟全部通过
   ✅ 账号与同步        本地地址：按设计提示不支持登录（线上域名下才可用）
   ✅ 存档面板         开合正常
-  ✅ 菜单版本号        v4.0.10（与 BUILD_VER 一致）
+  ✅ 菜单版本号        v4.0.14（与 BUILD_VER 一致）
+  ✅ 战术地图可拖动      画布 touch-action=pan-y · 面板 pan-y · 图中间可拖 · 画布 342px 高
+  ✅ 换场清实体层       营地不画掩体/碎石 · 部署即清空实体层 · 回营地恢复
+  ✅ 交易走游戏内弹窗     到手 260 🪙 与到账一致 · 全程 0 次浏览器 confirm · 取消不落账
+  ✅ 升级走游戏内弹窗     Lv1→Lv2 · 花费 2200 🪙 写在弹窗里 · 取消不扣钱 · 0 次 confirm
+  ✅ 房卡唯一         物资里没有钥匙卡 · 房卡 3 张 · 最低级优先（kc1）· 交易所券已改成房卡补给
+  ✅ 房卡采购行        10 行同一套标记 · 房卡按钮 class="buy" · 行为已绑
+  ✅ 帧率角标         菜单可开关 · 打开时右上角有数（—fps · 0ms）· 关掉即拆干净
   ✅ 错题回流内核       新收 / 打回第一天（box 3→0 · badN+1）/ 从已掌握拉回 —— 三种都对
   ✅ 练枪结算重做       🔁 趁热重做刚错的 1 题 → 面板「🔁 重做刚错的题」4 个选项
-  ✅ 读到版本文件       {"name":"格物纪元·四国远征","version":"4.0.10","rele…
+  ✅ 读到版本文件       {"name":"格物纪元·四国远征","version":"4.0.14","rele…
   ✅ 首访说明只弹一次     新玩家只弹教学（公告记已读）· 点掉即写已读位 · 重开不再弹 · 老玩家不弹教学
   ✅ 更新推送         不提示（版本一致）
   ✅ 新版本通知栏       不显示（版本一致）
@@ -156,4 +177,4 @@ footer{margin-top:30px;color:#7d94ab;font-size:12px;text-align:center}
 <div class="sug"><span class="n">#12</span><b>清理被覆盖的同名函数（28 处，多国改造后遗留）</b><div class="why">巡检每天都在报：同名函数定义了不止一次，后一份生效、前一份是死代码 —— 改错文件等于没改。最典型的是 addStele / addSpirit / addGuard / addHermit：10_bank_skeleton.js 里那份往全局 SPOTS 里塞，11_world.js 里那份往 CUR_BUILD.spots 里塞，内容模块真正调到的是后者，前者是四国改造前的旧接口。4.0.9 那个「每次都弹教学」的 bug 就是同一类问题（maybeIntro 两份，覆盖的那份漏了写入），不清理还会再踩。</div><div class="meta">改动量：中 · 落点：<code>src/js/10_bank_skeleton.js 与 11_world.js 等（删不生效的那份，或改名 + 加注释说明）</code></div></div>
 <div class="sug auto"><span class="n">#A1</span><b>有 28 个同名函数被定义了不止一次</b><div class="why">addStele（10_bank_skeleton.js、11_world.js）；addSpirit（10_bank_skeleton.js、11_world.js）；addGuard（10_bank_skeleton.js、11_world.js）；addHermit（10_bank_skeleton.js、11_world.js） —— 后一份生效、前一份是死代码，改错文件等于没改。</div><div class="meta">改动量：小 · 落点：<code>src/js/（删掉不生效的那一份，或加注释说明为何覆盖）</code></div></div>
 <div class="card"><b>已经做完的（进 changelog 了）</b><ul style="margin:8px 0 0;padding-left:20px"><li>练枪错题回流：又错一次真的记账（打回第一天）+ 收工趁热重做刚错的题 <span style="color:#7d94ab">· v4.0.7</span></li><li>更新公告自动化（内容与已读位同源） <span style="color:#7d94ab">· v4.0.6</span></li><li>全屏按钮独立成 ☰ 菜单里的一行 <span style="color:#7d94ab">· v4.0.6</span></li></ul></div>
-<footer>由 tools/daily.py 生成 · 2026-10-15 13:43 · 机器可读结果在 汇报/巡检/latest.json</footer></div></body></html>
+<footer>由 tools/daily.py 生成 · 2026-10-15 23:41 · 机器可读结果在 汇报/巡检/latest.json</footer></div></body></html>
