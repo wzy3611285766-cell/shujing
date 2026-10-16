@@ -211,6 +211,30 @@ def _todo_check():
     return n, hits
 
 
+def _live_check():
+    """线上那一份是不是就是本地这一份 —— 只拉 version.json，不开浏览器（巡检要快）。
+
+    为什么不复用 tools/verify_live.py：那个会真开一次无头浏览器（逐字节比对 + 起页面），
+    发版时跑很值，每天跑太贵。这里只对版本号。
+    取不到（离线 / 换网络）就当作"本次没查"，不算体检不过；
+    但**对不上一定是"差最后一下部署"**，会作为观察项单独列出来。
+    """
+    local = ver_of(os.path.join(ROOT, "shujing-app", "version.json")).get("version")
+    try:
+        import verify_live
+        vj = json.loads(verify_live.fetch(verify_live.DEFAULT_URL + "version.json",
+                                          timeout=12).decode("utf-8"))
+        live = str(vj.get("version"))
+        if live == str(local):
+            return {"live": live, "in_sync": True,
+                    "detail": "线上 v%s · 与本地一致（构建于 %s）" % (live, vj.get("built_at"))}
+        return {"live": live, "in_sync": False,
+                "detail": "⚠️ 线上 v%s · 本地 v%s —— 还差最后一下部署" % (live, local)}
+    except Exception as e:
+        return {"live": "", "in_sync": True,
+                "detail": "取不到线上版本（%s）—— 本次跳过（离线不影响本地体检）" % type(e).__name__}
+
+
 def _imgcheck():
     p = os.path.join(ROOT, "汇报", "_imgcheck.py")
     if not os.path.exists(p):
@@ -252,6 +276,10 @@ def step_health():
     ok, line = _imgcheck()
     rows.append({"item": "汇报页无外链（图片全内联）", "ok": ok, "detail": line})
 
+    live = _live_check()
+    rows.append({"item": "线上版本（shujing.app.workbuddy.host）", "ok": True,
+                 "detail": live["detail"]})
+
     # 死代码 / 同名覆盖：交给 tools/deadcode.py 判（它按模块顺序算"谁覆盖谁"）。
     # 以前这里是 daily 里临时写的一段"同名函数"统计，既没有行号也说不清谁死谁活。
     rc, out = run([os.path.join(TOOLS, "deadcode.py"), "--check"])
@@ -281,6 +309,13 @@ def observations(health, smoke, ver):
             out.append({"title": "当前版本还没有归档",
                         "why": r["detail"], "cost": "小",
                         "where": "python tools/release.py --no-bump"})
+    # 线上落后：这不是 bug，是"还差最后一下"—— 单独列出来，别混在代码问题里
+    for r in health["rows"]:
+        if "线上版本" in r["item"] and "还差最后一下部署" in r["detail"]:
+            out.append({"title": "线上还不是最新版（差最后一下部署）",
+                        "why": r["detail"] + " —— 本地已经构建好并回归过了，只差在 IDE 里点一下"
+                               "带按钮的那张部署卡片（或按 Ctrl+Shift+P 输入「发布」）。",
+                        "cost": "小", "where": "一键发布上线.cmd 的第 4 步 / python tools/verify_live.py"})
     # 死代码 / 同名覆盖：由 tools/deadcode.py 判（这里只把结论端出来）
     for r in health["rows"]:
         if "死代码" in r["item"] and not r["ok"]:

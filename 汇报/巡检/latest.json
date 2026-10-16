@@ -1,13 +1,13 @@
 {
   "date": "2026-10-16",
   "version": "4.0.15",
-  "seconds": 63.3,
+  "seconds": 36.3,
   "ok": true,
   "steps": [
     {
       "name": "① 构建 + 公告同源",
       "ok": true,
-      "detail": "版本 v4.0.15 · 模块 74 个 · 1922331 字节 (1.83 MB) · sha256 b42e3cb5a3a2c020 · 公告 v4.0.15 · NEWS_VER v4.0.15-82da181b（内容摘要，改公告就会变）"
+      "detail": "版本 v4.0.15 · 模块 74 个 · 1922331 字节 (1.83 MB) · sha256 f49e4f65ab794a86 · 公告 v4.0.15 · NEWS_VER v4.0.15-82da181b（内容摘要，改公告就会变）"
     },
     {
       "name": "② 骨架比对（对比拆分前基线）",
@@ -17,12 +17,12 @@
     {
       "name": "③ 无头浏览器冒烟（file:// + http:// 各一遍）",
       "ok": true,
-      "detail": "102 项通过 / 0 项失败 · 耗时 8s"
+      "detail": "102 项通过 / 0 项失败 · 耗时 7s"
     },
     {
       "name": "④ 静态体检",
       "ok": true,
-      "detail": "8 项检查 · 0 项未过"
+      "detail": "9 项检查 · 0 项未过"
     }
   ],
   "health": [
@@ -60,6 +60,11 @@
       "item": "汇报页无外链（图片全内联）",
       "ok": true,
       "detail": "汇报页自查：全部通过 ✅"
+    },
+    {
+      "item": "线上版本（shujing.app.workbuddy.host）",
+      "ok": true,
+      "detail": "线上 v4.0.15 · 与本地一致（构建于 2026-10-16 22:17）"
     },
     {
       "item": "死代码 / 同名覆盖（静态分析）",
@@ -156,11 +161,11 @@
       "where": "src/css/10_quiz.css + src/js/38_session.js"
     },
     {
-      "id": "shadowed-functions",
-      "title": "清理被覆盖的同名函数（28 处，多国改造后遗留）",
-      "why": "巡检每天都在报：同名函数定义了不止一次，后一份生效、前一份是死代码 —— 改错文件等于没改。最典型的是 addStele / addSpirit / addGuard / addHermit：10_bank_skeleton.js 里那份往全局 SPOTS 里塞，11_world.js 里那份往 CUR_BUILD.spots 里塞，内容模块真正调到的是后者，前者是四国改造前的旧接口。4.0.9 那个「每次都弹教学」的 bug 就是同一类问题（maybeIntro 两份，覆盖的那份漏了写入），不清理还会再踩。",
+      "id": "quiz-css-merge",
+      "title": "10_quiz.css 里新旧两段样式的 7 处冲突（合并要拆选择器组）",
+      "why": "这个文件前半段是旧版样式，后半段「1. / 2. / 3. / 5.」编号章节是新版，把旧的整段压住。其中 3 条「零贡献」的已经删了，还剩 7 处是「部分属性被覆盖」：改前一处不生效、改后面那处又会连带影响别的选择器（有 .qtext.f-xs,.qtext.f-sm,.qtext.f-md 这种分组）。得单独一轮、逐屏截图对照着合。",
       "cost": "中",
-      "where": "src/js/10_bank_skeleton.js 与 11_world.js 等（删不生效的那份，或改名 + 加注释说明）"
+      "where": "src/css/10_quiz.css（新旧两段之间）+ 答题面板截图对照"
     }
   ]
 }

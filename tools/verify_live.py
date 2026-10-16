@@ -41,6 +41,18 @@ def sha(b):
     return hashlib.sha256(b).hexdigest()
 
 
+def stamp_norm(b):
+    """把构建戳里的时间抹平 —— 用它比"内容"，而不是比"文件"。
+
+    为什么必须这么做：构建戳写着「构建于 几点几分」，所以**每跑一次
+    build.py / daily.py，产物就变一次**（字节数一样、只差那行时间）。
+    直接逐字节比会稳定误报：刚跑完巡检 → 本地是新戳、线上是部署那刻的戳 →
+    提示"线上还不是最新版"，于是人白跑一趟部署，或者干脆不再信这个工具。
+    抹平之后再比，比的才是玩家真正看到的那份内容。
+    """
+    return re.sub(rb"<!--\s*build:[^>]*-->", b"<!--build-->", b)
+
+
 def fetch(url, timeout=30):
     """先直连，失败再试系统里配的代理（国内两种网络环境都能跑）。"""
     tries = [None, os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or "http://127.0.0.1:7897"]
@@ -81,11 +93,18 @@ def main():
     print("=" * 72)
     try:
         live = fetch(base)
-        same = sha(live) == sha(local)
+        raw_same = sha(live) == sha(local)
+        cont_same = sha(stamp_norm(live)) == sha(stamp_norm(local))
         print("  本地：%d 字节  sha256 %s" % (len(local), sha(local)[:16]))
         print("  线上：%d 字节  sha256 %s" % (len(live), sha(live)[:16]))
-        print("  %s" % ("✅ 逐字节一致" if same else "❌ 不一致 —— 线上还不是最新版"))
-        ok = ok and same
+        if raw_same:
+            print("  ✅ 逐字节一致")
+        elif cont_same:
+            print("  ✅ 内容一字不差（只有构建戳的时间不同：本地刚重新构建过，"
+                  "线上那份是部署那一刻的）")
+        else:
+            print("  ❌ 不一致 —— 线上还不是最新版")
+        ok = ok and cont_same
     except Exception as e:
         print("  ❌ 取不到线上页面（%s）" % e)
         ok = False
