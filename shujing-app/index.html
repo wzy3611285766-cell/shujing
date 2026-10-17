@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>格物纪元 · 四国远征</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.0.15 · 2026-10-16 22:31 · 源码摘要 2c355b56 · 74 个模块 -->
+<!-- build: v4.0.18 · 2026-10-16 23:40 · 源码摘要 48269dc4 · 74 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -99,6 +99,37 @@
   :root{--vmin:min(100vw,100dvh);--vmax:max(100vw,100dvh)}
 }
 
+/* ============ 压在地图上的毛玻璃：一律不用（4.0.17） ============
+   为什么：这层模糊的底是**每帧都在变**的地图 canvas，所以合成器每帧都得
+   把它重算一遍 —— 平板上实测（tools/perf.py 消融）单这一条就把帧间隔
+   从 16.7ms 顶到 33.3ms，也就是 60fps 直接变 30fps。
+   收掉之后换成"稍不透明的同色底"：颜色还是原来那套深蓝，
+   在深色地图上观感差别极小（可对照汇报页里的截图），成本归零。
+
+   ⚠️ 为什么只收"HUD"，不收面板：#modal / #news 一打开，地图就停画了
+   （paceDraw 的规矩：面板开着不重画地图），背景于是变成静止画面，
+   模糊只算一次 —— **一分钱不花**，却保住了"点开面板"那一下的玻璃质感。
+   所以模糊保留在面板与公告里（body.perf-lite 才会连它们一起收掉）。
+
+   实现方式：**就地改下面那几条组件规则**（#upbar / .chip / #quest / #pcHint /
+   #topbar .btn），不在这里加覆盖 —— 同选择器出现两条时后者全盖前者，
+   体检的静态分析会把它当成"零贡献规则"报出来（4.0.18 就报过一次）。 */
+
+/* ============ 省电档（body.perf-lite）· 4.0.16 ============
+   4.0.17 之后，压在地图上的毛玻璃与"合成器地形层"都已经默认收掉了
+   （见上面那段与 36_loop.js 的 draw），所以这一档现在只做一件事：
+   连**面板与公告**的模糊也收掉，给最弱的那批设备再省一点。
+   进这一档的方式没变：节拍器连着几次"降了档还迟到"自动进，☰ 菜单也能手动切。 */
+body.perf-lite #modal,body.perf-lite #news,
+body.perf-lite .news-x,body.perf-lite .opt,body.perf-lite .menu-li{
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+/* 遮罩要更厚一点：完整档靠 blur 把背后糊掉，省电档没模糊，
+   只压 68% 的话面板后面那排顶栏会清清楚楚透出来，看着很乱 */
+body.perf-lite #modal{background:rgba(4,12,24,.93)}
+body.perf-lite #news{background:rgba(3,9,18,.95)}
+body.perf-lite .menu-li{
+  background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%)}
+
 /* ⚠️ 这里和 #app 以前都是 touch-action:none —— 面板因此完全划不动。
    touch-action 的实际取值是「命中元素到根这条路径上所有值的交集」：
    祖先写了 none，.panel 自己的 pan-y 就被吃掉了，纵向滚动手势根本不产生
@@ -120,16 +151,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0d1b2a;
    「摊开战术地图后只有面板两侧那条窄边能拖，图中间怎么划都不动」，
    玩家会以为卡死了、也滚不到底下的关闭键（4.0.13 修）。
    和 3.1.1 那次 touch-action 交集坑是同一类问题：按元素名写，迟早误伤。 */
-#bg,#game{display:block;width:100%;height:100%;touch-action:none}
+/* 4.0.17：页面上只剩 #game 这一块画布了 —— 地形层 #bg 已删
+   （它原来由合成器挪动，每帧要重光栅化 1850 万像素，见 36_loop.js 的 draw）。
+   touch-action:none 是给这块世界画布自己吃手势用的（摇杆要在上面拖）；
+   面板里的画布另给 pan-y，别被这条按元素名写的规则误伤（3.1.1 / 4.0.13 两次教训）。 */
+#game{display:block;width:100%;height:100%;touch-action:none;position:relative;z-index:1}
 /* 面板里的画布：跟着面板一起能被手指拖（宽 100%，高度由 JS 写成 px） */
 #panel canvas{display:block;width:100%;touch-action:pan-y}
-/* 静态地形层：按世界尺寸(2400x1900)原样铺开，靠 transform 跟着镜头走。
-   尺寸由 JS 写成 px（要盖掉上面那条 width:100%），这块不参与命中测试。 */
-#bg{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none;z-index:0;
-  will-change:transform}
-/* #game 要抬到 #bg 上面：定位元素的绘制层级在普通流之上，
-   不加这一条的话 #bg 会盖住整块画布。relative 不影响它的占位尺寸。 */
-#game{position:relative;z-index:1}
 
 /* ============ 新版本通知栏（4.0.6）============
    玩家手里那份是缓存里的旧版时，光弹一句"刷新一下"等于没说。
@@ -142,7 +170,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0d1b2a;
   padding:calc(var(--safeT) + 7px) calc(var(--safeR) + 10px) 8px calc(var(--safeL) + 10px);
   display:flex;gap:9px;align-items:flex-start;
   background:linear-gradient(180deg,rgba(41,92,158,.97),rgba(22,52,96,.95));
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  /* 4.0.17：去掉了 blur(10px)。底子本来就有 97% 不透明度，模糊几乎看不见，
+     但它是压在地图上的 —— 合成器每帧都得为它重算一次，60fps 变 30fps。 */
   border-bottom:1px solid rgba(143,196,255,.30);
   box-shadow:0 10px 26px -12px rgba(0,0,0,.72);
   color:#eaf4ff;font-size:var(--fs-xs);line-height:var(--lh-snug)}
@@ -182,8 +211,10 @@ body.upbar-on #modal{top:var(--upH)}
 #topbar{position:absolute;top:var(--upH);left:0;right:0;
   padding:calc(var(--safeT) + var(--pad)) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
   display:flex;gap:var(--gap);align-items:center;pointer-events:none;z-index:20}
-.chip{pointer-events:auto;background:var(--gb-face-deep);
-  backdrop-filter:var(--gb-blur-sm);-webkit-backdrop-filter:var(--gb-blur-sm);
+/* 4.0.17：chip 浮在活地图上，不能带 backdrop-filter（每帧重算 → 60fps 变 30fps）。
+   没了模糊就得补不透明度，否则半透明底"糊在图上"、字立不住。 */
+.chip{pointer-events:auto;
+  background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%);
   border:none;border-radius:999px;position:relative;isolation:isolate;
   padding:calc(var(--pad) * .8) calc(var(--pad) * 1.6);
   color:#eaf4ff;font-size:var(--fs-sm);font-weight:600;display:flex;align-items:center;gap:5px;
@@ -217,14 +248,21 @@ body.upbar-on #modal{top:var(--upH)}
 .btn:disabled{opacity:.4}
 /* 图标按钮：只有 emoji/符号，没有文字 */
 .btn.ico{padding:calc(var(--pad) * .9);justify-content:center;aspect-ratio:1}
-/* 顶栏的按钮压在地图上：换深蓝玻璃，浅色字才立得住 */
-#topbar .btn{background:var(--gb-face-deep)}
+/* 顶栏的按钮压在地图上：换深蓝玻璃，浅色字才立得住。
+   4.0.17：顺手去掉 backdrop-filter —— 它们背后是每帧都在变的地图，
+   每一层模糊都要跟着重算一遍（60fps 变 30fps），而这层模糊在深色地图上几乎看不出来。
+   面板里的 .btn（同一套样式）**保留**模糊：面板一开地图就停画，模糊只算一次，不花钱。
+   所以按 #topbar 限定，不动 .btn 本身。语法上是**接着这条写**的，
+   不是另起一条同名规则（同名两条会互相盖，静态分析会报"零贡献规则"）。 */
+#topbar .btn{background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%);
+  backdrop-filter:none;-webkit-backdrop-filter:none}
 
 /* ============ 任务条 ============ */
 #quest{position:absolute;left:50%;transform:translateX(-50%);
   top:calc(var(--safeT) + var(--upH) + var(--topH) + 6px);
   max-width:calc(100% - 32px);text-align:center;
-  background:rgba(10,24,40,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  /* 4.0.17：任务条也压在地图上 —— 去掉 blur(8px)，用不透明度补回来 */
+  background:rgba(10,24,40,.88);
   border:1px solid rgba(255,255,255,.12);border-radius:var(--r);
   padding:calc(var(--pad) * .8) calc(var(--pad) * 2);
   color:#cfe6ff;font-size:var(--fs-sm);font-weight:600;line-height:1.5;z-index:18;
@@ -271,12 +309,12 @@ body.upbar-on #modal{top:var(--upH)}
 /* 电脑端常驻键位小抄：贴在摇杆右边，点一下打开完整键位表 */
 #pcHint{position:absolute;left:calc(var(--safeL) + var(--stick) + 22px);
 bottom:calc(var(--safeB) + 18px);display:none;align-items:center;gap:6px;
-background:var(--gb-face-deep);border:none;
+/* 4.0.17：同理，键位小抄也浮在活地图上，去掉模糊、补不透明度 */
+background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%);border:none;
 border-radius:999px;padding:calc(var(--pad) * .7) calc(var(--pad) * 1.5);
 color:#9cc0e0;font-size:var(--fs-xs);font-weight:600;z-index:21;
 cursor:pointer;white-space:nowrap;max-width:44vw;overflow:hidden;
 text-overflow:ellipsis;
--webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
 box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop)}
 #pcHint:active{transform:scale(.97);box-shadow:var(--gb-press-lift),var(--gb-hair)}
 #pcHint b{color:#ffd76a}
@@ -1631,14 +1669,14 @@ margin-top:8px;padding:5px 0}
 </head>
 <body>
 <div id="app">
-  <!-- 【帧率 3/3】静态地图单独占一层 #bg。
-       以前整张 2400x1900 的地图是「每帧 drawImage 贴一次」画的，
-       一次就要 5.8ms（占满 60fps 预算的 35%）。
-       现在地形只画一次，之后整层靠 CSS transform 跟着镜头平移 ——
-       合成器在 GPU 上挪一个图层几乎不要钱，主线程一分钱不花，
-       而且是 GPU 双线性采样，比原来 canvas 那条路更平滑、不抖动。
-       #game 只剩地面光晕 / 角色圈 / 小地图这些每帧都在变的东西。 -->
-  <canvas id="bg"></canvas>
+  <!-- 【帧率 7/1】世界上只剩一块画布（4.0.17）。
+       曾经这里还有一块 #bg：地形预渲染成一整层、交给合成器用 CSS transform 跟着镜头挪，
+       想法是"GPU 挪图层不要钱、主线程零绘制"。代价在另一头 ——
+       那是 2400x1900 的 DOM 画布，dpr2 平板上要按 4800x3800（1850 万像素）重光栅化，
+       而且它每帧都在动，合成器每帧都得重来一遍。tools/perf.py 消融实测：
+       光收掉这一层，帧间隔 33.3ms → 16.7ms（30fps → 60fps）。
+       现在地形是离屏画布，每帧由主线程贴进 #game（1.3ms，最近邻），
+       合成器完全不碰地形。见 36_loop.js 的 draw 与 34_engine_core.js 的 buildStatic。 -->
   <canvas id="game"></canvas>
   <div id="ents"></div>
   <div id="fx"></div>
@@ -1702,18 +1740,20 @@ margin-top:8px;padding:5px 0}
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新 · v4.0.15</span>
-        <div class="news-title">清掉 600 行永远跑不到的代码（玩起来一模一样）</div>
-        <div class="news-sub">顺手给工程加了一项「死代码体检」，以后同类问题每天会被抓出来</div>
+        <span class="news-badge">📣 版本更新 · v4.0.18</span>
+        <div class="news-title">平板帧率 30 → 60：两处「隐形开销」拿掉了</div>
+        <div class="news-sub">画质几乎没动 · 面板的玻璃质感保留 · 顺手修掉「自己把自己降到 30fps」</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
           <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">🧹</span><span><b>删掉 41 个永远不会被执行的函数</b>（约 600 行）：这款游戏是一个大脚本，<b>同名函数后面那份会盖住前面的</b> —— 前面那些连加载那一刻都跑不到。以前「改了一个文件却毫无反应」，根子就在这儿。现在这类同名冲突从 <b>28 组清零</b></span></div>
-          <div class="news-li"><span class="e">📉</span><span><b>游戏文件小了 32 KB</b>（1.7%）—— 少传的就是那批死代码</span></div>
-          <div class="news-li"><span class="e">🔍</span><span><b>每日体检多了一项「死代码体检」</b>：同名覆盖、从没被引用的函数、没人用的 CSS、整条被覆盖的 CSS，四项一起看着；以后再冒出来会当场报警，不会又攒成一座山</span></div>
-          <div class="news-li"><span class="e">✅</span><span><b>玩法零变化</b>：102 项自检查 + 572 个题目生成器全部照旧；四个世界、存档、交易、战场的表现与上一版逐项一致</span></div>
+          <div class="news-li"><span class="e">⚡</span><span><b>真凶找到了</b>：怪的不是「画得慢」（主线程画一帧只要 0.5ms），而是压在地图上的<b>毛玻璃</b>每帧都要跟着地图重算一遍，加上那块 <b>2400×1900 的地形图层</b>每帧被重采样一遍（DPR2 平板上等于每帧光栅化 1850 万像素）。这两条各自都能把 60fps 砍成 30fps</span></div>
+          <div class="news-li"><span class="e">🖼️</span><span><b>地形改成「主线程自己贴一次」</b>（1.3ms）。观感几乎没变 —— 拖动时的位移改成以像素为步长，反而更稳、网格不会逐帧游走发糊</span></div>
+          <div class="news-li"><span class="e">🧊</span><span><b>压在地图上的那几条小条不再用毛玻璃</b>（顶栏、任务条、「点地图走过去」的提示）：换成同色底，在深色地图上几乎看不出差别。<b>面板与公告的玻璃质感保留</b> —— 它们一打开地图就停画，那层模糊只算一次，不花性能</span></div>
+          <div class="news-li"><span class="e">🐢</span><span><b>顺手修掉一个「自己把自己降到 30fps」</b>：节拍器原来「这批有 1/4 帧迟到」就降半档，开局那几下加载抖动就够凑满 —— 本机明明能跑满 60，也被它永久砍成 30（复测时同一台机器两次分别跑出 60 与 30 两档）。现在要求<b>过半迟到且连着两批</b>；已经降下来的档，恢复也更快（3 批而不是 6 批）</span></div>
+          <div class="news-li"><span class="e">📊</span><span><b>实测（同一台无头机、同一套脚本、改动前后各跑一遍）</b>：帧间隔 <b>50ms → 16.7ms</b>；帧数 <b>27fps → 60fps</b>；跑热之后 p95 从 <b>149ms → 16.8ms</b>（以前是一顿一顿的，现在平的）</span></div>
+          <div class="news-li"><span class="e">⚙️</span><span>☰ 菜单里的「画质」档位现在只剩一件事：要不要<b>连面板的毛玻璃也关掉</b>（给极端弱机留一手）。两档帧率已经一样</span></div>
         </div>
 
         <div class="news-sec">
@@ -12521,18 +12561,25 @@ document.addEventListener('pointerdown',function(e){
 
 /* ---------------- 地图预渲染 ---------------- */
 const cv=document.getElementById('game'),ctx=cv.getContext('2d');
-/* 静态地形层。正常情况下它就是页面上那个 #bg 元素（见 draw() 的注释），
-   取不到时才退化回离屏 canvas + 每帧 drawImage 的老路。 */
-const bgCv=document.getElementById('bg');
+/* 静态地形层：一块**离屏**画布（4.0.17 起）。
+   ---------------------------------------------------------------
+   以前它是页面上那个 DOM 节点 #bg，交给合成器用 CSS transform 挪。
+   想的是"挪图层不要钱"，但代价在另外一头：那是一块 2400×1900 的
+   DOM 画布，dpr2 的平板上要按 4800×3800（1850 万像素）重新光栅化，
+   而且因为它每帧都在动，合成器每帧都得重来一遍 ——
+   tools/perf.py 消融实测：光收掉这一层，帧间隔 33.3ms → 16.7ms。
+   改成主线程贴一次图只要 1.3ms（源图 1 世界单位 1px，贴屏走最近邻），
+   合成器那边则完全不碰地形。观感差别：地形位移以设备像素为步长，
+   比以前"亚像素滑动"更稳更清晰（木纹/网格不会逐帧游走发糊）。
+   这块画布只建一次，换世界时重画，不来回 new。 */
+let bgOff=null;
 let VW=0,VH=0,DPR=1,SCALE=1;
 let staticLayer=null,miniLayer=null;
 
 function buildStatic(){
-  /* 地形直接画进 #bg。它是个 DOM 节点，尺寸要写成内联 px：
-     CSS 里那条 canvas{width:100%} 是给 #game 铺满用的，对这里不合适。 */
-  const off=bgCv||document.createElement('canvas');
+  if(!bgOff)bgOff=document.createElement('canvas');
+  const off=bgOff;
   off.width=W;off.height=H;
-  if(bgCv){bgCv.style.width=W+'px';bgCv.style.height=H+'px';}
   const c=off.getContext('2d');
   /* 换世界时同一块画布会被重画，先抹干净，免得上一张地形的边缘漏出来 */
   c.setTransform(1,0,0,1,0,0);
@@ -12540,8 +12587,6 @@ function buildStatic(){
   const rnd=mulberry(20240808);
   if(CUR&&CUR.drawWorld)CUR.drawWorld(c,rnd);else drawAdvWorld(c,rnd);
   staticLayer=off;
-  /* 图层一换就要归位，否则新地形会停在上一张的位置上 */
-  syncBgTransform();
 
   const mw=170,mh=Math.round(mw*H/W);
   const m=document.createElement('canvas');m.width=mw;m.height=mh;
@@ -12550,24 +12595,8 @@ function buildStatic(){
   mc.fillStyle='rgba(4,12,24,.38)';mc.fillRect(0,0,mw,mh);
   miniLayer=m;
 }
-/* 把 #bg 挪到镜头位置上。世界坐标 (wx,wy) → 屏幕 ((wx-cam.x)*SCALE, ...)，
-   而图层自身的 1px 就是 1 个世界单位，所以
-   translate(-cam*SCALE) scale(SCALE) 合起来正好等价于 canvas 那条
-   scale(SCALE) + translate(-cam) —— 两边的落点完全一致，不会错位。 */
-function syncBgTransform(){
-  if(!bgCv||staticLayer!==bgCv)return;
-  /* 【帧率 6/4】位移吸附到整数设备像素。
-     这一层每帧都要被合成器重采样一遍：位移带小数时采样点永远落在纹素之间，
-     纹理在像素网格上逐帧「游走」，拖动时地形会持续发糊、闪。
-     吸附之后采样点正好落在纹素中心，最清晰也最省。
-     误差 ≤ 0.5 设备像素 = 0.25 CSS 像素，肉眼不可能看出来。
-     用的是真实 devicePixelRatio：DPR 那个变量是 #game 画布的（可能被降过级），
-     而 #bg 的缩放由 CSS 的 scale(SCALE) 交给合成器完成，走的是屏幕自己的网格。 */
-  const rd=window.devicePixelRatio||1;
-  const tx=(Math.round(-cam.x*SCALE*rd)/rd).toFixed(3);
-  const ty=(Math.round(-cam.y*SCALE*rd)/rd).toFixed(3);
-  bgCv.style.transform='translate3d('+tx+'px,'+ty+'px,0) scale('+SCALE+')';
-}
+/* 4.0.17 删掉了 syncBgTransform()：地形不再由合成器挪图层，
+   所以"把图层挪到镜头位置"这件事整个消失了（地形随画布一起变换，见 draw()）。 */
 function drawAdvWorld(c,rnd){
   // 海
   const g=c.createLinearGradient(0,0,W,H);
@@ -12992,9 +13021,8 @@ function resize(){
   const BASE_VH=(CUR===EPIC)?900:860;      // 横向富余时，再按高度收一收
   const MIN_S  =(CUR===EPIC)?0.62:0.55;    // 下限 = 石碑 emoji 约 21px，再小就看不清
   SCALE=clamp(Math.min(VW/BASE_VW,VH/BASE_VH),MIN_S,1.7);
-  /* 缩放变了，地形层的位移与倍率要立刻跟着改。
-     否则「面板开着时转屏」会留下一个按旧比例摆的底图。 */
-  syncBgTransform();
+  /* 4.0.17：这里原来要 syncBgTransform() 把地形层挪到新位置 ——
+     地形改在主画布上贴图之后，SCALE 一变下一帧画出来就是对的，不需要补一次。 */
   if(typeof measureTopbar==='function')measureTopbar();
   /* 旋转屏幕会切换「单列 / 横屏两栏」两套排版：
      已经渲染好的题面是按旧布局分的档（题干字号、单列还是双列、限高多少），
@@ -13127,18 +13155,22 @@ function draw(){
   ctx.save();
   ctx.scale(SCALE,SCALE);
   ctx.translate(-cam.x,-cam.y);
-  /* 地形层跟着镜头挪一格 —— 这是整个渲染里最省的一步：
-     一次 CSS 变换交给合成器，主线程不做任何绘制。 */
-  syncBgTransform();
-  if(staticLayer===bgCv){
-    /* 【帧率 3/3】地形层换了实现：不再每帧 drawImage，只把整层挪到镜头位置。
-       下面这段是兜底 —— 万一 #bg 没取到（旧结构 / 被裁掉的页面），
-       退回原来的一次性位图 blit，功能不受影响。
-       兜底时把双线性关掉：源图按 1 世界单位 1px 画的，贴屏要放大
-       SCALE*DPR 倍（手机竖屏 1.39），非整数倍放大时每个目标像素都要插值，
-       实测单这一笔 5.8ms；改用最近邻取整采样只要 1.3ms，快 4.5 倍。
-       源图最终只占 0.69 个 CSS 像素，画质差别在亚像素级（做过放大对比核对）。
-       倍率 < 1（桌面窄窗口）时最近邻会丢像素，那种情况保留平滑。 */
+  /* ================================================================
+     地形每帧贴一次（4.0.17 起只有这一种画法）
+     ----------------------------------------------------------------
+     以前"完整画质"是把地形交给合成器挪 #bg 那一层，只有省电档才主线程贴图。
+     实测（tools/perf.py 消融）说明这个分工是反的：那一层是 2400×1900 的 DOM 画布，
+     dpr2 平板上要按 4800×3800（1850 万像素）重光栅化、而且每帧重来一遍 ——
+     单它一项就把帧间隔顶到 33.3ms（收掉它 → 16.7ms）。
+     主线程贴图只花 1.3ms，还顺带把地形从合成器手里彻底拿回来。
+     所以现在**所有设备都走贴图**，观感差别只在"位移步长"上：
+     贴图以设备像素为步长，比合成器的亚像素滑动更稳，网格不会逐帧游走发糊。
+
+     要关双线性：源图按 1 世界单位 1px 画的，贴屏要放大 SCALE*DPR 倍，
+     非整数倍时每个目标像素都要插值（实测 5.8ms），改最近邻只要 1.3ms。
+     倍率 < 1（桌面窄窗口）时最近邻会丢像素，那种情况保留平滑。
+     ================================================================ */
+  if(staticLayer){
     const _sm=ctx.imageSmoothingEnabled;
     if(SCALE*DPR>=1)ctx.imageSmoothingEnabled=false;
     ctx.drawImage(staticLayer,0,0);
@@ -13310,9 +13342,12 @@ const PERF={
   multi:1,                 // 每几个 vsync 出一帧
   maxMulti:1,              // 本屏允许的最低档（不低于 24fps）
   last:0,                  // 上一帧的 rAF 时间戳（落在 vsync 网格上）
+  lite:false,              // 省电档：连面板毛玻璃也关掉（见 setPerfLite）
+  slow:0,                  // 连着几次评估都"降着档还迟到" —— 用来判定该切省电档
   work:0,                  // 一帧主线程实际耗时（EMA，ms）
   span:0,                  // 相邻两帧的真实间隔（ms）
-  drawn:0,n:0,miss:0,ticks:0,fast:0
+  drawn:0,n:0,miss:0,ticks:0,fast:0,
+  bad:0                    // 连着几批"够呛"（heavy 或过半迟到）—— 连两批才降档
 };
 /* 量屏幕节拍：一个窗口里最小的 rAF 间隔就是 vsync ——
    慢帧只会让间隔变大、不会变小，所以最小值代表真实节拍。
@@ -13325,6 +13360,32 @@ const PERF={
    一次误判就让渲染从 19fps 掉到 15fps）；而且这个最小值必须在一个窗口里
    **出现两次以上**才采纳 —— 只出现一次的极小值是抖动，不是节拍。
    没量准（hz=0）时不会升降档，游戏就照「每帧都画」跑，跟改之前一样。 */
+/* ---------------- 省电档（4.0.16 / 4.0.17 收窄） ----------------
+   平板/弱机上掉帧的主因不在主线程（实测 draw 只要 0.5ms），而在合成器那侧：
+   压在地图上的毛玻璃每帧都要跟着底下的 canvas 重算一遍、
+   2400x1900 的地形图层每帧重采样一遍（tools/perf.py 消融：
+   关掉模糊 33.3ms → 16.7ms，收掉地形图层 33.3ms → 16.7ms）。
+
+   4.0.17 起这两样**默认就是关的**（地形改主线程贴图、HUD 毛玻璃换成同色底，
+   见 draw() 与 00_base.css），所以这一档现在只剩"连面板与公告的毛玻璃也关掉"。
+   换句话说：以前它是"想上 60fps 就得开"的档，现在只是给最弱那批设备多留一手。
+   （面板/公告的模糊本来就几乎不花钱 —— 它们一开地图就停画，模糊只算一次。）
+
+   自动切：节拍器连着几次"已经降了档、帧还是迟到"就切 ——
+   光看 PERF.work 是看不出来的（它只有零点几毫秒）。
+   手动切：☰ 菜单里那一项。两边都写进 localStorage，下次打开记得住。 */
+const LITE_KEY = 'genji_perflite';
+function setPerfLite(on, why){
+  PERF.lite = !!on;
+  try{document.body.classList.toggle('perf-lite', PERF.lite);}catch(e){}
+  try{localStorage.setItem(LITE_KEY, PERF.lite ? '1' : '0');}catch(e){}
+  /* 自动切的时候要说一声：悄悄把画面变差，玩家会以为游戏坏了 */
+  if(why === 'auto')try{
+    toast('⚡ 已自动切到「流畅画质」：这台设备连面板毛玻璃都跑不顺。☰ 菜单里可以改回来');
+  }catch(e){}
+}
+try{if(localStorage.getItem(LITE_KEY) === '1')setPerfLite(true, 'boot');}catch(e){}
+
 function paceProbe(dt){
   if(dt<5)return;
   if(dt<PERF.win){PERF.win=dt;PERF.winHit=1;}
@@ -13358,18 +13419,34 @@ function paceDraw(now){
   PERF.drawn++;PERF.n++;
   if(PERF.span>PERF.vs*PERF.multi*1.5)PERF.miss++;
   /* 每 30 帧评一次档：
-     一帧耗时超过预算的 80%，或这批里有 1/4 的帧迟到 → 降一档；
+     一帧耗时超过预算的 80%，或这批里**过半**的帧迟到 → 降一档；
      连续 6 批（约 3 秒）都用不到 40% 的预算、一次没迟到 → 升一档。
-     节拍还没量准（hz=0）时不评：那会儿预算本身是假的，评了只会乱降档。 */
+     节拍还没量准（hz=0）时不评：那会儿预算本身是假的，评了只会乱降档。
+
+     【4.0.17 把迟到的门槛从 1/4 提到 1/2，且要求连着两批】
+     原来"这批有 1/4 帧迟到"就降档 —— 在本机明明能跑满的机器上，
+     开局那几次 GC / 布局抖动就够凑满 1/4，于是它把帧率永久砍成一半（30fps），
+     tools/perf.py 复测时撞到过两次（同一台机器两次跑出 16.7 与 33.3 两档）。
+     真正"跟不上"的设备是**过半**的帧都迟到，而且一批评不完还会再评一批：
+     所以现在要求过半 + 连着两批。主线程真的忙（heavy）仍然是当场降 ——
+     那个数（PERF.work）是实测的，不会误判。 */
   if(PERF.n>=30&&PERF.hz>0){
     const budget=PERF.vs*PERF.multi;
-    const heavy=PERF.work>budget*.8, late=PERF.miss>PERF.n*.25;
-    if(PERF.multi<PERF.maxMulti&&(heavy||late)){PERF.multi++;PERF.fast=0;PERF.work=0;}
+    const heavy=PERF.work>budget*.8, late=PERF.miss>PERF.n*.5;
+    PERF.bad=(heavy||late)?PERF.bad+1:0;
+    /* 已经降着档、帧还在迟到 —— 瓶颈多半不在主线程而在合成器（毛玻璃 / 图层重采样）。
+       连着三次这样才切省电档：一次就切会被偶发卡顿误判。 */
+    if(PERF.multi >= 2 && late){
+      if(++PERF.slow >= 3){PERF.slow = 0;setPerfLite(true, 'auto');}
+    }else PERF.slow = 0;
+    if(PERF.multi<PERF.maxMulti&&(heavy||PERF.bad>=2)){PERF.multi++;PERF.fast=0;PERF.work=0;}
     else if(PERF.multi>1){
-      /* 升档要连着 6 批都很闲（约 2~3 秒）：偶尔一批只是"不闲"就停表不计数，
+      /* 升档要连着几批都很闲：偶尔一批只是"不闲"就停表不计数，
          真忙起来（>60% 预算）才把计数器清零 —— 免得刚升上去就又被压回来，
-         来回抖比一直低一档还难看。 */
-      if(PERF.work<budget*.4){if(++PERF.fast>=6){PERF.multi--;PERF.fast=0;}}
+         来回抖比一直低一档还难看。
+         4.0.17：已经降着档时门槛从 6 批降到 3 批。降档更容易误判了（见上），
+         所以回来也要更快 —— 否则一次开局抖动能让玩家白白看 6 秒的 30fps。 */
+      if(PERF.work<budget*.4){if(++PERF.fast>=(PERF.multi>1?3:6)){PERF.multi--;PERF.fast=0;}}
       else if(PERF.work>budget*.6)PERF.fast=0;
     }
     PERF.n=0;PERF.miss=0;
@@ -19676,20 +19753,37 @@ const BLAZE_SITES=[
  {id:'math',emoji:'📐',name:'零点演算场',sub:'数学 · 废弃数据中心',color:'#9db4ff',
   brief:'冷战遗留的演算中心，服务器里还跑着没算完的题。',
   ground:['#2b3653','#161d2c'],edge:'#0e1424',prop:['🖥️','📡','🗄️','🔌','📼'],
+  /* 材质色（4.0.17）：墙、墙顶亮边、室内地板、建筑地坪、沥青、地坪亮边。
+     以前四个战场只有「地面渐变」不一样，墙 / 掩体 / 道路全是同一套灰 ——
+     于是换张图只是换个底色调，看不出"这是哪"。
+     现在每张图有自己的建材色（冷蓝灰 / 暖砂灰 / 砖红棕 / 墨绿灰），
+     一眼能认出场地，也能让"混凝土 / 沥青 / 金属"这几种材质分得开。 */
+  pal:{wall:'#4a5568',wallTop:'#63708a',floor:'#1f2531',slab:'rgba(150,175,215,.075)',
+       slabEdge:'rgba(170,195,235,.16)',road:'#2b2e36',roadEdge:'rgba(175,195,225,.13)'},
   rids:['func','tri','seq','geo','prob']},
  {id:'phys',emoji:'⚡',name:'长弓变电站',sub:'物理 · 高压试验区',color:'#ffd76a',
   brief:'雷暴云压在高压塔上，每一次合闸都在赌运气。',
   ground:['#413b26','#1e1b11'],edge:'#12100a',prop:['🗼','⚡','🔋','🧲','🛠️'],
+  pal:{wall:'#5c5544',wallTop:'#776e56',floor:'#262318',slab:'rgba(215,190,140,.075)',
+       slabEdge:'rgba(235,210,155,.16)',road:'#33302a',roadEdge:'rgba(225,205,160,.13)'},
   rids:['mech','neng','dian','therm','optic']},
  {id:'chem',emoji:'🔥',name:'灰烬精炼厂',sub:'化学 · 反应釜区',color:'#ffb072',
   brief:'管道里还留着上一批没反应完的料，味道很冲。',
   ground:['#432b21','#20120d'],edge:'#150c08',prop:['🛢️','🧪','🔥','⚗️','🚰'],
+  pal:{wall:'#5b4438',wallTop:'#75584a',floor:'#261b16',slab:'rgba(220,165,135,.075)',
+       slabEdge:'rgba(240,185,150,.16)',road:'#332a26',roadEdge:'rgba(230,190,165,.13)'},
   rids:['atom','rate','org','lab']},
  {id:'bio', emoji:'🌿',name:'静默培养区',sub:'生物 · 隔离温室',color:'#84e3a6',
   brief:'培养舱还在冒泡，没人记得里面养的是什么。',
   ground:['#22402f','#0e1c16'],edge:'#07130d',prop:['🌿','🧫','🍄','🦠','💧'],
+  pal:{wall:'#42564a',wallTop:'#57705f',floor:'#182420',slab:'rgba(150,215,175,.07)',
+       slabEdge:'rgba(170,235,195,.15)',road:'#282f2b',roadEdge:'rgba(175,225,195,.12)'},
   rids:['cell','gene','eco']}
 ];
+/* 当前这一局用的是哪张图 / 它的材质色。
+   取不到就退回第一张（冒烟与旧存档都可能没有 pick）。 */
+function bzSite(){return BLAZE_SITE_OF[(BLAZE_STATE.pick&&BLAZE_STATE.pick.site)||'math']||BLAZE_SITES[0];}
+function bzPal(){const s=bzSite();return s.pal||BLAZE_SITES[0].pal;}
 const BLAZE_SITE_OF={};BLAZE_SITES.forEach(s=>{BLAZE_SITE_OF[s.id]=s;});
 
 /* ---------------- 战术平面图：分区（POI）----------------
@@ -21136,7 +21230,7 @@ startGame();
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.0.15-82da181b';
+const NEWS_KEY='genji_news', NEWS_VER='v4.0.18-de28d598';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
@@ -22034,10 +22128,32 @@ function drawBlazeWorld(c,rnd){
              现在拉到 240px、浓度 3% —— 用途只是"报点说 C3 时心里有个方位"，
              不需要看清每一条线。 */
       const GRID=BZ_CLEAN?240:160;
-      c.strokeStyle=BZ_CLEAN?'rgba(140,190,255,.030)':'rgba(140,190,255,.045)';
+      c.strokeStyle=BZ_CLEAN?'rgba(140,190,255,.022)':'rgba(140,190,255,.030)';
       c.lineWidth=2;
       for(let gx=x;gx<x+w;gx+=GRID){c.beginPath();c.moveTo(gx,y);c.lineTo(gx,y+h);c.stroke();}
       for(let gy=y;gy<y+h;gy+=GRID){c.beginPath();c.moveTo(x,gy);c.lineTo(x+w,gy);c.stroke();}
+
+      /* ③ 细碎颗粒（4.0.17）：撒一层极淡的小点，让地面"有东西"。
+             地面原来是纯渐变 + 十几个大柔斑，缩放后是一块干净的色板 ——
+             干净到像占位图，"丑"很大一部分来自这里。
+             颗粒必须压到 4~6% 浓度：再高一点就变成满屏噪点
+             （173.3 那次"乱"的教训就是纹理浓度失控）。
+             数量按面积算，每 12000 平方世界单位一颗，上限 900 颗 ——
+             大图不会拖慢静态层构建。 */
+      const mDot=mulberry(31337);
+      const dotN=Math.min(900,Math.floor(w*h/(BZ_CLEAN?20000:12000)));
+      for(let i=0;i<dotN;i++){
+        const px=x+mDot()*w,py=y+mDot()*h,r3=1.6+mDot()*3.4;
+        const light=mDot()<0.45;
+        c.fillStyle=light?'rgba(200,222,255,.055)':'rgba(0,0,0,.10)';
+        c.beginPath();c.arc(px,py,r3,0,7);c.fill();
+      }
+
+      /* ④ 内暗角（4.0.17）：沿战场边缘内侧压一圈暗影，视线自然收到中间。
+             用"裁剪 + 粗描边"实现：描边一半落在外面，被 clip 吃掉，
+             留下的正好是内侧那条渐变一样的暗带 —— 比逐点算距离便宜得多。 */
+      c.strokeStyle='rgba(0,0,0,.30)';c.lineWidth=150;
+      c.beginPath();bzPolyPath(c,poly);c.closePath();c.stroke();
       c.restore();
 
       /* 边界：外圈焦土带 + 内侧黄色警戒虚线 + 一圈暗边 */
@@ -22072,11 +22188,23 @@ function drawBlazeWorld(c,rnd){
         c.fillStyle=eg2;c.beginPath();c.arc(bx,by,br,0,7);c.fill();
       }
       const GRID2=BZ_CLEAN?240:160;
-      c.strokeStyle=BZ_CLEAN?'rgba(140,190,255,.030)':'rgba(140,190,255,.045)';
+      c.strokeStyle=BZ_CLEAN?'rgba(140,190,255,.022)':'rgba(140,190,255,.030)';
       c.lineWidth=2;
       for(let gx=x;gx<x+w;gx+=GRID2){c.beginPath();c.moveTo(gx,y);c.lineTo(gx,y+h);c.stroke();}
       for(let gy=y;gy<y+h;gy+=GRID2){c.beginPath();c.moveTo(x,gy);c.lineTo(x+w,gy);c.stroke();}
+      /* 颗粒与内暗角：和战场用同一套（进大厅不能像换了个游戏） */
+      const mDot2=mulberry(31337);
+      const dotN2=Math.min(900,Math.floor(w*h/(BZ_CLEAN?20000:12000)));
+      for(let i=0;i<dotN2;i++){
+        const px=x+mDot2()*w,py=y+mDot2()*h,r4=1.6+mDot2()*3.4;
+        c.fillStyle=mDot2()<0.45?'rgba(200,222,255,.055)':'rgba(0,0,0,.10)';
+        c.beginPath();c.arc(px,py,r4,0,7);c.fill();
+      }
+      c.strokeStyle='rgba(0,0,0,.26)';c.lineWidth=130;
+      roundRect(c,x,y,w,h,26);c.stroke();
       c.restore();
+      /* 营地设施：帐篷 / 物资箱 / 油桶 / 沙袋围栏（4.0.17） */
+      blazeDrawCamp(c,reg);
       c.strokeStyle=reg.edge;c.lineWidth=7;roundRect(c,x,y,w,h,26);c.stroke();
       c.save();c.setLineDash([16,12]);c.lineWidth=3;
       c.strokeStyle='rgba(255,215,106,.5)';roundRect(c,x+11,y+11,w-22,h-22,18);c.stroke();
@@ -22181,6 +22309,13 @@ function drawBlazeWorld(c,rnd){
 
   /* ---- 障碍：岩石与集装箱堆，挡人也挡视线 ---- */
   if(BZ.map&&BZ.map.rocks&&BZ.map.rocks.length)drawBlazeRocks(c,BZ.map.rocks);
+
+  /* ---- 建筑地坪（4.0.17）：楼脚下先铺一块混凝土 ----
+     旧版的楼是直接贴在渐变地面上的，中间没有任何过渡 ——
+     所以看着像"浮在地图上的几个方块"。先铺地坪（比地面亮一点、
+     带一圈更亮的边），楼才算"落在地面上"：这是这次改动里观感提升最大的一步。
+     顺序：地表家具之后、建筑之前。 */
+  if(BZ.map&&BZ.map.rooms&&BZ.map.rooms.length)blazeDrawSlabs(c,BZ.map.rooms);
 
   /* ---- 建筑：地板 → 墙体（L 形房间用离屏合成一次挖出来） ---- */
   if(BZ.map&&BZ.map.rooms&&BZ.map.rooms.length)blazeDrawRooms(c);
@@ -22744,11 +22879,19 @@ function drawBlazeRiver(c,rv){
   c.lineCap='round';c.lineJoin='round';
   c.beginPath();c.moveTo(p[0][0],p[0][1]);
   for(let i=1;i<p.length;i++)c.lineTo(p[i][0],p[i][1]);
-  c.strokeStyle='rgba(62,54,36,.9)';c.lineWidth=h*2+34;c.stroke();   // 河岸
-  c.strokeStyle='#12303f';          c.lineWidth=h*2;    c.stroke();   // 水面
-  c.strokeStyle='rgba(94,214,255,.13)';c.lineWidth=h*2-20;c.stroke();
-  c.setLineDash([26,36]);c.strokeStyle='rgba(180,235,255,.15)';
-  c.lineWidth=3;c.stroke();c.setLineDash([]);
+  /* 水系（4.0.17）：旧版水面是 #12303f 的平色 + 一条 13% 的青色内带，
+     压在深蓝地面上几乎同色 —— 「河」在整张图上读不出来，
+     只有中间那道虚线在暗示这里有条河。改成四层：
+       河岸土 → 深水外沿 → 水体 → 中心柔光
+     水体提到 #16455c（蓝绿、比地面亮一档），水的"厚"才立得住；
+     最外沿留一圈深色，是水下的阴影、也是岸线的分界。 */
+  c.strokeStyle='rgba(58,49,34,.85)';c.lineWidth=h*2+32;c.stroke();   // 河岸土
+  c.strokeStyle='#0b1f2b';           c.lineWidth=h*2;    c.stroke();   // 深水外沿
+  c.strokeStyle='#16455c';           c.lineWidth=h*2-14; c.stroke();   // 水体
+  c.strokeStyle='rgba(126,214,240,.11)';c.lineWidth=h*2-42;c.stroke(); // 中心柔光
+  /* 水面浮光：一条断续的浅色（不是虚线网，只是"水在动"的暗示） */
+  c.setLineDash([30,44]);c.strokeStyle='rgba(180,235,255,.10)';
+  c.lineWidth=4;c.stroke();c.setLineDash([]);
   c.restore();
   /* 桥：木桥面 + 两侧护栏，方向顺着水流 */
   (rv.bridges||[]).forEach(b=>{
@@ -22779,8 +22922,15 @@ function drawBlazeRoads(c,roads){
     c.lineCap='round';c.lineJoin='round';
     c.beginPath();c.moveTo(p[0][0],p[0][1]);
     for(let i=1;i<p.length;i++)c.lineTo(p[i][0],p[i][1]);
-    c.strokeStyle='rgba(16,12,8,.55)';c.lineWidth=rd.w+14;c.stroke();  // 路基
-    c.strokeStyle=BZ_CLEAN?'#2a2c33':'#31333a';c.lineWidth=rd.w;c.stroke();  // 沥青
+    /* 路基 → **路肩** → 沥青（4.0.17）：中间那层窄亮边是新增的。
+       以前只有"暗路基 + 深沥青"两层，路和地面一样是暗的，
+       只能靠深浅差一点点分辨；补一道稍亮的路肩之后，
+       路看起来是"嵌在地里的一条带"，而不是地上的一道黑影。
+       颜色取自本场地的材质色（冷蓝灰 / 暖砂 / 砖红 / 墨绿）。 */
+    const pal=bzPal();
+    c.strokeStyle='rgba(16,12,8,.55)';c.lineWidth=rd.w+16;c.stroke();  // 路基
+    c.strokeStyle=pal.roadEdge;c.lineWidth=rd.w+6;c.stroke();          // 路肩
+    c.strokeStyle=BZ_CLEAN?(pal.road):pal.road;c.lineWidth=rd.w;c.stroke();  // 沥青
     /* 中心线：白色实线，不是黄虚线。
        整张图里"虚线"已经被三处占了语义 —— 战场边界警戒线、POI 范围圈、
        撤离点虚线圈，它们全都表示"范围"。道路再挂一条黄虚线，
@@ -22820,13 +22970,21 @@ function drawBlazePois(c,pois,withLabel){
       const g=c.createRadialGradient(p.x,p.y,p.r*0.15,p.x,p.y,p.r);
       /* 简洁档：普通分区的色块几乎收干净（0.07 → 0.035），
          只留虚线圈标出范围；高价值区（hot）保持金色，那是"哪儿肥"的关键信息。 */
-      g.addColorStop(0,hot?(BZ_CLEAN?'rgba(255,215,106,.105)':'rgba(255,215,106,.11)')
-                         :(BZ_CLEAN?'rgba(150,200,255,.035)':'rgba(150,200,255,.07)'));
+      /* 高价值区的色洗（4.0.17）：从纯金 rgba(255,215,106) 换成偏橙的暖色，
+         并降一档浓度 —— 金色压在冷蓝地面上会混出一种发绿的橄榄色，
+         一大片看过去像"泥浆"而不是"肥区"。偏橙之后是干净的暖调。 */
+      g.addColorStop(0,hot?(BZ_CLEAN?'rgba(255,186,104,.075)':'rgba(255,186,104,.085)')
+                         :(BZ_CLEAN?'rgba(150,200,255,.035)':'rgba(150,200,255,.06)'));
       g.addColorStop(1,'rgba(0,0,0,0)');
       c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,p.r,0,7);c.fill();
-      c.setLineDash([16,13]);c.lineWidth=3;
-      c.strokeStyle=hot?(BZ_CLEAN?'rgba(255,215,106,.42)':'rgba(255,215,106,.40)')
-                       :(BZ_CLEAN?'rgba(200,225,255,.15)':'rgba(200,225,255,.24)');
+      /* 分区圈（4.0.17）：虚线拉长、密度降下来。
+         旧版 [16,13] 一圈要画二十多段，八个分区就是两百多根小线段 ——
+         满屏短虚线正是"图很乱"的主要来源。拉长到 [30,26] 之后
+         一圈只剩七八段，还看得见"这里有块范围"，但不再抢眼。
+         高价值区（hot）保持金色与稍高的浓度：那是"哪儿肥"的关键信息。 */
+      c.setLineDash(hot?[30,24]:[34,30]);c.lineWidth=hot?3.5:2.5;
+      c.strokeStyle=hot?(BZ_CLEAN?'rgba(255,215,106,.44)':'rgba(255,215,106,.42)')
+                       :(BZ_CLEAN?'rgba(200,225,255,.11)':'rgba(200,225,255,.17)');
       c.beginPath();c.arc(p.x,p.y,p.r,0,7);c.stroke();
       c.setLineDash([]);
       c.restore();
@@ -23373,22 +23531,214 @@ function blazeRoomTag(c,r,txt,sub,color){
    墙 = 所有 cell 各向外扩 BZ_WALL 的并集 − 房间内部 − 门洞。
    并集用一张离屏 canvas 合成（fill 并集 → destination-out 挖掉内部和门洞），
    L 形拐角处的内隔墙会自然消失，屋里是连通的。 */
+/* 建筑地坪（4.0.17）：每栋楼外扩一圈铺一块"混凝土"。
+   旧版的楼直接贴在渐变地面上，中间没有任何过渡 —— 看着像浮在地图上的方块。
+   先铺地坪，楼才算"落在地面上"。这是这次外观改动里观感提升最大的一步。
+   实现要点：同一个房间的多个格子**一次性并集填充**，
+   一块一块地填会在相邻格子重叠处叠出双倍透明度，交界显出一道深色缝
+   （旧版分区色块就踩过这个坑，注释里写着"交界处糊成一潭脏色"）。
+   成本：每个房间一次 fill，静态层只构建一次，可以忽略。 */
+/* 营地设施（4.0.17）：行动基地以前只有一块渐变地板 + 一个 🎖️。
+   4.0.13 把"战场那套掩体与碎石"从营地拿走是对的（那是战场的语汇，
+   从基地进图时会和地图地面混在一起），但拿完之后营地面成了一块空板 ——
+   进烽火模式第一眼看到的就是它，"丑"有很大一部分来自这里。
+   这里补的是**营地自己的**语汇：沙袋围栏、帐篷、物资箱堆、油桶。
+   布局用固定种子（每次进基地长得一样，不会飘），
+   并绕开交互点位与中央标题区 —— 挡住指挥部按钮比空着更糟。 */
+function blazeDrawCamp(c,reg){
+  const rect=reg.rect,x=rect[0],y=rect[1],w=rect[2],h=rect[3];
+  const pal=bzPal();
+  const rr=mulberry(20261017);
+  /* ① 设施地基 + 通路（先画，后面所有道具压在上面）：
+     和战场上的"建筑地坪"是同一套视觉语言 ——
+     每处设施脚下有一块自己的院子，再用浅色通路把指挥部与各处连起来。
+     营地"像有人规划过"靠的就是这一笔，比多摆十个箱子管用。 */
+  const hq=SPOTS.filter(sp=>sp.t==='hq')[0];
+  if(hq){
+    SPOTS.forEach(sp=>{
+      if(sp===hq)return;
+      c.save();
+      c.lineCap='round';
+      c.strokeStyle=pal.roadEdge;c.lineWidth=30;
+      c.beginPath();c.moveTo(hq.x,hq.y);c.lineTo(sp.x,sp.y);c.stroke();
+      c.strokeStyle='rgba(0,0,0,.16)';c.lineWidth=22;
+      c.beginPath();c.moveTo(hq.x,hq.y);c.lineTo(sp.x,sp.y);c.stroke();
+      c.restore();
+    });
+  }
+  SPOTS.forEach(sp=>{
+    const R=(sp.t==='hq')?136:92;
+    c.save();
+    const g=c.createRadialGradient(sp.x,sp.y,R*0.2,sp.x,sp.y,R);
+    g.addColorStop(0,pal.slab);g.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=g;c.beginPath();c.arc(sp.x,sp.y,R,0,7);c.fill();
+    c.strokeStyle=pal.slabEdge;c.lineWidth=2;
+    c.beginPath();c.arc(sp.x,sp.y,R*0.72,0,7);c.stroke();
+    c.restore();
+  });
+  /* 保留区：点位周围不许压（挡住指挥部按钮比空着更糟）+ 中央标题那一带。
+     中央保留区**不能给大**：实测营地只有 740×540 一块小板
+     （探针 .tmp_play/_dbg_camp.py：reg=[430,330,740,540]），
+     半径给到 210 就几乎盖住整块板，所有道具都会被判"太近"而一个都放不下。 */
+  const busy=[];
+  SPOTS.forEach(sp=>busy.push({cx:sp.x,cy:sp.y,r:150}));
+  busy.push({cx:x+w/2,cy:y+h/2,r:150});                 // 中央标题区
+  const free=(px,py,pad)=>{
+    if(px<x+80||px>x+w-80||py<y+80||py>y+h-80)return false;
+    for(let i=0;i<busy.length;i++){
+      const b=busy[i],dx=px-b.cx,dy=py-b.cy,r=b.r+pad;
+      if(dx*dx+dy*dy<r*r)return false;
+    }
+    return true;
+  };
+  c.save();
+  /* ① 沙袋围栏：沿内圈一圈小圆角块。营地因此有了"被围起来"的感觉，
+     这是最省、也最像"有人在这儿驻扎"的一笔。 */
+  const F=118;
+  for(let px=x+56;px<x+w-40;px+=F){
+    [y+40,y+h-40].forEach(py=>{
+      if(!free(px,py,-14))return;
+      c.fillStyle='rgba(150,140,110,.20)';
+      roundRect(c,px,py-11,58,22,8);c.fill();
+      c.strokeStyle='rgba(0,0,0,.30)';c.lineWidth=1.5;
+      roundRect(c,px,py-11,58,22,8);c.stroke();
+      c.beginPath();c.moveTo(px+29,py-11);c.lineTo(px+29,py+11);c.stroke();
+    });
+  }
+  for(let py=y+56;py<y+h-40;py+=F){
+    [x+40,x+w-40].forEach(px=>{
+      if(!free(px,py,-14))return;
+      c.fillStyle='rgba(150,140,110,.20)';
+      roundRect(c,px-11,py,22,58,8);c.fill();
+      c.strokeStyle='rgba(0,0,0,.30)';c.lineWidth=1.5;
+      roundRect(c,px-11,py,22,58,8);c.stroke();
+      c.beginPath();c.moveTo(px-11,py+29);c.lineTo(px+11,py+29);c.stroke();
+    });
+  }
+  /* ② 物资箱：两三个一组，顶面稍亮（光源在左上）。
+     抽成小函数：成堆摆放时（围着设施）要反复用。 */
+  const crate=(px,py,seed)=>{
+    const n=2+(seed()<.5?1:0);
+    for(let k=0;k<n;k++){
+      const cw=30+seed()*16,ch=24+seed()*12;
+      const qx=px+k*(cw+7),qy=py+(k%2?9:0);
+      c.fillStyle='rgba(0,0,0,.34)';roundRect(c,qx+3,qy+4,cw,ch,5);c.fill();
+      c.fillStyle='rgba(120,110,86,.86)';roundRect(c,qx,qy,cw,ch,5);c.fill();
+      c.fillStyle='rgba(160,150,124,.5)';roundRect(c,qx+2,qy+2,cw-4,ch*0.34,4);c.fill();
+    }
+  };
+  /* ③ 油桶 */
+  const barrel=(px,py)=>{
+    c.fillStyle='rgba(0,0,0,.32)';c.beginPath();c.arc(px+3,py+4,16,0,7);c.fill();
+    c.fillStyle='rgba(96,86,70,.86)';c.beginPath();c.arc(px,py,16,0,7);c.fill();
+    c.strokeStyle='rgba(190,175,140,.28)';c.lineWidth=2;
+    c.beginPath();c.arc(px,py,10,0,7);c.stroke();
+  };
+
+  /* ④ 围着每处设施堆东西（关键）：第一版把道具随机撒在整张营地板子上，
+     而营地板是 2400×1900 的大矩形 —— 一屏只看得到板子的一小块，
+     于是"凑近了看还是空的"（截图里只有边缘露了几个箱子）。
+     改成围着每个交互点位（指挥部 / 商店 / 诊所 / 靶场…）摆一圈，
+     走到哪儿都有东西，也像"设施旁边堆着物资"。位置由种子决定，每次一样。 */
+  /* 铺满整块营地：营地是**小板子**（740×540），不是整张世界图 ——
+     所以"撒满"才是对的做法（第一版以为它是 2400×1900，围着点位摆，
+     结果全落在视野之外、或被中央保留区挡掉）。
+     用抖动网格保证覆盖均匀，再用 free() 让开点位与标题区。 */
+  const COLS=6,ROWS=4;
+  for(let gy=0;gy<ROWS;gy++){
+    for(let gx=0;gx<COLS;gx++){
+      const px=x+90+(gx+0.5)*((w-180)/COLS)+(rr()-0.5)*70;
+      const py=y+90+(gy+0.5)*((h-180)/ROWS)+(rr()-0.5)*54;
+      if(!free(px,py,24))continue;
+      const roll=rr();
+      if(roll<0.48)crate(px,py,rr);
+      else if(roll<0.74)barrel(px,py);
+      else{                       /* 帐篷：营地最像"有人驻扎"的一样 */
+        const tw=84+rr()*26,th=58+rr()*16;
+        c.fillStyle='rgba(0,0,0,.32)';roundRect(c,px-tw/2+4,py-th/2+5,tw,th,10);c.fill();
+        c.fillStyle='rgba(94,102,94,.88)';roundRect(c,px-tw/2,py-th/2,tw,th,10);c.fill();
+        c.fillStyle='rgba(124,132,122,.90)';roundRect(c,px-tw/2+6,py-th/2+6,tw-12,th-12,8);c.fill();
+        c.strokeStyle='rgba(0,0,0,.32)';c.lineWidth=2;
+        c.beginPath();c.moveTo(px,py-th/2+4);c.lineTo(px,py+th/2-4);c.stroke();
+      }
+      busy.push({cx:px,cy:py,r:46});
+    }
+  }
+  /* ⑤ 板边警戒带：营板四边画一道带斜纹的浅色带。
+     站在板边（进场第一眼就在左边）时，眼睛里终于有一条"场地边界"的设计，
+     而不是渐变直接切断。 */
+  c.save();
+  const BAND=26;
+  [[0,0,w,BAND],[0,h-BAND,w,BAND],[0,0,BAND,h],[w-BAND,0,BAND,h]].forEach(bd=>{
+    c.fillStyle='rgba(150,140,110,.16)';
+    c.fillRect(x+bd[0],y+bd[1],bd[2],bd[3]);
+    c.save();
+    c.beginPath();c.rect(x+bd[0],y+bd[1],bd[2],bd[3]);c.clip();
+    c.strokeStyle='rgba(255,215,106,.10)';c.lineWidth=6;
+    for(let k=-h;k<w+h;k+=34){
+      c.beginPath();c.moveTo(x+bd[0]+k,y+bd[1]);
+      c.lineTo(x+bd[0]+k+h,y+bd[1]+bd[3]+h);c.stroke();
+    }
+    c.restore();
+  });
+  c.restore();
+  c.restore();
+}
+function blazeDrawSlabs(c,rooms){
+  const pal=bzPal(),PAD=34;
+  (rooms||[]).forEach(r=>{
+    c.save();
+    c.beginPath();
+    (r.cells||[]).forEach(cc=>{
+      roundRect(c,cc.x-BZ_WALL-PAD,cc.y-BZ_WALL-PAD,
+                cc.w+2*(BZ_WALL+PAD),cc.h+2*(BZ_WALL+PAD),10);
+    });
+    /* 地坪本身用"上边实、下边化开"的渐变 —— 纯色块的硬边看着像贴纸，
+       渐隐之后楼像是"坐在一片被踩实的水泥地上"。
+       光还是来自左上：近楼那一侧（上）最亮，往下淡出。 */
+    const g=c.createLinearGradient(0,r.cells[0].y-BZ_WALL-PAD,
+                                     0,r.cells[0].y+r.cells[0].h+BZ_WALL+PAD*2);
+    g.addColorStop(0,pal.slab);
+    g.addColorStop(.45,pal.slab);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=g;
+    c.fill();
+    c.restore();
+  });
+}
 function blazeDrawRooms(c){
   const mp=BZ.map;
   if(!mp||!mp.rooms)return;
+  const pal=bzPal();
   mp.rooms.forEach(r=>{
-    /* 地板：实色深灰，不再是"黑色叠蓝地面"。
-       旧版是 rgba(0,0,0,.34) 盖在蓝地面上 —— 结果房间内部只是
-       "一块更深的蓝"，和外部地面同色系，屋子在哪全靠那圈 2px 描边找。
-       改成低饱和的实色之后，房间内部立刻变成"另一种材质"，
-       和冷色地面分得开；比地面更暗，也符合"室内背光"的直觉。 */
+    const cells=r.cells;
+    const roomPath=()=>{c.beginPath();cells.forEach(x=>c.rect(x.x,x.y,x.w,x.h));};
+    /* 地板（4.0.17）：用本场地的建材色 + **贴墙一圈内阴影**。
+       旧版是 rgb(26,30,37) 的平色 —— 房间和地面只差一点明度，
+       屋里屋外分不开，屋子全靠那圈 2px 亮描边撑着（线框感的主要来源之一）。
+       现在加上内阴影之后，房间是"凹下去的一块"，
+       不再需要描边来告诉眼睛"这里有个屋子"。 */
     c.save();
-    c.fillStyle=r.vault?'rgba(38,26,16,.94)':'rgba(26,30,37,.92)';
-    c.beginPath();r.cells.forEach(x=>c.rect(x.x,x.y,x.w,x.h));c.fill();
+    /* 保险箱房的地板（4.0.17）：以前是 rgba(48,33,18) 的**棕色**，
+       配上同样是棕色的墙，整间屋子像一只木板箱 ——
+       在战术地图上一眼就是"那块木头"，是整张图上最扎眼的东西。
+       改成偏暖的深灰（加固混凝土），"高价值"的身份交给四角金封条去说。 */
+    c.fillStyle=r.vault?'rgba(40,35,28,.96)':pal.floor;
+    roomPath();c.fill();
     c.save();
-    c.beginPath();r.cells.forEach(x=>c.rect(x.x,x.y,x.w,x.h));c.clip();
-    c.strokeStyle='rgba(255,255,255,.035)';c.lineWidth=2;
-    r.cells.forEach(cc=>{
+    roomPath();c.clip();
+    /* 贴墙内阴影：用粗描边画在被裁剪的房间内部，只留内侧那一半 */
+    c.strokeStyle='rgba(0,0,0,.40)';c.lineWidth=26;
+    roomPath();c.stroke();
+    /* 地面轻微反光：左上更亮一点，和"光源在左上"这条约定一致 */
+    c.strokeStyle='rgba(255,255,255,.030)';c.lineWidth=7;
+    cells.forEach(cc=>{
+      c.beginPath();c.moveTo(cc.x+6,cc.y+cc.h-6);c.lineTo(cc.x+6,cc.y+6);
+      c.lineTo(cc.x+cc.w-6,cc.y+6);c.stroke();
+    });
+    /* 细网格再淡一档：室内是背景，不该和地表的道路/掩体抢对比 */
+    c.strokeStyle='rgba(255,255,255,.020)';c.lineWidth=2;
+    cells.forEach(cc=>{
       for(let gx=cc.x+36;gx<cc.x+cc.w;gx+=36){c.beginPath();c.moveTo(gx,cc.y);c.lineTo(gx,cc.y+cc.h);c.stroke();}
       for(let gy=cc.y+36;gy<cc.y+cc.h;gy+=36){c.beginPath();c.moveTo(cc.x,gy);c.lineTo(cc.x+cc.w,gy);c.stroke();}
     });
@@ -23418,9 +23768,22 @@ function blazeDrawRooms(c){
     /* 房间标记：保险箱房 / 上锁房间 */
     if(r.vault){
       c.save();
-      c.strokeStyle='rgba(255,201,74,.55)';c.lineWidth=5;c.setLineDash([18,12]);
-      r.cells.forEach(cc=>{c.beginPath();c.rect(cc.x+8,cc.y+8,cc.w-16,cc.h-16);c.stroke();});
-      c.setLineDash([]);
+      /* 隔离区（4.0.17）：不再是金色虚线框。
+         虚线在整张图上已经被"范围"占了语义（分区圈 / 撤离点 / 边界警戒线），
+         保险箱房再挂一圈虚线，四套虚线混在一起，眼睛分不清哪条是哪条。
+         改成**四角 L 形封条 + 一层极淡金色色洗** —— 更像"封锁区"，
+         线少了一半，语义反而更凶。 */
+      c.fillStyle='rgba(255,201,74,.055)';
+      r.cells.forEach(cc=>c.fillRect(cc.x,cc.y,cc.w,cc.h));
+      c.strokeStyle='rgba(255,201,74,.66)';c.lineWidth=6;c.lineCap='round';
+      r.cells.forEach(cc=>{
+        const L=Math.min(46,Math.min(cc.w,cc.h)*0.30);
+        const x0=cc.x+8,y0=cc.y+8,x1=cc.x+cc.w-8,y1=cc.y+cc.h-8;
+        [[x0,y0,1,1],[x1,y0,-1,1],[x0,y1,1,-1],[x1,y1,-1,-1]].forEach(v=>{
+          const px=v[0],py=v[1],sx=v[2],sy=v[3];
+          c.beginPath();c.moveTo(px+sx*L,py);c.lineTo(px,py);c.lineTo(px,py+sy*L);c.stroke();
+        });
+      });
       c.restore();
       const gn=blazeVaultGuards().length;
       blazeRoomTag(c,r,BZ.vaultOpen?'🔓 保险箱房':'🔒 保险箱房',
@@ -23434,7 +23797,7 @@ function blazeDrawRooms(c){
   });
 }
 function blazeDrawWalls(c,r){
-  const W=BZ_WALL;
+  const W=BZ_WALL,pal=bzPal();
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   r.cells.forEach(cc=>{
     x0=Math.min(x0,cc.x-W-8);y0=Math.min(y0,cc.y-W-8);
@@ -23450,10 +23813,16 @@ function blazeDrawWalls(c,r){
      颜色从 #2b3546（冷蓝灰，和地面同色系）提到 #414a56 ——
      低饱和、偏中性、比地面亮一档。墙面比地面亮，这就是"实体"的视觉信号；
      旧值比地面还暗，墙只能在暗地上再压一层暗，屋子边缘全靠描边撑着。 */
-  o.fillStyle=r.vault?'#5a3b22':'#414a56';
+  /* 保险箱房的墙：从 #5a3b22（棕）改成暖灰的"加固混凝土"，
+     比本场地的墙略暖一点就够区分，不再是一整块木头色。 */
+  o.fillStyle=r.vault?'#5d5346':pal.wall;
   o.beginPath();r.cells.forEach(cc=>o.rect(cc.x-W,cc.y-W,cc.w+2*W,cc.h+2*W));o.fill();
-  /* ② 描边画在挖空之前，挖空后只剩外侧那一线，正好是墙的外沿 */
-  o.strokeStyle=r.vault?'rgba(255,180,90,.55)':'rgba(255,255,255,.20)';
+  /* ② 外沿收边（4.0.17）：以前这里是一圈**亮白描边** rgba(255,255,255,.20)，
+     整张图的家家户户都描着一条白线 —— 这就是"线框感"的最大来源。
+     亮线本来是用来"和暗地面分开"的，现在地面压暗、墙提亮、
+     再加了内阴影与投影，屋子的边界已经自己立得住，
+     这里改成暗收边（压一层黑），只负责"墙体到此为止"。 */
+  o.strokeStyle=r.vault?'rgba(255,180,90,.42)':'rgba(0,0,0,.45)';
   o.lineWidth=2.5;
   o.beginPath();r.cells.forEach(cc=>o.rect(cc.x-W,cc.y-W,cc.w+2*W,cc.h+2*W));o.stroke();
   /* ③ 挖掉房间内部与开着的门洞 */
@@ -23463,11 +23832,19 @@ function blazeDrawWalls(c,r){
   if(!(r.lock>0&&!r.opened))(r.doors||[]).forEach(d=>o.rect(d.x,d.y,d.w,d.h));
   o.fill();
   o.globalCompositeOperation='source-over';
-  /* ④ 墙顶高光，让楼看起来有厚度 */
-  o.strokeStyle=r.vault?'rgba(255,200,120,.30)':'rgba(255,255,255,.16)';
+  /* ④ 墙顶高光 + 右下侧压暗（4.0.17）：配成一束"左上光"。
+     旧版只有顶面一条高光、四边都亮，读起来还是平的；
+     补上右侧与下侧的暗边之后，墙体有了厚度方向，
+     楼"立"在了地面上，不再是一圈描边围出来的空框。 */
+  o.strokeStyle=r.vault?'rgba(255,200,120,.30)':pal.wallTop;
   o.lineWidth=4;
   r.cells.forEach(cc=>{
     o.beginPath();o.moveTo(cc.x-W+3,cc.y-W+3);o.lineTo(cc.x+cc.w+W-3,cc.y-W+3);o.stroke();
+  });
+  o.strokeStyle='rgba(0,0,0,.34)';o.lineWidth=5;
+  r.cells.forEach(cc=>{
+    o.beginPath();o.moveTo(cc.x+cc.w+W-3,cc.y-W+3);o.lineTo(cc.x+cc.w+W-3,cc.y+cc.h+W-3);o.stroke();
+    o.beginPath();o.moveTo(cc.x-W+3,cc.y+cc.h+W-3);o.lineTo(cc.x+cc.w+W-3,cc.y+cc.h+W-3);o.stroke();
   });
   c.save();
   c.shadowColor='rgba(0,0,0,.6)';c.shadowBlur=16;c.shadowOffsetY=6;
@@ -26007,7 +26384,7 @@ function showMenu(){
   const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'格物纪元 · 四国远征'));
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
-     没经过构建（4.0.15 占位）时不显示，免得把占位符贴到界面上。 */
+     没经过构建（4.0.18 占位）时不显示，免得把占位符贴到界面上。 */
   const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
     ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
@@ -26082,6 +26459,10 @@ function showMenu(){
         <span class="tx">战场底纹：${BZ_CLEAN?'简洁':'完整'}<div class="d">${BZ_CLEAN
           ?'扫描线 / 密网格 / 栅格坐标已收起，地形和点位更清楚'
           :'扫描线 + 战术网格 + 栅格坐标全开，氛围更足也更花'}</div></span></button>`:''}
+      <button class="menu-li" id="mLite"><span class="e">${PERF.lite?'⚡':'🎚️'}</span>
+        <span class="tx">画质：${PERF.lite?'流畅':'完整'}<div class="d">${PERF.lite
+          ?'面板和公告的毛玻璃也关掉了 —— 极端弱机再省一点（帧率与完整档已经一样）'
+          :'面板与公告保留玻璃质感（点开时地图会停画，那层模糊只算一次，不花性能）'}</div></span></button>
       ${IS_PC?`<button class="menu-li" id="mKeys"><span class="e">⌨️</span>
         <span class="tx">电脑端键位<div class="d">WASD 移动 · Shift 疾跑 · 点地图走过去 · E 互动 · 1~4 选选项</div></span></button>`:''}
       ${!bz&&!ep&&!dr?`<button class="menu-li" id="mTeleport"><span class="e">🌀</span>
@@ -26134,6 +26515,14 @@ function showMenu(){
   if(mtac)mtac.onclick=()=>{closePanel();audioKick();showTacMap();};
   const mcl=$('mClean');
   if(mcl)mcl.onclick=()=>{audioKick();setBzClean(!BZ_CLEAN);closePanel();setTimeout(showMenu,60);};
+  const mli=$('mLite');
+  /* 省电档开关：和「战场底纹」一个套路 —— 切完重开菜单，标题上就能看到当前是哪一档 */
+  if(mli)mli.onclick=()=>{
+    audioKick();
+    setPerfLite(!PERF.lite,'manual');
+    toast(PERF.lite?'⚡ 流畅画质：面板毛玻璃也关掉了':'🎚️ 完整画质：面板与公告的玻璃质感回来了');
+    closePanel();setTimeout(showMenu,60);
+  };
   if(mt)mt.onclick  =()=>{closePanel();audioKick();showTeleport();};
   const mk=$('mKeys');
   if(mk)mk.onclick  =()=>{closePanel();audioKick();showKeyHelp();};
@@ -27059,7 +27448,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.0.15';
+const BUILD_VER='4.0.18';
 const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
 function upbarSkipped(v){
   try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}

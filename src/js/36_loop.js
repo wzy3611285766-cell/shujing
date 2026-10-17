@@ -52,9 +52,8 @@ function resize(){
   const BASE_VH=(CUR===EPIC)?900:860;      // 横向富余时，再按高度收一收
   const MIN_S  =(CUR===EPIC)?0.62:0.55;    // 下限 = 石碑 emoji 约 21px，再小就看不清
   SCALE=clamp(Math.min(VW/BASE_VW,VH/BASE_VH),MIN_S,1.7);
-  /* 缩放变了，地形层的位移与倍率要立刻跟着改。
-     否则「面板开着时转屏」会留下一个按旧比例摆的底图。 */
-  syncBgTransform();
+  /* 4.0.17：这里原来要 syncBgTransform() 把地形层挪到新位置 ——
+     地形改在主画布上贴图之后，SCALE 一变下一帧画出来就是对的，不需要补一次。 */
   if(typeof measureTopbar==='function')measureTopbar();
   /* 旋转屏幕会切换「单列 / 横屏两栏」两套排版：
      已经渲染好的题面是按旧布局分的档（题干字号、单列还是双列、限高多少），
@@ -187,18 +186,22 @@ function draw(){
   ctx.save();
   ctx.scale(SCALE,SCALE);
   ctx.translate(-cam.x,-cam.y);
-  /* 地形层跟着镜头挪一格 —— 这是整个渲染里最省的一步：
-     一次 CSS 变换交给合成器，主线程不做任何绘制。 */
-  syncBgTransform();
-  if(staticLayer===bgCv){
-    /* 【帧率 3/3】地形层换了实现：不再每帧 drawImage，只把整层挪到镜头位置。
-       下面这段是兜底 —— 万一 #bg 没取到（旧结构 / 被裁掉的页面），
-       退回原来的一次性位图 blit，功能不受影响。
-       兜底时把双线性关掉：源图按 1 世界单位 1px 画的，贴屏要放大
-       SCALE*DPR 倍（手机竖屏 1.39），非整数倍放大时每个目标像素都要插值，
-       实测单这一笔 5.8ms；改用最近邻取整采样只要 1.3ms，快 4.5 倍。
-       源图最终只占 0.69 个 CSS 像素，画质差别在亚像素级（做过放大对比核对）。
-       倍率 < 1（桌面窄窗口）时最近邻会丢像素，那种情况保留平滑。 */
+  /* ================================================================
+     地形每帧贴一次（4.0.17 起只有这一种画法）
+     ----------------------------------------------------------------
+     以前"完整画质"是把地形交给合成器挪 #bg 那一层，只有省电档才主线程贴图。
+     实测（tools/perf.py 消融）说明这个分工是反的：那一层是 2400×1900 的 DOM 画布，
+     dpr2 平板上要按 4800×3800（1850 万像素）重光栅化、而且每帧重来一遍 ——
+     单它一项就把帧间隔顶到 33.3ms（收掉它 → 16.7ms）。
+     主线程贴图只花 1.3ms，还顺带把地形从合成器手里彻底拿回来。
+     所以现在**所有设备都走贴图**，观感差别只在"位移步长"上：
+     贴图以设备像素为步长，比合成器的亚像素滑动更稳，网格不会逐帧游走发糊。
+
+     要关双线性：源图按 1 世界单位 1px 画的，贴屏要放大 SCALE*DPR 倍，
+     非整数倍时每个目标像素都要插值（实测 5.8ms），改最近邻只要 1.3ms。
+     倍率 < 1（桌面窄窗口）时最近邻会丢像素，那种情况保留平滑。
+     ================================================================ */
+  if(staticLayer){
     const _sm=ctx.imageSmoothingEnabled;
     if(SCALE*DPR>=1)ctx.imageSmoothingEnabled=false;
     ctx.drawImage(staticLayer,0,0);
@@ -370,9 +373,12 @@ const PERF={
   multi:1,                 // 每几个 vsync 出一帧
   maxMulti:1,              // 本屏允许的最低档（不低于 24fps）
   last:0,                  // 上一帧的 rAF 时间戳（落在 vsync 网格上）
+  lite:false,              // 省电档：连面板毛玻璃也关掉（见 setPerfLite）
+  slow:0,                  // 连着几次评估都"降着档还迟到" —— 用来判定该切省电档
   work:0,                  // 一帧主线程实际耗时（EMA，ms）
   span:0,                  // 相邻两帧的真实间隔（ms）
-  drawn:0,n:0,miss:0,ticks:0,fast:0
+  drawn:0,n:0,miss:0,ticks:0,fast:0,
+  bad:0                    // 连着几批"够呛"（heavy 或过半迟到）—— 连两批才降档
 };
 /* 量屏幕节拍：一个窗口里最小的 rAF 间隔就是 vsync ——
    慢帧只会让间隔变大、不会变小，所以最小值代表真实节拍。
@@ -385,6 +391,32 @@ const PERF={
    一次误判就让渲染从 19fps 掉到 15fps）；而且这个最小值必须在一个窗口里
    **出现两次以上**才采纳 —— 只出现一次的极小值是抖动，不是节拍。
    没量准（hz=0）时不会升降档，游戏就照「每帧都画」跑，跟改之前一样。 */
+/* ---------------- 省电档（4.0.16 / 4.0.17 收窄） ----------------
+   平板/弱机上掉帧的主因不在主线程（实测 draw 只要 0.5ms），而在合成器那侧：
+   压在地图上的毛玻璃每帧都要跟着底下的 canvas 重算一遍、
+   2400x1900 的地形图层每帧重采样一遍（tools/perf.py 消融：
+   关掉模糊 33.3ms → 16.7ms，收掉地形图层 33.3ms → 16.7ms）。
+
+   4.0.17 起这两样**默认就是关的**（地形改主线程贴图、HUD 毛玻璃换成同色底，
+   见 draw() 与 00_base.css），所以这一档现在只剩"连面板与公告的毛玻璃也关掉"。
+   换句话说：以前它是"想上 60fps 就得开"的档，现在只是给最弱那批设备多留一手。
+   （面板/公告的模糊本来就几乎不花钱 —— 它们一开地图就停画，模糊只算一次。）
+
+   自动切：节拍器连着几次"已经降了档、帧还是迟到"就切 ——
+   光看 PERF.work 是看不出来的（它只有零点几毫秒）。
+   手动切：☰ 菜单里那一项。两边都写进 localStorage，下次打开记得住。 */
+const LITE_KEY = 'genji_perflite';
+function setPerfLite(on, why){
+  PERF.lite = !!on;
+  try{document.body.classList.toggle('perf-lite', PERF.lite);}catch(e){}
+  try{localStorage.setItem(LITE_KEY, PERF.lite ? '1' : '0');}catch(e){}
+  /* 自动切的时候要说一声：悄悄把画面变差，玩家会以为游戏坏了 */
+  if(why === 'auto')try{
+    toast('⚡ 已自动切到「流畅画质」：这台设备连面板毛玻璃都跑不顺。☰ 菜单里可以改回来');
+  }catch(e){}
+}
+try{if(localStorage.getItem(LITE_KEY) === '1')setPerfLite(true, 'boot');}catch(e){}
+
 function paceProbe(dt){
   if(dt<5)return;
   if(dt<PERF.win){PERF.win=dt;PERF.winHit=1;}
@@ -418,18 +450,34 @@ function paceDraw(now){
   PERF.drawn++;PERF.n++;
   if(PERF.span>PERF.vs*PERF.multi*1.5)PERF.miss++;
   /* 每 30 帧评一次档：
-     一帧耗时超过预算的 80%，或这批里有 1/4 的帧迟到 → 降一档；
+     一帧耗时超过预算的 80%，或这批里**过半**的帧迟到 → 降一档；
      连续 6 批（约 3 秒）都用不到 40% 的预算、一次没迟到 → 升一档。
-     节拍还没量准（hz=0）时不评：那会儿预算本身是假的，评了只会乱降档。 */
+     节拍还没量准（hz=0）时不评：那会儿预算本身是假的，评了只会乱降档。
+
+     【4.0.17 把迟到的门槛从 1/4 提到 1/2，且要求连着两批】
+     原来"这批有 1/4 帧迟到"就降档 —— 在本机明明能跑满的机器上，
+     开局那几次 GC / 布局抖动就够凑满 1/4，于是它把帧率永久砍成一半（30fps），
+     tools/perf.py 复测时撞到过两次（同一台机器两次跑出 16.7 与 33.3 两档）。
+     真正"跟不上"的设备是**过半**的帧都迟到，而且一批评不完还会再评一批：
+     所以现在要求过半 + 连着两批。主线程真的忙（heavy）仍然是当场降 ——
+     那个数（PERF.work）是实测的，不会误判。 */
   if(PERF.n>=30&&PERF.hz>0){
     const budget=PERF.vs*PERF.multi;
-    const heavy=PERF.work>budget*.8, late=PERF.miss>PERF.n*.25;
-    if(PERF.multi<PERF.maxMulti&&(heavy||late)){PERF.multi++;PERF.fast=0;PERF.work=0;}
+    const heavy=PERF.work>budget*.8, late=PERF.miss>PERF.n*.5;
+    PERF.bad=(heavy||late)?PERF.bad+1:0;
+    /* 已经降着档、帧还在迟到 —— 瓶颈多半不在主线程而在合成器（毛玻璃 / 图层重采样）。
+       连着三次这样才切省电档：一次就切会被偶发卡顿误判。 */
+    if(PERF.multi >= 2 && late){
+      if(++PERF.slow >= 3){PERF.slow = 0;setPerfLite(true, 'auto');}
+    }else PERF.slow = 0;
+    if(PERF.multi<PERF.maxMulti&&(heavy||PERF.bad>=2)){PERF.multi++;PERF.fast=0;PERF.work=0;}
     else if(PERF.multi>1){
-      /* 升档要连着 6 批都很闲（约 2~3 秒）：偶尔一批只是"不闲"就停表不计数，
+      /* 升档要连着几批都很闲：偶尔一批只是"不闲"就停表不计数，
          真忙起来（>60% 预算）才把计数器清零 —— 免得刚升上去就又被压回来，
-         来回抖比一直低一档还难看。 */
-      if(PERF.work<budget*.4){if(++PERF.fast>=6){PERF.multi--;PERF.fast=0;}}
+         来回抖比一直低一档还难看。
+         4.0.17：已经降着档时门槛从 6 批降到 3 批。降档更容易误判了（见上），
+         所以回来也要更快 —— 否则一次开局抖动能让玩家白白看 6 秒的 30fps。 */
+      if(PERF.work<budget*.4){if(++PERF.fast>=(PERF.multi>1?3:6)){PERF.multi--;PERF.fast=0;}}
       else if(PERF.work>budget*.6)PERF.fast=0;
     }
     PERF.n=0;PERF.miss=0;

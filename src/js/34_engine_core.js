@@ -385,18 +385,25 @@ document.addEventListener('pointerdown',function(e){
 
 /* ---------------- 地图预渲染 ---------------- */
 const cv=document.getElementById('game'),ctx=cv.getContext('2d');
-/* 静态地形层。正常情况下它就是页面上那个 #bg 元素（见 draw() 的注释），
-   取不到时才退化回离屏 canvas + 每帧 drawImage 的老路。 */
-const bgCv=document.getElementById('bg');
+/* 静态地形层：一块**离屏**画布（4.0.17 起）。
+   ---------------------------------------------------------------
+   以前它是页面上那个 DOM 节点 #bg，交给合成器用 CSS transform 挪。
+   想的是"挪图层不要钱"，但代价在另外一头：那是一块 2400×1900 的
+   DOM 画布，dpr2 的平板上要按 4800×3800（1850 万像素）重新光栅化，
+   而且因为它每帧都在动，合成器每帧都得重来一遍 ——
+   tools/perf.py 消融实测：光收掉这一层，帧间隔 33.3ms → 16.7ms。
+   改成主线程贴一次图只要 1.3ms（源图 1 世界单位 1px，贴屏走最近邻），
+   合成器那边则完全不碰地形。观感差别：地形位移以设备像素为步长，
+   比以前"亚像素滑动"更稳更清晰（木纹/网格不会逐帧游走发糊）。
+   这块画布只建一次，换世界时重画，不来回 new。 */
+let bgOff=null;
 let VW=0,VH=0,DPR=1,SCALE=1;
 let staticLayer=null,miniLayer=null;
 
 function buildStatic(){
-  /* 地形直接画进 #bg。它是个 DOM 节点，尺寸要写成内联 px：
-     CSS 里那条 canvas{width:100%} 是给 #game 铺满用的，对这里不合适。 */
-  const off=bgCv||document.createElement('canvas');
+  if(!bgOff)bgOff=document.createElement('canvas');
+  const off=bgOff;
   off.width=W;off.height=H;
-  if(bgCv){bgCv.style.width=W+'px';bgCv.style.height=H+'px';}
   const c=off.getContext('2d');
   /* 换世界时同一块画布会被重画，先抹干净，免得上一张地形的边缘漏出来 */
   c.setTransform(1,0,0,1,0,0);
@@ -404,8 +411,6 @@ function buildStatic(){
   const rnd=mulberry(20240808);
   if(CUR&&CUR.drawWorld)CUR.drawWorld(c,rnd);else drawAdvWorld(c,rnd);
   staticLayer=off;
-  /* 图层一换就要归位，否则新地形会停在上一张的位置上 */
-  syncBgTransform();
 
   const mw=170,mh=Math.round(mw*H/W);
   const m=document.createElement('canvas');m.width=mw;m.height=mh;
@@ -414,24 +419,8 @@ function buildStatic(){
   mc.fillStyle='rgba(4,12,24,.38)';mc.fillRect(0,0,mw,mh);
   miniLayer=m;
 }
-/* 把 #bg 挪到镜头位置上。世界坐标 (wx,wy) → 屏幕 ((wx-cam.x)*SCALE, ...)，
-   而图层自身的 1px 就是 1 个世界单位，所以
-   translate(-cam*SCALE) scale(SCALE) 合起来正好等价于 canvas 那条
-   scale(SCALE) + translate(-cam) —— 两边的落点完全一致，不会错位。 */
-function syncBgTransform(){
-  if(!bgCv||staticLayer!==bgCv)return;
-  /* 【帧率 6/4】位移吸附到整数设备像素。
-     这一层每帧都要被合成器重采样一遍：位移带小数时采样点永远落在纹素之间，
-     纹理在像素网格上逐帧「游走」，拖动时地形会持续发糊、闪。
-     吸附之后采样点正好落在纹素中心，最清晰也最省。
-     误差 ≤ 0.5 设备像素 = 0.25 CSS 像素，肉眼不可能看出来。
-     用的是真实 devicePixelRatio：DPR 那个变量是 #game 画布的（可能被降过级），
-     而 #bg 的缩放由 CSS 的 scale(SCALE) 交给合成器完成，走的是屏幕自己的网格。 */
-  const rd=window.devicePixelRatio||1;
-  const tx=(Math.round(-cam.x*SCALE*rd)/rd).toFixed(3);
-  const ty=(Math.round(-cam.y*SCALE*rd)/rd).toFixed(3);
-  bgCv.style.transform='translate3d('+tx+'px,'+ty+'px,0) scale('+SCALE+')';
-}
+/* 4.0.17 删掉了 syncBgTransform()：地形不再由合成器挪图层，
+   所以"把图层挪到镜头位置"这件事整个消失了（地形随画布一起变换，见 draw()）。 */
 function drawAdvWorld(c,rnd){
   // 海
   const g=c.createLinearGradient(0,0,W,H);

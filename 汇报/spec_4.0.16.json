@@ -1,0 +1,119 @@
+{
+  "name": "更新汇报_v4.0.16",
+  "version": "4.0.16",
+  "date": "2026-10-16",
+  "kicker": "SHUJING · 平板掉帧",
+  "title": "平板为什么卡：量出来的两个真凶（+ 一个真 bug）",
+  "tagline": "「平板玩比三角洲行动卡多了」——这一轮<strong>先量再改</strong>：新写性能探针在平板档视口里真跑，再用<strong>消融实验</strong>逐项关掉找凶手。结果反直觉：主线程只花 <strong>0.5ms</strong>，锅全在合成器那边。",
+  "pills": ["帧间隔 33.3ms → 16.7ms", "5 秒帧数 161 → 299", "新增自动「流畅画质」"],
+
+  "sections": [
+    {
+      "h": "一、先量：卡在哪一层",
+      "paras": [
+        "工程里本来就有一套自适应帧率系统（DPR 像素预算 / 地形层交给合成器 / 面板打开时停画 / 按 vsync 整数倍抽帧），所以不能凭感觉再改一轮。新增 <code>tools/perf.py</code>：在<strong>平板档视口</strong>（1180×820 · dsf 2 · 画布后备 1.8MP · DPR 1.46）里真跑，只看数字。"
+      ],
+      "code": "改前（平板档 · 跑图 · 5 秒）：\n\n  帧间隔 p50  33.3ms        ← 30fps\n  帧间隔 p95  50.0ms\n  最长一帧    166.7ms\n  5 秒帧数    161\n  draw 均     0.50ms        ← 主线程几乎是空的\n  update 均   0.06ms\n  PERF.multi  2             ← 游戏自己发现跑不动，主动降到 30fps 在撑\n\n⇒ 主线程没活干，却只有 30fps：瓶颈在合成器那一侧。",
+      "note": {
+        "html": "这一步很关键：如果只盯着 JS，会得出「已经很优化了」的结论。"
+      }
+    },
+
+    {
+      "h": "二、消融实验：一次只关一样",
+      "paras": [
+        "把可疑项逐个关掉再量帧间隔 —— 谁关掉帧率回来，谁就是凶手。"
+      ],
+      "table": {
+        "head": ["关掉什么", "帧间隔 p50", "5 秒帧数", "结论"],
+        "rows": [
+          ["什么都不关（基线）", "33.3 ms", "161", "—"],
+          ["<b>关毛玻璃</b>（backdrop-filter）", "<b>16.7 ms</b>", "291", "真凶 ①"],
+          ["<b>关地形图层</b>（#bg 4.56MP）", "<b>16.7 ms</b>", "276", "真凶 ②"],
+          ["关 emoji 实体层", "33.3 ms", "185", "影响很小"],
+          ["关阴影", "33.3 ms", "180", "影响很小"],
+          ["面板开着（已有优化：停画地图）", "16.7 ms", "269", "这条本来就在起作用"]
+        ]
+      },
+      "note": {
+        "kind": "good",
+        "html": "两个真凶都指向<strong>合成器</strong>：<b>①</b> 压在地图上的那几个胶囊（位置 / 难度 / 结晶 / 任务条）带背景模糊，底下那张 canvas 每帧在变，模糊就得每帧跟着重算；<b>②</b> 2400×1900 的地形图层每帧被重采样一遍。"
+      }
+    },
+
+    {
+      "h": "三、顺手挖出一个真 bug：地形每帧画了两遍",
+      "paras": [
+        "<code>draw()</code> 里那段注释写着「不再每帧 drawImage，只把整层挪到镜头位置」，但它的判断条件是 <code>staticLayer===bgCv</code> —— 而这恰恰是「<code>#bg</code> 存在」的<strong>正常情况</strong>。所以每帧两件事一起做："
+      ],
+      "code": "注释说的：      合成器挪一次图层            （主线程零绘制）\n代码实际的：    合成器挪一次图层  +  主线程整张重贴一次\n                        ↑ 被画布盖住、看不见       ↑ 纯白干\n\n修法：两种画法二选一 ——\n  完整档：只留合成器那一路\n  省电档 / 取不到 #bg：只留主线程贴图那一路（最近邻，约 1.3ms）",
+      "note": {
+        "kind": "bad",
+        "html": "这块重复绘制在<strong>任何设备上都是白干的活</strong>（桌面端也一样），所以两种画质档都受益 —— 省电档那一档的实测提升因此特别大：<b>33.3ms → 16.7ms，帧数 161 → 299（约翻倍）</b>。"
+      }
+    },
+
+    {
+      "h": "四、做了什么",
+      "items": [
+        "<b>新增「流畅画质」（省电档）</b>：关掉压在地图上的 <code>backdrop-filter</code>（换成稍不透明的同色底，并把 <code>#modal</code> 遮罩加厚到 93% —— 没有模糊就得靠不透明度把背后的顶栏压住）+ 收掉 <code>#bg</code> 图层、地形改由主线程贴一次图",
+        "<b>自动切</b>：节拍器连着 3 次评估发现「<b>已经降了档、帧还是迟到</b>」就切。这个判据刻意不看 <code>PERF.work</code>（它只有 0.5ms，看不出来），而看「降档后仍迟到」= 瓶颈在合成器。切换时提示一次，不偷偷把画面变差",
+        "<b>手动切</b>：☰ 菜单新增「画质：完整 / 流畅」（和「战场底纹」同一套路：切完重开菜单、标题上直接写着当前档位）。选择写进 <code>localStorage</code>，下次打开记得住",
+        "<b>完整档也不再重复画地形</b>"
+      ],
+      "shots": [
+        {"file": "shots_auto/p16_战场.png", "cap": "完整画质：地形由合成器图层正常显示（战场实拍）"},
+        {"file": "shots_auto/p16_菜单.png", "cap": "完整画质：顶栏与菜单是毛玻璃，能透出底下的地图"},
+        {"file": "shots_auto/p16_省电档.png", "cap": "流畅画质：同一屏 —— 毛玻璃换成不透明底，观感差别很小"}
+      ]
+    },
+
+    {
+      "h": "五、验收",
+      "checks_intro": "新增永久检查「省电档」，钉住它真的在起作用：",
+      "steps": [
+        {"b": "① 能开能关：", "html": "<code>setPerfLite(true/false)</code> 之后 <code>body.perf-lite</code> 真的加上 / 摘掉。"},
+        {"b": "② 两样真的停了：", "html": "开了之后 <code>#bg</code> 的计算样式必须是 <code>display:none</code>、chip 的 <code>backdrop-filter</code> 必须是 <code>none</code>。"},
+        {"b": "③ 菜单跟着变：", "html": "☰ 菜单里那颗开关的文字要显示「画质：流畅」（免得哪天重构 CSS 把省电档悄悄弄失效）。"},
+        {"b": "④ 性能探针留档：", "html": "<code>python tools/perf.py</code> 随时复测；消融开关都在里面，下次再卡能直接定位。"}
+      ]
+    },
+
+    {
+      "h": "六、工具自己踩的坑（都写进注释了）",
+      "items": [
+        "<code>--force-device-scale-factor=2</code> <b>不会</b>把 CSS 视口砍半（我一开始以为会，把 window-size 乘了 2）",
+        "<code>--window-size</code> <b>必须用逗号</b>：写成 <code>1180x820</code> 会被静默当成非法值、退回默认小窗 —— 第一版量出的「视口 491×184」就是这么来的",
+        "<code>--virtual-time-budget</code> 下 rAF 与 <code>performance.now()</code> 都被加速，帧数据全是假的（量出过「帧间隔 83.4ms」这种没法解释的数）→ 改成**真实时间跑、结果 POST 回本地服务器**",
+        "探针必须先 <code>hideNews()</code> + <code>closePanel()</code>：游戏在面板打开时**故意停画地图**，不关掉就会量到一堆 <code>draw=0</code>"
+      ]
+    }
+  ],
+
+  "files": [
+    {"path": "tools/perf.py", "delta": "新增 300 行", "note": "性能探针：平板档视口 + 消融开关 + 真实时间测量"},
+    {"path": "src/js/36_loop.js", "delta": "+30 / −12", "note": "修掉地形重复绘制；新增 setPerfLite() 与自动降档判定"},
+    {"path": "src/css/00_base.css", "delta": "+22 行", "note": "body.perf-lite：关掉压在地图上的毛玻璃、收掉 #bg、遮罩加厚"},
+    {"path": "src/js/70_blaze_overrides.js", "delta": "+12 行", "note": "☰ 菜单新增「画质：完整 / 流畅」"},
+    {"path": "tools/smoke.py", "delta": "+25 行", "note": "新增永久检查「省电档」"},
+    {"path": "tools/shots.py", "delta": "+13 行", "note": "新增截图场景「省电档」"},
+    {"path": "news.json", "delta": "+1 条公告", "note": "v4.0.16 公告"}
+  ],
+
+  "checks": [
+    {"name": "构建 + 公告同源", "ok": true, "detail": "74 个模块 · 公告 v4.0.16 · NEWS_VER v4.0.16-efae0adc"},
+    {"name": "省电档（新增）", "ok": true, "detail": "能开能关 · #bg 收起 · chip 无毛玻璃 · ☰ 菜单显示「画质：流畅」"},
+    {"name": "无头浏览器冒烟", "ok": true, "detail": "105 项全过 / 0 失败 · 控制台 0 报错（file:// 与 http:// 各一遍）"},
+    {"name": "静态体检", "ok": true, "detail": "9 项全过（含死代码体检与线上版本核对）"},
+    {"name": "性能复核（平板档）", "ok": true, "detail": "完整画质 33.4ms / 流畅画质 16.7ms · 帧数 122 → 238（4 秒）"},
+    {"name": "视觉核对", "ok": true, "detail": "战场地形 · ☰ 菜单完整档 vs 省电档 三张截图"}
+  ],
+
+  "rollback": "拿 <code>releases/数境169_v4.0.15_2026-10-16.html</code> 覆盖 <code>shujing-app/index.html</code> 即可退回。<br>退回会同时退回掉帧与重复绘制。存档零影响。",
+
+  "next": [
+    "如果平板上还是觉得不够顺：探针的消融项还有<strong>emoji 实体层</strong>（每帧改 79 个 DOM 节点的 transform）没动过 —— 它是第三档候选",
+    "地形图层那条路在真机 GPU 上的代价可能比软件渲染小得多，建议你在平板上切一次「完整 / 流畅」对比一下，告诉我哪个更顺",
+    "线上已同步到 v4.0.15；v4.0.16 需要再部署一次才生效（部署后 <code>python tools/verify_live.py</code> 核对）"
+  ]
+}

@@ -366,6 +366,49 @@ PROBE = r"""
       }
       useWorld(ADV);syncModeButtons();
       return msg;});
+    /* 画质档（4.0.16 建，4.0.17 收窄并转正）：
+       平板掉帧的两大来源是 ① 压在地图上的 backdrop-filter 每帧重算、
+       ② 2400×1900 的地形图层每帧被合成器重采样（后者是 1850 万像素的活儿）。
+       4.0.17 起这两样**默认就是关的**：地形改成主线程贴离屏画布（1.3ms），
+       压在 HUD 上的毛玻璃换成同色底；省电档只剩"连面板毛玻璃也关掉"。
+       这条钉住的就是这个架构 —— 谁把地形层加回 DOM、或给 HUD 加回毛玻璃，
+       实机上就是 60fps 掉回 30fps，而主线程那 0.5ms 的耗时**完全看不出来**
+       （tools/perf.py 消融才是第一现场）。 */
+    out.checks.画质档 = safe('perf',function(){
+      if(typeof setPerfLite!=='function')throw new Error('没有 setPerfLite()');
+      if(typeof PERF!=='object')throw new Error('没有 PERF');
+      useWorld(ADV);syncModeButtons();closePanel();
+      /* ① 地形层不许回到 DOM 里（回来就等于每帧重采样 4.56MP） */
+      if(document.getElementById('bg'))
+        throw new Error('地形层又回到 DOM 里了；它必须离屏、只由主线程贴图');
+      if(!staticLayer)throw new Error('没有 staticLayer');
+      if(staticLayer.parentNode)throw new Error('staticLayer 挂在 DOM 上了，应当在离屏画布上');
+      /* ② 压在地图上的 HUD 一律不许有毛玻璃 */
+      const huds=['regionChip','quest','moveHint'].filter(function(id){
+        const el=document.getElementById(id);if(!el)return false;
+        const bf=String(getComputedStyle(el).backdropFilter||'none');
+        return bf.indexOf('none')<0;});
+      if(huds.length)throw new Error('这些 HUD 还带毛玻璃（每帧跟着地图重算）：'+huds.join('/'));
+      /* ③ 面板/公告的模糊：完整档要**在**，流畅档才关（它们开着时地图停画，不花性能） */
+      showMenu();
+      const modal=document.getElementById('modal');
+      const fullBf=String(getComputedStyle(modal).backdropFilter||'none');
+      setPerfLite(true,'smoke');
+      const onBody=document.body.classList.contains('perf-lite');
+      const liteBf=String(getComputedStyle(modal).backdropFilter||'none');
+      /* 菜单要重开一次：那颗开关的标题是渲染时按档位写死的，不会自己变 */
+      showMenu();
+      const item=document.getElementById('mLite');
+      const label=item?String(item.textContent).replace(/\s+/g,''):'';
+      closePanel();
+      setPerfLite(false,'smoke');
+      const offBody=document.body.classList.contains('perf-lite');
+      if(fullBf.indexOf('blur')<0)throw new Error('完整档下连面板的毛玻璃都没了：'+fullBf);
+      if(liteBf.indexOf('none')<0)throw new Error('流畅档下面板还带毛玻璃：'+liteBf);
+      if(!onBody)throw new Error('开了流畅档，body 上却没有 perf-lite');
+      if(offBody)throw new Error('关掉流畅档后 class 没摘掉');
+      if(label.indexOf('流畅')<0)throw new Error('☰ 菜单那颗开关没跟着显示「流畅」：'+label.slice(0,50));
+      return '地形层已离屏（DOM 里没有 #bg）· HUD 无毛玻璃 · 面板完整档有/流畅档无 · ☰ 显示「画质：流畅」';});
     /* 烽火只有一种卡：房卡（4.0.12）。保险箱钥匙卡并进了房卡 ——
        💠 高价值保险箱改成刷一张房卡（扣手里等级最低的那张）。 */
     out.checks.房卡唯一 = safe('cards',function(){

@@ -112,10 +112,32 @@ function drawBlazeWorld(c,rnd){
              现在拉到 240px、浓度 3% —— 用途只是"报点说 C3 时心里有个方位"，
              不需要看清每一条线。 */
       const GRID=BZ_CLEAN?240:160;
-      c.strokeStyle=BZ_CLEAN?'rgba(140,190,255,.030)':'rgba(140,190,255,.045)';
+      c.strokeStyle=BZ_CLEAN?'rgba(140,190,255,.022)':'rgba(140,190,255,.030)';
       c.lineWidth=2;
       for(let gx=x;gx<x+w;gx+=GRID){c.beginPath();c.moveTo(gx,y);c.lineTo(gx,y+h);c.stroke();}
       for(let gy=y;gy<y+h;gy+=GRID){c.beginPath();c.moveTo(x,gy);c.lineTo(x+w,gy);c.stroke();}
+
+      /* ③ 细碎颗粒（4.0.17）：撒一层极淡的小点，让地面"有东西"。
+             地面原来是纯渐变 + 十几个大柔斑，缩放后是一块干净的色板 ——
+             干净到像占位图，"丑"很大一部分来自这里。
+             颗粒必须压到 4~6% 浓度：再高一点就变成满屏噪点
+             （173.3 那次"乱"的教训就是纹理浓度失控）。
+             数量按面积算，每 12000 平方世界单位一颗，上限 900 颗 ——
+             大图不会拖慢静态层构建。 */
+      const mDot=mulberry(31337);
+      const dotN=Math.min(900,Math.floor(w*h/(BZ_CLEAN?20000:12000)));
+      for(let i=0;i<dotN;i++){
+        const px=x+mDot()*w,py=y+mDot()*h,r3=1.6+mDot()*3.4;
+        const light=mDot()<0.45;
+        c.fillStyle=light?'rgba(200,222,255,.055)':'rgba(0,0,0,.10)';
+        c.beginPath();c.arc(px,py,r3,0,7);c.fill();
+      }
+
+      /* ④ 内暗角（4.0.17）：沿战场边缘内侧压一圈暗影，视线自然收到中间。
+             用"裁剪 + 粗描边"实现：描边一半落在外面，被 clip 吃掉，
+             留下的正好是内侧那条渐变一样的暗带 —— 比逐点算距离便宜得多。 */
+      c.strokeStyle='rgba(0,0,0,.30)';c.lineWidth=150;
+      c.beginPath();bzPolyPath(c,poly);c.closePath();c.stroke();
       c.restore();
 
       /* 边界：外圈焦土带 + 内侧黄色警戒虚线 + 一圈暗边 */
@@ -150,11 +172,23 @@ function drawBlazeWorld(c,rnd){
         c.fillStyle=eg2;c.beginPath();c.arc(bx,by,br,0,7);c.fill();
       }
       const GRID2=BZ_CLEAN?240:160;
-      c.strokeStyle=BZ_CLEAN?'rgba(140,190,255,.030)':'rgba(140,190,255,.045)';
+      c.strokeStyle=BZ_CLEAN?'rgba(140,190,255,.022)':'rgba(140,190,255,.030)';
       c.lineWidth=2;
       for(let gx=x;gx<x+w;gx+=GRID2){c.beginPath();c.moveTo(gx,y);c.lineTo(gx,y+h);c.stroke();}
       for(let gy=y;gy<y+h;gy+=GRID2){c.beginPath();c.moveTo(x,gy);c.lineTo(x+w,gy);c.stroke();}
+      /* 颗粒与内暗角：和战场用同一套（进大厅不能像换了个游戏） */
+      const mDot2=mulberry(31337);
+      const dotN2=Math.min(900,Math.floor(w*h/(BZ_CLEAN?20000:12000)));
+      for(let i=0;i<dotN2;i++){
+        const px=x+mDot2()*w,py=y+mDot2()*h,r4=1.6+mDot2()*3.4;
+        c.fillStyle=mDot2()<0.45?'rgba(200,222,255,.055)':'rgba(0,0,0,.10)';
+        c.beginPath();c.arc(px,py,r4,0,7);c.fill();
+      }
+      c.strokeStyle='rgba(0,0,0,.26)';c.lineWidth=130;
+      roundRect(c,x,y,w,h,26);c.stroke();
       c.restore();
+      /* 营地设施：帐篷 / 物资箱 / 油桶 / 沙袋围栏（4.0.17） */
+      blazeDrawCamp(c,reg);
       c.strokeStyle=reg.edge;c.lineWidth=7;roundRect(c,x,y,w,h,26);c.stroke();
       c.save();c.setLineDash([16,12]);c.lineWidth=3;
       c.strokeStyle='rgba(255,215,106,.5)';roundRect(c,x+11,y+11,w-22,h-22,18);c.stroke();
@@ -259,6 +293,13 @@ function drawBlazeWorld(c,rnd){
 
   /* ---- 障碍：岩石与集装箱堆，挡人也挡视线 ---- */
   if(BZ.map&&BZ.map.rocks&&BZ.map.rocks.length)drawBlazeRocks(c,BZ.map.rocks);
+
+  /* ---- 建筑地坪（4.0.17）：楼脚下先铺一块混凝土 ----
+     旧版的楼是直接贴在渐变地面上的，中间没有任何过渡 ——
+     所以看着像"浮在地图上的几个方块"。先铺地坪（比地面亮一点、
+     带一圈更亮的边），楼才算"落在地面上"：这是这次改动里观感提升最大的一步。
+     顺序：地表家具之后、建筑之前。 */
+  if(BZ.map&&BZ.map.rooms&&BZ.map.rooms.length)blazeDrawSlabs(c,BZ.map.rooms);
 
   /* ---- 建筑：地板 → 墙体（L 形房间用离屏合成一次挖出来） ---- */
   if(BZ.map&&BZ.map.rooms&&BZ.map.rooms.length)blazeDrawRooms(c);

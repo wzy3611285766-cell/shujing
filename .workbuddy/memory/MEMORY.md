@@ -70,21 +70,35 @@
   3. 答完题不自动滚到解析（`panel.scrollTop` 仍为 0），只看得到选项变色。
 - 横屏优势：顶栏快捷入口 7 个全可见（竖屏只剩 ☰）；答题面板 803→245px；图鉴需滚动 1718→1077。
 
-## 渲染结构（2026-10-13 性能优化后，改 draw/buildStatic 前必读）
-- **地形不再是每帧 blit**：静态地图画进 DOM 里的 `<canvas id="bg">`（世界尺寸 2400×1900），
-  每帧只写 `syncBgTransform()` → `translate3d(tx,ty,0) scale(SCALE)`，位移**吸附到整数设备像素**
-  （2026-10-14 起：`Math.round(-cam.x*SCALE*rd)/rd`，rd = 真实 devicePixelRatio，不是被降级的 DPR）。
-  世界坐标 (wx,wy) → 屏幕 ((wx-cam.x)*SCALE, (wy-cam.y)*SCALE)，两边公式必须一致，否则错位。
-  `#game` 必须有 `position:relative;z-index:1`，否则会被定位的 `#bg` 盖住。
+## 渲染结构（2026-10-16 / 4.0.17 重做后，改 draw/buildStatic 前必读）
+- **地形是"离屏画布 + 主线程贴图"，DOM 里没有地形层**（4.0.17 起）：
+  静态地图画进一块离屏 canvas（世界尺寸 2400×1900，1 世界单位 = 1px），
+  每帧 `draw()` 里 `ctx.drawImage(staticLayer,0,0)`，走画布自己的
+  `scale(SCALE) + translate(-cam)`。`SCALE*DPR>=1` 时关双线性（最近邻，约 1.3ms；
+  开双线性实测 5.8ms）。
+  世界坐标 (wx,wy) → 屏幕 ((wx-cam.x)*SCALE, (wy-cam.y)*SCALE)。
+- **为什么不能把地形层放回 DOM**：曾经它是 `<canvas id="bg">`、由合成器
+  `translate3d+scale` 挪动。那是 2400×1900 的 DOM 画布，dpr2 平板上要按
+  4800×3800（1850 万像素）重新光栅化，而且每帧都在动 —— 实测单这一条
+  就把帧间隔从 16.7ms 顶到 33.3~50ms（60fps → 20~30fps）。
+  `syncBgTransform()` 已删；冒烟里的「画质档」会在有人把地形层加回 DOM 时立刻红。
+- **压在地图上的 HUD 不许有 backdrop-filter**（顶栏 chip / 任务条 / 提示气泡）：
+  它们的底是每帧都在变的地图，模糊就得每帧重算 —— 同样一条 16.7→33.3ms。
+  模糊只保留在**面板与公告**（`#modal` / `#news`）里：它们一开地图就停画，
+  背景是静止画面，模糊只算一次，不花性能。
 - **画布分辨率是「按像素预算」算的**（`36_loop.js` 顶部 `PIX_BUDGET=1800000`）：
-  `DPR=clamp(sqrt(PIX_BUDGET/(VW*VH)),1,min(dpr,2))`。手机 dpr=2 不变；12 寸平板会落到 dpr≈1.14。
-  **改这块要想到**：`draw()` 兜底分支按 `SCALE*DPR>=1` 决定关不关平滑；`#bg` 的吸附必须用真实 dpr。
+  `DPR=clamp(sqrt(PIX_BUDGET/(VW*VH)),1,min(dpr,2))`。手机 dpr=2 不变；12 寸平板会落到 dpr≈1.14~1.46。
+  **改这块要想到**：`draw()` 按 `SCALE*DPR>=1` 决定关不关平滑。
 - **`loop()` 里不再直接调 draw()**：走 `paceProbe(dt)` + `paceDraw(now)` —— 面板/公告打开时不画、
   并且按 vsync 整数倍抽帧（`PERF.multi`，144Hz → 144/72/48/36/24）。**如果以后有面板内的东西
   依赖地图每帧刷新，得先想到这里**；`PERF.*` 同时是 `?dbg=1` 角标的数据源。
-- `draw()` 里保留了兜底分支：`staticLayer===bgCv` 时走老的一次性 blit + 关双线性（倍率≥1 才关）。
-- 性能基线（软件光栅+CPU×6 弱机模拟）：竖屏 菜单 56fps / 答题 54fps / 地图 ~17fps；
-  平板横屏 1400×984@dpr2 地图 9fps → 改完 15~16fps（这台模拟机复现不出 GPU 合成，只能比比例）。
+- **节拍器的降档判据别调回去**（4.0.17）：原来"这批有 1/4 帧迟到"就降档，
+  开局几次 GC / 首次布局就能凑满，于是本机明明能跑 60fps 也被它永久砍成 30fps
+  （同一台机器两次跑出 16.7 与 33.3 两档）。现在要求**过半迟到 + 连着两批**；
+  而 `heavy`（主线程耗时 > 80% 预算）仍是当场降 —— 那个数是实测的，不会误判。
+- 性能基线（headless 1180×820 dsf2，`tools/perf.py`）：默认画质 **p50 16.7ms / 60fps**
+  （跑热后 p95 也是 16.8）；改前 v4.0.16 是 p50 33~50ms / 20~30fps。
+  换场（地图生成+静态层重建+实体清理）74~151ms，用 `perf.py --build` 量。
 
 ## 性能排查方法（下次直接复用）
 - **PC headless 有巨大余量（144fps），测不出卡顿** → 必须 `--disable-gpu` + `Emulation.setCPUThrottlingRate(6)`。

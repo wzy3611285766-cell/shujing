@@ -19,20 +19,37 @@ const BLAZE_SITES=[
  {id:'math',emoji:'📐',name:'零点演算场',sub:'数学 · 废弃数据中心',color:'#9db4ff',
   brief:'冷战遗留的演算中心，服务器里还跑着没算完的题。',
   ground:['#2b3653','#161d2c'],edge:'#0e1424',prop:['🖥️','📡','🗄️','🔌','📼'],
+  /* 材质色（4.0.17）：墙、墙顶亮边、室内地板、建筑地坪、沥青、地坪亮边。
+     以前四个战场只有「地面渐变」不一样，墙 / 掩体 / 道路全是同一套灰 ——
+     于是换张图只是换个底色调，看不出"这是哪"。
+     现在每张图有自己的建材色（冷蓝灰 / 暖砂灰 / 砖红棕 / 墨绿灰），
+     一眼能认出场地，也能让"混凝土 / 沥青 / 金属"这几种材质分得开。 */
+  pal:{wall:'#4a5568',wallTop:'#63708a',floor:'#1f2531',slab:'rgba(150,175,215,.075)',
+       slabEdge:'rgba(170,195,235,.16)',road:'#2b2e36',roadEdge:'rgba(175,195,225,.13)'},
   rids:['func','tri','seq','geo','prob']},
  {id:'phys',emoji:'⚡',name:'长弓变电站',sub:'物理 · 高压试验区',color:'#ffd76a',
   brief:'雷暴云压在高压塔上，每一次合闸都在赌运气。',
   ground:['#413b26','#1e1b11'],edge:'#12100a',prop:['🗼','⚡','🔋','🧲','🛠️'],
+  pal:{wall:'#5c5544',wallTop:'#776e56',floor:'#262318',slab:'rgba(215,190,140,.075)',
+       slabEdge:'rgba(235,210,155,.16)',road:'#33302a',roadEdge:'rgba(225,205,160,.13)'},
   rids:['mech','neng','dian','therm','optic']},
  {id:'chem',emoji:'🔥',name:'灰烬精炼厂',sub:'化学 · 反应釜区',color:'#ffb072',
   brief:'管道里还留着上一批没反应完的料，味道很冲。',
   ground:['#432b21','#20120d'],edge:'#150c08',prop:['🛢️','🧪','🔥','⚗️','🚰'],
+  pal:{wall:'#5b4438',wallTop:'#75584a',floor:'#261b16',slab:'rgba(220,165,135,.075)',
+       slabEdge:'rgba(240,185,150,.16)',road:'#332a26',roadEdge:'rgba(230,190,165,.13)'},
   rids:['atom','rate','org','lab']},
  {id:'bio', emoji:'🌿',name:'静默培养区',sub:'生物 · 隔离温室',color:'#84e3a6',
   brief:'培养舱还在冒泡，没人记得里面养的是什么。',
   ground:['#22402f','#0e1c16'],edge:'#07130d',prop:['🌿','🧫','🍄','🦠','💧'],
+  pal:{wall:'#42564a',wallTop:'#57705f',floor:'#182420',slab:'rgba(150,215,175,.07)',
+       slabEdge:'rgba(170,235,195,.15)',road:'#282f2b',roadEdge:'rgba(175,225,195,.12)'},
   rids:['cell','gene','eco']}
 ];
+/* 当前这一局用的是哪张图 / 它的材质色。
+   取不到就退回第一张（冒烟与旧存档都可能没有 pick）。 */
+function bzSite(){return BLAZE_SITE_OF[(BLAZE_STATE.pick&&BLAZE_STATE.pick.site)||'math']||BLAZE_SITES[0];}
+function bzPal(){const s=bzSite();return s.pal||BLAZE_SITES[0].pal;}
 const BLAZE_SITE_OF={};BLAZE_SITES.forEach(s=>{BLAZE_SITE_OF[s.id]=s;});
 
 /* ---------------- 战术平面图：分区（POI）----------------

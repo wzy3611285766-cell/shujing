@@ -8,11 +8,19 @@ function drawBlazeRiver(c,rv){
   c.lineCap='round';c.lineJoin='round';
   c.beginPath();c.moveTo(p[0][0],p[0][1]);
   for(let i=1;i<p.length;i++)c.lineTo(p[i][0],p[i][1]);
-  c.strokeStyle='rgba(62,54,36,.9)';c.lineWidth=h*2+34;c.stroke();   // 河岸
-  c.strokeStyle='#12303f';          c.lineWidth=h*2;    c.stroke();   // 水面
-  c.strokeStyle='rgba(94,214,255,.13)';c.lineWidth=h*2-20;c.stroke();
-  c.setLineDash([26,36]);c.strokeStyle='rgba(180,235,255,.15)';
-  c.lineWidth=3;c.stroke();c.setLineDash([]);
+  /* 水系（4.0.17）：旧版水面是 #12303f 的平色 + 一条 13% 的青色内带，
+     压在深蓝地面上几乎同色 —— 「河」在整张图上读不出来，
+     只有中间那道虚线在暗示这里有条河。改成四层：
+       河岸土 → 深水外沿 → 水体 → 中心柔光
+     水体提到 #16455c（蓝绿、比地面亮一档），水的"厚"才立得住；
+     最外沿留一圈深色，是水下的阴影、也是岸线的分界。 */
+  c.strokeStyle='rgba(58,49,34,.85)';c.lineWidth=h*2+32;c.stroke();   // 河岸土
+  c.strokeStyle='#0b1f2b';           c.lineWidth=h*2;    c.stroke();   // 深水外沿
+  c.strokeStyle='#16455c';           c.lineWidth=h*2-14; c.stroke();   // 水体
+  c.strokeStyle='rgba(126,214,240,.11)';c.lineWidth=h*2-42;c.stroke(); // 中心柔光
+  /* 水面浮光：一条断续的浅色（不是虚线网，只是"水在动"的暗示） */
+  c.setLineDash([30,44]);c.strokeStyle='rgba(180,235,255,.10)';
+  c.lineWidth=4;c.stroke();c.setLineDash([]);
   c.restore();
   /* 桥：木桥面 + 两侧护栏，方向顺着水流 */
   (rv.bridges||[]).forEach(b=>{
@@ -43,8 +51,15 @@ function drawBlazeRoads(c,roads){
     c.lineCap='round';c.lineJoin='round';
     c.beginPath();c.moveTo(p[0][0],p[0][1]);
     for(let i=1;i<p.length;i++)c.lineTo(p[i][0],p[i][1]);
-    c.strokeStyle='rgba(16,12,8,.55)';c.lineWidth=rd.w+14;c.stroke();  // 路基
-    c.strokeStyle=BZ_CLEAN?'#2a2c33':'#31333a';c.lineWidth=rd.w;c.stroke();  // 沥青
+    /* 路基 → **路肩** → 沥青（4.0.17）：中间那层窄亮边是新增的。
+       以前只有"暗路基 + 深沥青"两层，路和地面一样是暗的，
+       只能靠深浅差一点点分辨；补一道稍亮的路肩之后，
+       路看起来是"嵌在地里的一条带"，而不是地上的一道黑影。
+       颜色取自本场地的材质色（冷蓝灰 / 暖砂 / 砖红 / 墨绿）。 */
+    const pal=bzPal();
+    c.strokeStyle='rgba(16,12,8,.55)';c.lineWidth=rd.w+16;c.stroke();  // 路基
+    c.strokeStyle=pal.roadEdge;c.lineWidth=rd.w+6;c.stroke();          // 路肩
+    c.strokeStyle=BZ_CLEAN?(pal.road):pal.road;c.lineWidth=rd.w;c.stroke();  // 沥青
     /* 中心线：白色实线，不是黄虚线。
        整张图里"虚线"已经被三处占了语义 —— 战场边界警戒线、POI 范围圈、
        撤离点虚线圈，它们全都表示"范围"。道路再挂一条黄虚线，
@@ -84,13 +99,21 @@ function drawBlazePois(c,pois,withLabel){
       const g=c.createRadialGradient(p.x,p.y,p.r*0.15,p.x,p.y,p.r);
       /* 简洁档：普通分区的色块几乎收干净（0.07 → 0.035），
          只留虚线圈标出范围；高价值区（hot）保持金色，那是"哪儿肥"的关键信息。 */
-      g.addColorStop(0,hot?(BZ_CLEAN?'rgba(255,215,106,.105)':'rgba(255,215,106,.11)')
-                         :(BZ_CLEAN?'rgba(150,200,255,.035)':'rgba(150,200,255,.07)'));
+      /* 高价值区的色洗（4.0.17）：从纯金 rgba(255,215,106) 换成偏橙的暖色，
+         并降一档浓度 —— 金色压在冷蓝地面上会混出一种发绿的橄榄色，
+         一大片看过去像"泥浆"而不是"肥区"。偏橙之后是干净的暖调。 */
+      g.addColorStop(0,hot?(BZ_CLEAN?'rgba(255,186,104,.075)':'rgba(255,186,104,.085)')
+                         :(BZ_CLEAN?'rgba(150,200,255,.035)':'rgba(150,200,255,.06)'));
       g.addColorStop(1,'rgba(0,0,0,0)');
       c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,p.r,0,7);c.fill();
-      c.setLineDash([16,13]);c.lineWidth=3;
-      c.strokeStyle=hot?(BZ_CLEAN?'rgba(255,215,106,.42)':'rgba(255,215,106,.40)')
-                       :(BZ_CLEAN?'rgba(200,225,255,.15)':'rgba(200,225,255,.24)');
+      /* 分区圈（4.0.17）：虚线拉长、密度降下来。
+         旧版 [16,13] 一圈要画二十多段，八个分区就是两百多根小线段 ——
+         满屏短虚线正是"图很乱"的主要来源。拉长到 [30,26] 之后
+         一圈只剩七八段，还看得见"这里有块范围"，但不再抢眼。
+         高价值区（hot）保持金色与稍高的浓度：那是"哪儿肥"的关键信息。 */
+      c.setLineDash(hot?[30,24]:[34,30]);c.lineWidth=hot?3.5:2.5;
+      c.strokeStyle=hot?(BZ_CLEAN?'rgba(255,215,106,.44)':'rgba(255,215,106,.42)')
+                       :(BZ_CLEAN?'rgba(200,225,255,.11)':'rgba(200,225,255,.17)');
       c.beginPath();c.arc(p.x,p.y,p.r,0,7);c.stroke();
       c.setLineDash([]);
       c.restore();
@@ -637,22 +660,214 @@ function blazeRoomTag(c,r,txt,sub,color){
    墙 = 所有 cell 各向外扩 BZ_WALL 的并集 − 房间内部 − 门洞。
    并集用一张离屏 canvas 合成（fill 并集 → destination-out 挖掉内部和门洞），
    L 形拐角处的内隔墙会自然消失，屋里是连通的。 */
+/* 建筑地坪（4.0.17）：每栋楼外扩一圈铺一块"混凝土"。
+   旧版的楼直接贴在渐变地面上，中间没有任何过渡 —— 看着像浮在地图上的方块。
+   先铺地坪，楼才算"落在地面上"。这是这次外观改动里观感提升最大的一步。
+   实现要点：同一个房间的多个格子**一次性并集填充**，
+   一块一块地填会在相邻格子重叠处叠出双倍透明度，交界显出一道深色缝
+   （旧版分区色块就踩过这个坑，注释里写着"交界处糊成一潭脏色"）。
+   成本：每个房间一次 fill，静态层只构建一次，可以忽略。 */
+/* 营地设施（4.0.17）：行动基地以前只有一块渐变地板 + 一个 🎖️。
+   4.0.13 把"战场那套掩体与碎石"从营地拿走是对的（那是战场的语汇，
+   从基地进图时会和地图地面混在一起），但拿完之后营地面成了一块空板 ——
+   进烽火模式第一眼看到的就是它，"丑"有很大一部分来自这里。
+   这里补的是**营地自己的**语汇：沙袋围栏、帐篷、物资箱堆、油桶。
+   布局用固定种子（每次进基地长得一样，不会飘），
+   并绕开交互点位与中央标题区 —— 挡住指挥部按钮比空着更糟。 */
+function blazeDrawCamp(c,reg){
+  const rect=reg.rect,x=rect[0],y=rect[1],w=rect[2],h=rect[3];
+  const pal=bzPal();
+  const rr=mulberry(20261017);
+  /* ① 设施地基 + 通路（先画，后面所有道具压在上面）：
+     和战场上的"建筑地坪"是同一套视觉语言 ——
+     每处设施脚下有一块自己的院子，再用浅色通路把指挥部与各处连起来。
+     营地"像有人规划过"靠的就是这一笔，比多摆十个箱子管用。 */
+  const hq=SPOTS.filter(sp=>sp.t==='hq')[0];
+  if(hq){
+    SPOTS.forEach(sp=>{
+      if(sp===hq)return;
+      c.save();
+      c.lineCap='round';
+      c.strokeStyle=pal.roadEdge;c.lineWidth=30;
+      c.beginPath();c.moveTo(hq.x,hq.y);c.lineTo(sp.x,sp.y);c.stroke();
+      c.strokeStyle='rgba(0,0,0,.16)';c.lineWidth=22;
+      c.beginPath();c.moveTo(hq.x,hq.y);c.lineTo(sp.x,sp.y);c.stroke();
+      c.restore();
+    });
+  }
+  SPOTS.forEach(sp=>{
+    const R=(sp.t==='hq')?136:92;
+    c.save();
+    const g=c.createRadialGradient(sp.x,sp.y,R*0.2,sp.x,sp.y,R);
+    g.addColorStop(0,pal.slab);g.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=g;c.beginPath();c.arc(sp.x,sp.y,R,0,7);c.fill();
+    c.strokeStyle=pal.slabEdge;c.lineWidth=2;
+    c.beginPath();c.arc(sp.x,sp.y,R*0.72,0,7);c.stroke();
+    c.restore();
+  });
+  /* 保留区：点位周围不许压（挡住指挥部按钮比空着更糟）+ 中央标题那一带。
+     中央保留区**不能给大**：实测营地只有 740×540 一块小板
+     （探针 .tmp_play/_dbg_camp.py：reg=[430,330,740,540]），
+     半径给到 210 就几乎盖住整块板，所有道具都会被判"太近"而一个都放不下。 */
+  const busy=[];
+  SPOTS.forEach(sp=>busy.push({cx:sp.x,cy:sp.y,r:150}));
+  busy.push({cx:x+w/2,cy:y+h/2,r:150});                 // 中央标题区
+  const free=(px,py,pad)=>{
+    if(px<x+80||px>x+w-80||py<y+80||py>y+h-80)return false;
+    for(let i=0;i<busy.length;i++){
+      const b=busy[i],dx=px-b.cx,dy=py-b.cy,r=b.r+pad;
+      if(dx*dx+dy*dy<r*r)return false;
+    }
+    return true;
+  };
+  c.save();
+  /* ① 沙袋围栏：沿内圈一圈小圆角块。营地因此有了"被围起来"的感觉，
+     这是最省、也最像"有人在这儿驻扎"的一笔。 */
+  const F=118;
+  for(let px=x+56;px<x+w-40;px+=F){
+    [y+40,y+h-40].forEach(py=>{
+      if(!free(px,py,-14))return;
+      c.fillStyle='rgba(150,140,110,.20)';
+      roundRect(c,px,py-11,58,22,8);c.fill();
+      c.strokeStyle='rgba(0,0,0,.30)';c.lineWidth=1.5;
+      roundRect(c,px,py-11,58,22,8);c.stroke();
+      c.beginPath();c.moveTo(px+29,py-11);c.lineTo(px+29,py+11);c.stroke();
+    });
+  }
+  for(let py=y+56;py<y+h-40;py+=F){
+    [x+40,x+w-40].forEach(px=>{
+      if(!free(px,py,-14))return;
+      c.fillStyle='rgba(150,140,110,.20)';
+      roundRect(c,px-11,py,22,58,8);c.fill();
+      c.strokeStyle='rgba(0,0,0,.30)';c.lineWidth=1.5;
+      roundRect(c,px-11,py,22,58,8);c.stroke();
+      c.beginPath();c.moveTo(px-11,py+29);c.lineTo(px+11,py+29);c.stroke();
+    });
+  }
+  /* ② 物资箱：两三个一组，顶面稍亮（光源在左上）。
+     抽成小函数：成堆摆放时（围着设施）要反复用。 */
+  const crate=(px,py,seed)=>{
+    const n=2+(seed()<.5?1:0);
+    for(let k=0;k<n;k++){
+      const cw=30+seed()*16,ch=24+seed()*12;
+      const qx=px+k*(cw+7),qy=py+(k%2?9:0);
+      c.fillStyle='rgba(0,0,0,.34)';roundRect(c,qx+3,qy+4,cw,ch,5);c.fill();
+      c.fillStyle='rgba(120,110,86,.86)';roundRect(c,qx,qy,cw,ch,5);c.fill();
+      c.fillStyle='rgba(160,150,124,.5)';roundRect(c,qx+2,qy+2,cw-4,ch*0.34,4);c.fill();
+    }
+  };
+  /* ③ 油桶 */
+  const barrel=(px,py)=>{
+    c.fillStyle='rgba(0,0,0,.32)';c.beginPath();c.arc(px+3,py+4,16,0,7);c.fill();
+    c.fillStyle='rgba(96,86,70,.86)';c.beginPath();c.arc(px,py,16,0,7);c.fill();
+    c.strokeStyle='rgba(190,175,140,.28)';c.lineWidth=2;
+    c.beginPath();c.arc(px,py,10,0,7);c.stroke();
+  };
+
+  /* ④ 围着每处设施堆东西（关键）：第一版把道具随机撒在整张营地板子上，
+     而营地板是 2400×1900 的大矩形 —— 一屏只看得到板子的一小块，
+     于是"凑近了看还是空的"（截图里只有边缘露了几个箱子）。
+     改成围着每个交互点位（指挥部 / 商店 / 诊所 / 靶场…）摆一圈，
+     走到哪儿都有东西，也像"设施旁边堆着物资"。位置由种子决定，每次一样。 */
+  /* 铺满整块营地：营地是**小板子**（740×540），不是整张世界图 ——
+     所以"撒满"才是对的做法（第一版以为它是 2400×1900，围着点位摆，
+     结果全落在视野之外、或被中央保留区挡掉）。
+     用抖动网格保证覆盖均匀，再用 free() 让开点位与标题区。 */
+  const COLS=6,ROWS=4;
+  for(let gy=0;gy<ROWS;gy++){
+    for(let gx=0;gx<COLS;gx++){
+      const px=x+90+(gx+0.5)*((w-180)/COLS)+(rr()-0.5)*70;
+      const py=y+90+(gy+0.5)*((h-180)/ROWS)+(rr()-0.5)*54;
+      if(!free(px,py,24))continue;
+      const roll=rr();
+      if(roll<0.48)crate(px,py,rr);
+      else if(roll<0.74)barrel(px,py);
+      else{                       /* 帐篷：营地最像"有人驻扎"的一样 */
+        const tw=84+rr()*26,th=58+rr()*16;
+        c.fillStyle='rgba(0,0,0,.32)';roundRect(c,px-tw/2+4,py-th/2+5,tw,th,10);c.fill();
+        c.fillStyle='rgba(94,102,94,.88)';roundRect(c,px-tw/2,py-th/2,tw,th,10);c.fill();
+        c.fillStyle='rgba(124,132,122,.90)';roundRect(c,px-tw/2+6,py-th/2+6,tw-12,th-12,8);c.fill();
+        c.strokeStyle='rgba(0,0,0,.32)';c.lineWidth=2;
+        c.beginPath();c.moveTo(px,py-th/2+4);c.lineTo(px,py+th/2-4);c.stroke();
+      }
+      busy.push({cx:px,cy:py,r:46});
+    }
+  }
+  /* ⑤ 板边警戒带：营板四边画一道带斜纹的浅色带。
+     站在板边（进场第一眼就在左边）时，眼睛里终于有一条"场地边界"的设计，
+     而不是渐变直接切断。 */
+  c.save();
+  const BAND=26;
+  [[0,0,w,BAND],[0,h-BAND,w,BAND],[0,0,BAND,h],[w-BAND,0,BAND,h]].forEach(bd=>{
+    c.fillStyle='rgba(150,140,110,.16)';
+    c.fillRect(x+bd[0],y+bd[1],bd[2],bd[3]);
+    c.save();
+    c.beginPath();c.rect(x+bd[0],y+bd[1],bd[2],bd[3]);c.clip();
+    c.strokeStyle='rgba(255,215,106,.10)';c.lineWidth=6;
+    for(let k=-h;k<w+h;k+=34){
+      c.beginPath();c.moveTo(x+bd[0]+k,y+bd[1]);
+      c.lineTo(x+bd[0]+k+h,y+bd[1]+bd[3]+h);c.stroke();
+    }
+    c.restore();
+  });
+  c.restore();
+  c.restore();
+}
+function blazeDrawSlabs(c,rooms){
+  const pal=bzPal(),PAD=34;
+  (rooms||[]).forEach(r=>{
+    c.save();
+    c.beginPath();
+    (r.cells||[]).forEach(cc=>{
+      roundRect(c,cc.x-BZ_WALL-PAD,cc.y-BZ_WALL-PAD,
+                cc.w+2*(BZ_WALL+PAD),cc.h+2*(BZ_WALL+PAD),10);
+    });
+    /* 地坪本身用"上边实、下边化开"的渐变 —— 纯色块的硬边看着像贴纸，
+       渐隐之后楼像是"坐在一片被踩实的水泥地上"。
+       光还是来自左上：近楼那一侧（上）最亮，往下淡出。 */
+    const g=c.createLinearGradient(0,r.cells[0].y-BZ_WALL-PAD,
+                                     0,r.cells[0].y+r.cells[0].h+BZ_WALL+PAD*2);
+    g.addColorStop(0,pal.slab);
+    g.addColorStop(.45,pal.slab);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=g;
+    c.fill();
+    c.restore();
+  });
+}
 function blazeDrawRooms(c){
   const mp=BZ.map;
   if(!mp||!mp.rooms)return;
+  const pal=bzPal();
   mp.rooms.forEach(r=>{
-    /* 地板：实色深灰，不再是"黑色叠蓝地面"。
-       旧版是 rgba(0,0,0,.34) 盖在蓝地面上 —— 结果房间内部只是
-       "一块更深的蓝"，和外部地面同色系，屋子在哪全靠那圈 2px 描边找。
-       改成低饱和的实色之后，房间内部立刻变成"另一种材质"，
-       和冷色地面分得开；比地面更暗，也符合"室内背光"的直觉。 */
+    const cells=r.cells;
+    const roomPath=()=>{c.beginPath();cells.forEach(x=>c.rect(x.x,x.y,x.w,x.h));};
+    /* 地板（4.0.17）：用本场地的建材色 + **贴墙一圈内阴影**。
+       旧版是 rgb(26,30,37) 的平色 —— 房间和地面只差一点明度，
+       屋里屋外分不开，屋子全靠那圈 2px 亮描边撑着（线框感的主要来源之一）。
+       现在加上内阴影之后，房间是"凹下去的一块"，
+       不再需要描边来告诉眼睛"这里有个屋子"。 */
     c.save();
-    c.fillStyle=r.vault?'rgba(38,26,16,.94)':'rgba(26,30,37,.92)';
-    c.beginPath();r.cells.forEach(x=>c.rect(x.x,x.y,x.w,x.h));c.fill();
+    /* 保险箱房的地板（4.0.17）：以前是 rgba(48,33,18) 的**棕色**，
+       配上同样是棕色的墙，整间屋子像一只木板箱 ——
+       在战术地图上一眼就是"那块木头"，是整张图上最扎眼的东西。
+       改成偏暖的深灰（加固混凝土），"高价值"的身份交给四角金封条去说。 */
+    c.fillStyle=r.vault?'rgba(40,35,28,.96)':pal.floor;
+    roomPath();c.fill();
     c.save();
-    c.beginPath();r.cells.forEach(x=>c.rect(x.x,x.y,x.w,x.h));c.clip();
-    c.strokeStyle='rgba(255,255,255,.035)';c.lineWidth=2;
-    r.cells.forEach(cc=>{
+    roomPath();c.clip();
+    /* 贴墙内阴影：用粗描边画在被裁剪的房间内部，只留内侧那一半 */
+    c.strokeStyle='rgba(0,0,0,.40)';c.lineWidth=26;
+    roomPath();c.stroke();
+    /* 地面轻微反光：左上更亮一点，和"光源在左上"这条约定一致 */
+    c.strokeStyle='rgba(255,255,255,.030)';c.lineWidth=7;
+    cells.forEach(cc=>{
+      c.beginPath();c.moveTo(cc.x+6,cc.y+cc.h-6);c.lineTo(cc.x+6,cc.y+6);
+      c.lineTo(cc.x+cc.w-6,cc.y+6);c.stroke();
+    });
+    /* 细网格再淡一档：室内是背景，不该和地表的道路/掩体抢对比 */
+    c.strokeStyle='rgba(255,255,255,.020)';c.lineWidth=2;
+    cells.forEach(cc=>{
       for(let gx=cc.x+36;gx<cc.x+cc.w;gx+=36){c.beginPath();c.moveTo(gx,cc.y);c.lineTo(gx,cc.y+cc.h);c.stroke();}
       for(let gy=cc.y+36;gy<cc.y+cc.h;gy+=36){c.beginPath();c.moveTo(cc.x,gy);c.lineTo(cc.x+cc.w,gy);c.stroke();}
     });
@@ -682,9 +897,22 @@ function blazeDrawRooms(c){
     /* 房间标记：保险箱房 / 上锁房间 */
     if(r.vault){
       c.save();
-      c.strokeStyle='rgba(255,201,74,.55)';c.lineWidth=5;c.setLineDash([18,12]);
-      r.cells.forEach(cc=>{c.beginPath();c.rect(cc.x+8,cc.y+8,cc.w-16,cc.h-16);c.stroke();});
-      c.setLineDash([]);
+      /* 隔离区（4.0.17）：不再是金色虚线框。
+         虚线在整张图上已经被"范围"占了语义（分区圈 / 撤离点 / 边界警戒线），
+         保险箱房再挂一圈虚线，四套虚线混在一起，眼睛分不清哪条是哪条。
+         改成**四角 L 形封条 + 一层极淡金色色洗** —— 更像"封锁区"，
+         线少了一半，语义反而更凶。 */
+      c.fillStyle='rgba(255,201,74,.055)';
+      r.cells.forEach(cc=>c.fillRect(cc.x,cc.y,cc.w,cc.h));
+      c.strokeStyle='rgba(255,201,74,.66)';c.lineWidth=6;c.lineCap='round';
+      r.cells.forEach(cc=>{
+        const L=Math.min(46,Math.min(cc.w,cc.h)*0.30);
+        const x0=cc.x+8,y0=cc.y+8,x1=cc.x+cc.w-8,y1=cc.y+cc.h-8;
+        [[x0,y0,1,1],[x1,y0,-1,1],[x0,y1,1,-1],[x1,y1,-1,-1]].forEach(v=>{
+          const px=v[0],py=v[1],sx=v[2],sy=v[3];
+          c.beginPath();c.moveTo(px+sx*L,py);c.lineTo(px,py);c.lineTo(px,py+sy*L);c.stroke();
+        });
+      });
       c.restore();
       const gn=blazeVaultGuards().length;
       blazeRoomTag(c,r,BZ.vaultOpen?'🔓 保险箱房':'🔒 保险箱房',
@@ -698,7 +926,7 @@ function blazeDrawRooms(c){
   });
 }
 function blazeDrawWalls(c,r){
-  const W=BZ_WALL;
+  const W=BZ_WALL,pal=bzPal();
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   r.cells.forEach(cc=>{
     x0=Math.min(x0,cc.x-W-8);y0=Math.min(y0,cc.y-W-8);
@@ -714,10 +942,16 @@ function blazeDrawWalls(c,r){
      颜色从 #2b3546（冷蓝灰，和地面同色系）提到 #414a56 ——
      低饱和、偏中性、比地面亮一档。墙面比地面亮，这就是"实体"的视觉信号；
      旧值比地面还暗，墙只能在暗地上再压一层暗，屋子边缘全靠描边撑着。 */
-  o.fillStyle=r.vault?'#5a3b22':'#414a56';
+  /* 保险箱房的墙：从 #5a3b22（棕）改成暖灰的"加固混凝土"，
+     比本场地的墙略暖一点就够区分，不再是一整块木头色。 */
+  o.fillStyle=r.vault?'#5d5346':pal.wall;
   o.beginPath();r.cells.forEach(cc=>o.rect(cc.x-W,cc.y-W,cc.w+2*W,cc.h+2*W));o.fill();
-  /* ② 描边画在挖空之前，挖空后只剩外侧那一线，正好是墙的外沿 */
-  o.strokeStyle=r.vault?'rgba(255,180,90,.55)':'rgba(255,255,255,.20)';
+  /* ② 外沿收边（4.0.17）：以前这里是一圈**亮白描边** rgba(255,255,255,.20)，
+     整张图的家家户户都描着一条白线 —— 这就是"线框感"的最大来源。
+     亮线本来是用来"和暗地面分开"的，现在地面压暗、墙提亮、
+     再加了内阴影与投影，屋子的边界已经自己立得住，
+     这里改成暗收边（压一层黑），只负责"墙体到此为止"。 */
+  o.strokeStyle=r.vault?'rgba(255,180,90,.42)':'rgba(0,0,0,.45)';
   o.lineWidth=2.5;
   o.beginPath();r.cells.forEach(cc=>o.rect(cc.x-W,cc.y-W,cc.w+2*W,cc.h+2*W));o.stroke();
   /* ③ 挖掉房间内部与开着的门洞 */
@@ -727,11 +961,19 @@ function blazeDrawWalls(c,r){
   if(!(r.lock>0&&!r.opened))(r.doors||[]).forEach(d=>o.rect(d.x,d.y,d.w,d.h));
   o.fill();
   o.globalCompositeOperation='source-over';
-  /* ④ 墙顶高光，让楼看起来有厚度 */
-  o.strokeStyle=r.vault?'rgba(255,200,120,.30)':'rgba(255,255,255,.16)';
+  /* ④ 墙顶高光 + 右下侧压暗（4.0.17）：配成一束"左上光"。
+     旧版只有顶面一条高光、四边都亮，读起来还是平的；
+     补上右侧与下侧的暗边之后，墙体有了厚度方向，
+     楼"立"在了地面上，不再是一圈描边围出来的空框。 */
+  o.strokeStyle=r.vault?'rgba(255,200,120,.30)':pal.wallTop;
   o.lineWidth=4;
   r.cells.forEach(cc=>{
     o.beginPath();o.moveTo(cc.x-W+3,cc.y-W+3);o.lineTo(cc.x+cc.w+W-3,cc.y-W+3);o.stroke();
+  });
+  o.strokeStyle='rgba(0,0,0,.34)';o.lineWidth=5;
+  r.cells.forEach(cc=>{
+    o.beginPath();o.moveTo(cc.x+cc.w+W-3,cc.y-W+3);o.lineTo(cc.x+cc.w+W-3,cc.y+cc.h+W-3);o.stroke();
+    o.beginPath();o.moveTo(cc.x-W+3,cc.y+cc.h+W-3);o.lineTo(cc.x+cc.w+W-3,cc.y+cc.h+W-3);o.stroke();
   });
   c.save();
   c.shadowColor='rgba(0,0,0,.6)';c.shadowBlur=16;c.shadowOffsetY=6;

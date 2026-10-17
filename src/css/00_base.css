@@ -86,6 +86,37 @@
   :root{--vmin:min(100vw,100dvh);--vmax:max(100vw,100dvh)}
 }
 
+/* ============ 压在地图上的毛玻璃：一律不用（4.0.17） ============
+   为什么：这层模糊的底是**每帧都在变**的地图 canvas，所以合成器每帧都得
+   把它重算一遍 —— 平板上实测（tools/perf.py 消融）单这一条就把帧间隔
+   从 16.7ms 顶到 33.3ms，也就是 60fps 直接变 30fps。
+   收掉之后换成"稍不透明的同色底"：颜色还是原来那套深蓝，
+   在深色地图上观感差别极小（可对照汇报页里的截图），成本归零。
+
+   ⚠️ 为什么只收"HUD"，不收面板：#modal / #news 一打开，地图就停画了
+   （paceDraw 的规矩：面板开着不重画地图），背景于是变成静止画面，
+   模糊只算一次 —— **一分钱不花**，却保住了"点开面板"那一下的玻璃质感。
+   所以模糊保留在面板与公告里（body.perf-lite 才会连它们一起收掉）。
+
+   实现方式：**就地改下面那几条组件规则**（#upbar / .chip / #quest / #pcHint /
+   #topbar .btn），不在这里加覆盖 —— 同选择器出现两条时后者全盖前者，
+   体检的静态分析会把它当成"零贡献规则"报出来（4.0.18 就报过一次）。 */
+
+/* ============ 省电档（body.perf-lite）· 4.0.16 ============
+   4.0.17 之后，压在地图上的毛玻璃与"合成器地形层"都已经默认收掉了
+   （见上面那段与 36_loop.js 的 draw），所以这一档现在只做一件事：
+   连**面板与公告**的模糊也收掉，给最弱的那批设备再省一点。
+   进这一档的方式没变：节拍器连着几次"降了档还迟到"自动进，☰ 菜单也能手动切。 */
+body.perf-lite #modal,body.perf-lite #news,
+body.perf-lite .news-x,body.perf-lite .opt,body.perf-lite .menu-li{
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+/* 遮罩要更厚一点：完整档靠 blur 把背后糊掉，省电档没模糊，
+   只压 68% 的话面板后面那排顶栏会清清楚楚透出来，看着很乱 */
+body.perf-lite #modal{background:rgba(4,12,24,.93)}
+body.perf-lite #news{background:rgba(3,9,18,.95)}
+body.perf-lite .menu-li{
+  background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%)}
+
 /* ⚠️ 这里和 #app 以前都是 touch-action:none —— 面板因此完全划不动。
    touch-action 的实际取值是「命中元素到根这条路径上所有值的交集」：
    祖先写了 none，.panel 自己的 pan-y 就被吃掉了，纵向滚动手势根本不产生
@@ -107,16 +138,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0d1b2a;
    「摊开战术地图后只有面板两侧那条窄边能拖，图中间怎么划都不动」，
    玩家会以为卡死了、也滚不到底下的关闭键（4.0.13 修）。
    和 3.1.1 那次 touch-action 交集坑是同一类问题：按元素名写，迟早误伤。 */
-#bg,#game{display:block;width:100%;height:100%;touch-action:none}
+/* 4.0.17：页面上只剩 #game 这一块画布了 —— 地形层 #bg 已删
+   （它原来由合成器挪动，每帧要重光栅化 1850 万像素，见 36_loop.js 的 draw）。
+   touch-action:none 是给这块世界画布自己吃手势用的（摇杆要在上面拖）；
+   面板里的画布另给 pan-y，别被这条按元素名写的规则误伤（3.1.1 / 4.0.13 两次教训）。 */
+#game{display:block;width:100%;height:100%;touch-action:none;position:relative;z-index:1}
 /* 面板里的画布：跟着面板一起能被手指拖（宽 100%，高度由 JS 写成 px） */
 #panel canvas{display:block;width:100%;touch-action:pan-y}
-/* 静态地形层：按世界尺寸(2400x1900)原样铺开，靠 transform 跟着镜头走。
-   尺寸由 JS 写成 px（要盖掉上面那条 width:100%），这块不参与命中测试。 */
-#bg{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none;z-index:0;
-  will-change:transform}
-/* #game 要抬到 #bg 上面：定位元素的绘制层级在普通流之上，
-   不加这一条的话 #bg 会盖住整块画布。relative 不影响它的占位尺寸。 */
-#game{position:relative;z-index:1}
 
 /* ============ 新版本通知栏（4.0.6）============
    玩家手里那份是缓存里的旧版时，光弹一句"刷新一下"等于没说。
@@ -129,7 +157,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0d1b2a;
   padding:calc(var(--safeT) + 7px) calc(var(--safeR) + 10px) 8px calc(var(--safeL) + 10px);
   display:flex;gap:9px;align-items:flex-start;
   background:linear-gradient(180deg,rgba(41,92,158,.97),rgba(22,52,96,.95));
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  /* 4.0.17：去掉了 blur(10px)。底子本来就有 97% 不透明度，模糊几乎看不见，
+     但它是压在地图上的 —— 合成器每帧都得为它重算一次，60fps 变 30fps。 */
   border-bottom:1px solid rgba(143,196,255,.30);
   box-shadow:0 10px 26px -12px rgba(0,0,0,.72);
   color:#eaf4ff;font-size:var(--fs-xs);line-height:var(--lh-snug)}
@@ -169,8 +198,10 @@ body.upbar-on #modal{top:var(--upH)}
 #topbar{position:absolute;top:var(--upH);left:0;right:0;
   padding:calc(var(--safeT) + var(--pad)) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
   display:flex;gap:var(--gap);align-items:center;pointer-events:none;z-index:20}
-.chip{pointer-events:auto;background:var(--gb-face-deep);
-  backdrop-filter:var(--gb-blur-sm);-webkit-backdrop-filter:var(--gb-blur-sm);
+/* 4.0.17：chip 浮在活地图上，不能带 backdrop-filter（每帧重算 → 60fps 变 30fps）。
+   没了模糊就得补不透明度，否则半透明底"糊在图上"、字立不住。 */
+.chip{pointer-events:auto;
+  background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%);
   border:none;border-radius:999px;position:relative;isolation:isolate;
   padding:calc(var(--pad) * .8) calc(var(--pad) * 1.6);
   color:#eaf4ff;font-size:var(--fs-sm);font-weight:600;display:flex;align-items:center;gap:5px;
@@ -204,14 +235,21 @@ body.upbar-on #modal{top:var(--upH)}
 .btn:disabled{opacity:.4}
 /* 图标按钮：只有 emoji/符号，没有文字 */
 .btn.ico{padding:calc(var(--pad) * .9);justify-content:center;aspect-ratio:1}
-/* 顶栏的按钮压在地图上：换深蓝玻璃，浅色字才立得住 */
-#topbar .btn{background:var(--gb-face-deep)}
+/* 顶栏的按钮压在地图上：换深蓝玻璃，浅色字才立得住。
+   4.0.17：顺手去掉 backdrop-filter —— 它们背后是每帧都在变的地图，
+   每一层模糊都要跟着重算一遍（60fps 变 30fps），而这层模糊在深色地图上几乎看不出来。
+   面板里的 .btn（同一套样式）**保留**模糊：面板一开地图就停画，模糊只算一次，不花钱。
+   所以按 #topbar 限定，不动 .btn 本身。语法上是**接着这条写**的，
+   不是另起一条同名规则（同名两条会互相盖，静态分析会报"零贡献规则"）。 */
+#topbar .btn{background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%);
+  backdrop-filter:none;-webkit-backdrop-filter:none}
 
 /* ============ 任务条 ============ */
 #quest{position:absolute;left:50%;transform:translateX(-50%);
   top:calc(var(--safeT) + var(--upH) + var(--topH) + 6px);
   max-width:calc(100% - 32px);text-align:center;
-  background:rgba(10,24,40,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  /* 4.0.17：任务条也压在地图上 —— 去掉 blur(8px)，用不透明度补回来 */
+  background:rgba(10,24,40,.88);
   border:1px solid rgba(255,255,255,.12);border-radius:var(--r);
   padding:calc(var(--pad) * .8) calc(var(--pad) * 2);
   color:#cfe6ff;font-size:var(--fs-sm);font-weight:600;line-height:1.5;z-index:18;
@@ -258,12 +296,12 @@ body.upbar-on #modal{top:var(--upH)}
 /* 电脑端常驻键位小抄：贴在摇杆右边，点一下打开完整键位表 */
 #pcHint{position:absolute;left:calc(var(--safeL) + var(--stick) + 22px);
 bottom:calc(var(--safeB) + 18px);display:none;align-items:center;gap:6px;
-background:var(--gb-face-deep);border:none;
+/* 4.0.17：同理，键位小抄也浮在活地图上，去掉模糊、补不透明度 */
+background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%);border:none;
 border-radius:999px;padding:calc(var(--pad) * .7) calc(var(--pad) * 1.5);
 color:#9cc0e0;font-size:var(--fs-xs);font-weight:600;z-index:21;
 cursor:pointer;white-space:nowrap;max-width:44vw;overflow:hidden;
 text-overflow:ellipsis;
--webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
 box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop)}
 #pcHint:active{transform:scale(.97);box-shadow:var(--gb-press-lift),var(--gb-hair)}
 #pcHint b{color:#ffd76a}

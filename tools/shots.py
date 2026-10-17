@@ -143,8 +143,20 @@ setTimeout(function(){
     BZ.carry={};
     blazeDeploy();
   }catch(e){}
+  /* 落到撤离点再拍：出生点有时紧挨着保险箱房守卫，
+     一开局就弹「门卫」遭遇框，拍到的全是弹窗（随机踩过两次）。
+     撤离点是固定点位、一定可走，画面也更像一张地图。 */
+  setTimeout(function(){
+    try{
+      var ex=SPOTS.filter(function(s){return s.t==='exfil';})[0];
+      if(ex){state.x=ex.x;state.y=ex.y-96;}
+      closePanel();
+      if(typeof blazeCamTo==='function')blazeCamTo(state.x,state.y);
+      document.querySelectorAll('.tst,#toast').forEach(function(n){n.textContent='';});
+    }catch(e){}
+  },700);
 },1200);
-""", 7000, "部署后的战场地面"),
+""", 7000, "部署后的战场地面（撤离点附近）"),
     # 战术地图：4.0.13 修的是它"图中间拖不动"（画布吃掉了手势）
     "战术地图": ("""
 setTimeout(function(){
@@ -207,6 +219,19 @@ setTimeout(function(){
   }catch(e){}
 },1400);
 """, 7000, "特勤处 · 升级确认（同一套游戏内弹窗）"),
+    # 省电档：和「菜单」那张对着看，就是"毛玻璃 vs 不透明底"的差别（4.0.16）
+    "省电档": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  try{setPerfLite(true,'shot');}catch(e){}
+  try{$('regionChip').click();}catch(e){}
+  try{document.getElementById('toast').textContent='';}catch(e){}
+  try{showMenu();}catch(e){}
+  try{var p=document.getElementById('panel');p.scrollTop=p.scrollHeight;}catch(e){}
+},900);
+""", 6000, "省电档（画质：流畅）下的 ☰ 菜单与顶栏"),
     # 烽火 · 战备采购：房卡那一排（4.0.12 修的是它那颗购买按钮的样式）
     "战备采购": ("""
 setTimeout(function(){

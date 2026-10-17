@@ -295,6 +295,10 @@ function showMenu(){
         <span class="tx">战场底纹：${BZ_CLEAN?'简洁':'完整'}<div class="d">${BZ_CLEAN
           ?'扫描线 / 密网格 / 栅格坐标已收起，地形和点位更清楚'
           :'扫描线 + 战术网格 + 栅格坐标全开，氛围更足也更花'}</div></span></button>`:''}
+      <button class="menu-li" id="mLite"><span class="e">${PERF.lite?'⚡':'🎚️'}</span>
+        <span class="tx">画质：${PERF.lite?'流畅':'完整'}<div class="d">${PERF.lite
+          ?'面板和公告的毛玻璃也关掉了 —— 极端弱机再省一点（帧率与完整档已经一样）'
+          :'面板与公告保留玻璃质感（点开时地图会停画，那层模糊只算一次，不花性能）'}</div></span></button>
       ${IS_PC?`<button class="menu-li" id="mKeys"><span class="e">⌨️</span>
         <span class="tx">电脑端键位<div class="d">WASD 移动 · Shift 疾跑 · 点地图走过去 · E 互动 · 1~4 选选项</div></span></button>`:''}
       ${!bz&&!ep&&!dr?`<button class="menu-li" id="mTeleport"><span class="e">🌀</span>
@@ -347,6 +351,14 @@ function showMenu(){
   if(mtac)mtac.onclick=()=>{closePanel();audioKick();showTacMap();};
   const mcl=$('mClean');
   if(mcl)mcl.onclick=()=>{audioKick();setBzClean(!BZ_CLEAN);closePanel();setTimeout(showMenu,60);};
+  const mli=$('mLite');
+  /* 省电档开关：和「战场底纹」一个套路 —— 切完重开菜单，标题上就能看到当前是哪一档 */
+  if(mli)mli.onclick=()=>{
+    audioKick();
+    setPerfLite(!PERF.lite,'manual');
+    toast(PERF.lite?'⚡ 流畅画质：面板毛玻璃也关掉了':'🎚️ 完整画质：面板与公告的玻璃质感回来了');
+    closePanel();setTimeout(showMenu,60);
+  };
   if(mt)mt.onclick  =()=>{closePanel();audioKick();showTeleport();};
   const mk=$('mKeys');
   if(mk)mk.onclick  =()=>{closePanel();audioKick();showKeyHelp();};
