@@ -33,13 +33,24 @@ if(IS_PC){
    超了就按面积开方降 dpr —— 平板落到 dpr≈1.14、画布约 180 万像素，
    主线程光栅化的活直接少掉 2/3。
    画质代价很小：#game 上只有光晕、影子、圈、小地图这些没有细节的东西，
-   文字和 emoji 全在 DOM 实体层，不经过这张画布。 */
-const PIX_BUDGET=1800000;
+   文字和 emoji 全在 DOM 实体层，不经过这张画布。
+
+   【4.0.19】预算变成两档：完整 180 万 / 流畅 100 万。
+   因为"关毛玻璃"那件事已经默认做掉了（整站零 backdrop-filter），
+   「流畅档」原来无事可做 —— 现在它改管分辨率，这是最后一块真能省下来的开销。 */
+const PIX_BUDGET_FULL=1800000;
+const PIX_BUDGET_LITE=1000000;
+let PIX_BUDGET=PIX_BUDGET_FULL;
 function resize(){
   stickMetrics();          // 旋转屏幕 / 换设备后，摇杆直径会跟着 --stick 变
   VW=appEl.clientWidth||window.innerWidth;
   VH=appEl.clientHeight||window.innerHeight;
+  /* 下限不低于 1（别把画面糊掉）—— 但流畅档要**在所有设备上都有感**：
+     小屏的像素数本来就低于预算，"只压预算"在小屏上等于没发生
+     （冒烟那条「流畅档要降分辨率」就是这么红起来的：888448 → 888448）。
+     所以流畅档额外把 DPR 乘 0.8（线性 80% = 像素少 36%），下限 0.75。 */
   DPR=clamp(Math.sqrt(PIX_BUDGET/Math.max(1,VW*VH)),1,Math.min(window.devicePixelRatio||1,2));
+  if(typeof PERF!=='undefined'&&PERF.lite)DPR=Math.max(0.75,DPR*0.8);
   cv.width=Math.floor(VW*DPR);cv.height=Math.floor(VH*DPR);
   cv.style.width=VW+'px';cv.style.height=VH+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -410,9 +421,16 @@ function setPerfLite(on, why){
   PERF.lite = !!on;
   try{document.body.classList.toggle('perf-lite', PERF.lite);}catch(e){}
   try{localStorage.setItem(LITE_KEY, PERF.lite ? '1' : '0');}catch(e){}
+  /* 4.0.19：这一档改为压画布分辨率（毛玻璃已经默认全关了，它没别的可关）。
+     预算变了要重新量一次画布 —— 但开机那会儿 VW/VH 还没量，别急着调 resize。 */
+  const want = PERF.lite ? PIX_BUDGET_LITE : PIX_BUDGET_FULL;
+  if(PIX_BUDGET !== want){
+    PIX_BUDGET = want;
+    if(VW > 0 && VH > 0){ try{ resize(); }catch(e){} }
+  }
   /* 自动切的时候要说一声：悄悄把画面变差，玩家会以为游戏坏了 */
   if(why === 'auto')try{
-    toast('⚡ 已自动切到「流畅画质」：这台设备连面板毛玻璃都跑不顺。☰ 菜单里可以改回来');
+    toast('⚡ 已自动切到「流畅画质」：这台设备带不动完整分辨率，已降一档。☰ 菜单里可以改回来');
   }catch(e){}
 }
 try{if(localStorage.getItem(LITE_KEY) === '1')setPerfLite(true, 'boot');}catch(e){}

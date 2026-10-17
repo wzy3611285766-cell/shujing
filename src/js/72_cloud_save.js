@@ -59,7 +59,9 @@ const ACCT={
   lastSync:0,
   autoTimer:null,
   dirty:false,
-  atWritten:0
+  atWritten:0,
+  cloudInfo:null,      // 云端那一行：{at,dev,prog,scoped} / {empty} / {fail}
+  cloudBusy:false
 };
 
 /* 输入框统一这一套，跟「AI 设置」里的 Key 输入框保持一致 */
@@ -162,6 +164,19 @@ function fmtAt(ms){
   const d=new Date(ms),p=n=>String(n).padStart(2,'0');
   return (d.getMonth()+1)+'月'+d.getDate()+'日 '+p(d.getHours())+':'+p(d.getMinutes());
 }
+/* 这个账号在云端那一行属于谁（4.0.19）。
+   ---------------------------------------------------------------
+   以前 push/pull 都**不写也**不按 owner 过滤，全凭服务端的行级权限兜：
+     · cloudPull():  db().from('saves').select(...).limit(1)          ← 表里第一行
+     · push 兜底:   db().from('saves').select('id').limit(1) → update ← 改表里第一行
+   两台设备"同一个手机号、数据却不一样"，最可能的来源就是这条：
+   谁拿到哪一行取决于服务端策略，前端根本没参与。
+   现在把 owner 显式带上：能拿到 id 就一定按它查/写；
+   拿不到（老 SDK 的 session 形状不同）就退回原行为，并在面板上说出来。 */
+function ownerId(){
+  const u=ACCT.user||{};
+  return u.id||u.uid||u.sub||u.openid||null;
+}
 function syncOff(){try{return localStorage.getItem(SYNC_OFF)==='1';}catch(e){return false;}}
 function setSyncOff(v){
   try{v?localStorage.setItem(SYNC_OFF,'1'):localStorage.removeItem(SYNC_OFF);}catch(e){}
@@ -192,13 +207,17 @@ async function cloudPush(silent){
     owner_name:(ACCT.user&&ACCT.user.name)||null,
     updated_at:new Date().toISOString()
   };
+  const oid=ownerId();
+  if(oid)row.owner_id=oid;                 // 显式写 owner（不再指望服务端默认值）
   let ok=false,errTxt='';
   try{
     let r=await db().from('saves').upsert(row,{onConflict:'owner_id'}).select();
     if(r&&r.error){
       /* upsert 万一不被支持，退回「查一行 → 更新，没有才插入」。
-         owner_id 上有唯一约束，两条路都不会写出重复行。 */
-      const q=await db().from('saves').select('id').limit(1);
+         4.0.19：查的时候必须按 owner 限定 —— 以前是"表里第一行"，
+         触发这条路就等于去改别人的存档（两台设备数据不一致的元凶之一）。 */
+      let q=db().from('saves').select('id');
+      q=oid?await q.eq('owner_id',oid).limit(1):await q.limit(1);
       if(q&&q.data&&q.data.length){
         r=await db().from('saves').update(row).eq('id',q.data[0].id).select();
       }else{
@@ -214,8 +233,11 @@ async function cloudPush(silent){
     try{localStorage.setItem(SYNC_AT,String(pack.at));}catch(e){}
     ACCT.atWritten=pack.at;
     ACCT.lastSync=pack.at;ACCT.dirty=false;
-    if(silent)toast('☁️ 云存档已更新');
-    else acctMsg('已上传 ✓ 云端存下了本机 '+fmtAt(pack.at)+' 的进度。','ok');
+    /* 4.0.23：成功**不播报**。
+       后台同步成功是"本该如此"，每 15 秒弹一次「云存档已更新」纯属噪音 ——
+       玩家没做任何需要反馈的决定。失败也不弹（会自动重试，面板里看得到状态）；
+       只有玩家自己按「上传」时才给文字反馈。 */
+    if(!silent)acctMsg('已上传 ✓ 云端存下了本机 '+fmtAt(pack.at)+' 的进度。','ok');
   }else if(!silent){
     acctMsg('上传失败：'+(errTxt||'请稍后再试'),'bad');
   }
@@ -223,8 +245,13 @@ async function cloudPush(silent){
 }
 async function cloudPull(){
   if(!ACCT.cloud)return null;
+  const oid=ownerId();
   try{
-    const r=await db().from('saves').select('id,payload,saved_at,device,updated_at').limit(1);
+    /* 4.0.19：按 owner 限定。以前只有 .limit(1) —— 拿的是"表里第一行"，
+       等于把"这份存档是谁的"交给服务端权限去兜；兜不住就是两台设备读到同一行 / 读到别人的。 */
+    let q=db().from('saves').select('id,payload,saved_at,device,updated_at');
+    q=oid?q.eq('owner_id',oid):q;
+    const r=await q.limit(1);
     if(r&&r.error)throw new Error(r.error.message||'读取失败');
     if(!r||!r.data||!r.data.length)return null;
     const row=r.data[0];
@@ -232,8 +259,24 @@ async function cloudPull(){
     try{pack=JSON.parse(row.payload);}catch(e){}
     if(!pack||!pack.keys)return null;
     pack.rowId=row.id;pack.savedAt=Number(row.saved_at)||0;
+    pack.dev=row.device||pack.dev||'';
+    pack.scoped=!!oid;
     return pack;
   }catch(e){return null;}
+}
+/* 面板上那条"云端现在是什么"（4.0.19）。
+   两台设备数据不一致时，玩家只需要看两行：云端是哪台设备、什么时候、多少分。
+   两边读到的这份不一样 → 说明压根不是同一行（owner / 账号问题），不是"没同步"。 */
+async function acctFetchCloud(){
+  if(!ACCT.cloud||!ACCT.user)return;
+  ACCT.cloudBusy=true;
+  try{
+    const p=await cloudPull();
+    ACCT.cloudInfo=p?{at:p.savedAt,dev:p.dev,prog:Number(p.prog)||0,scoped:!!p.scoped}
+                    :{empty:true};
+  }catch(e){ACCT.cloudInfo={fail:true};}
+  ACCT.cloudBusy=false;
+  if($('acctWrap'))acctRender();
 }
 /* 用云端盖本机：先留一份本机的，再写云端那份，最后整页重载 ——
    存档散在四五个键里，重载是唯一能保证「整份一起生效」的做法。 */
@@ -453,7 +496,25 @@ function acctBodyHtml(){
       +'本机最后存档：<b>'+fmtAt(localAt())+'</b><br>'
       +'本机进度：<b>'+localProgress()+'</b> 分<br>'
       +'自动同步：<b style="color:'+(off?'#ffd76a':'#8fe0a8')+'">'+(off?'已关闭':'开启中')+'</b>'
-      +'</div>'+m
+      +'</div>'
+      /* 云端那一行（4.0.19）：两台设备不一致时，这几行就能指出是哪一类问题 */
+      +(()=>{
+        const ci=ACCT.cloudInfo;
+        if(ACCT.cloudBusy)return '<div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin:8px 0">正在读云端…</div>';
+        if(!ci)return '';
+        if(ci.empty)return '<div style="background:rgba(255,180,90,.10);border:1px solid rgba(255,180,90,.28);'
+          +'border-radius:12px;padding:9px 12px;font-size:var(--fs-xs);color:#ffd9a8;margin:8px 0;line-height:1.7">'
+          +'云端这一行还是空的 —— 点下面的「上传本机进度」建一份。</div>';
+        if(ci.fail)return '<div style="font-size:var(--fs-xs);color:#ffb0b0;margin:8px 0">云端没读出来（网络或权限）</div>';
+        return '<div style="background:rgba(94,214,255,.08);border:1px solid rgba(94,214,255,.22);'
+          +'border-radius:12px;padding:9px 12px;font-size:var(--fs-xs);color:#cfe6ff;margin:8px 0;line-height:1.7">'
+          +'云端存档：<b>'+fmtAt(ci.at)+'</b>'
+          +(ci.dev?'（来自「'+esc(ci.dev)+'」）':'')+'<br>'
+          +'云端进度：<b>'+ci.prog+'</b> 分'
+          +(ci.scoped?'':' <span style="color:#ffd76a">· 按账号定位失败，可能读到别人的行</span>')
+          +'</div>';
+      })()
+      +m
       +'<div class="row" style="margin-top:12px">'
       +'<button class="btn primary" id="acctUp">⬆️ 上传本机进度</button>'
       +'<button class="btn" id="acctDown">⬇️ 取回云端进度</button></div>'
@@ -498,12 +559,15 @@ function acctBind(){
   on('acctGo',()=>{if(ACCT.busy)return;ACCT.step==='code'?acctVerify():acctSendCode();});
   on('acctBack',()=>{ACCT.step='phone';ACCT.pending=null;acctMsg('');acctRender();});
   on('acctWx',()=>{if(!ACCT.busy)acctWechat();});
-  on('acctUp',()=>cloudPush(false));
+  on('acctUp',async()=>{
+    await cloudPush(false);
+    acctFetchCloud();                 // 传完把"云端现在是什么"刷一遍
+  });
   on('acctDown',async()=>{
     acctMsg('正在取回…','');
     const p=await cloudPull();
-    if(!p){acctMsg('云端还没有存档 —— 先在这台设备上传一次。','bad');return;}
-    acctMsg('云端存的是 '+fmtAt(p.savedAt)+' 的进度，正在换过来…','ok');
+    if(!p){acctMsg('云端还没有存档 —— 先在这台设备上传一次。','bad');acctFetchCloud();return;}
+    acctMsg('云端存的是 '+fmtAt(p.savedAt)+'（来自「'+(p.dev||'未知设备')+'」）的进度，正在换过来…','ok');
     setTimeout(()=>applyCloud(p),500);
   });
   on('acctToggle',()=>{
@@ -528,7 +592,8 @@ function showAccountPanel(){
     +'<div class="row" style="margin-top:12px"><button class="btn" id="acctClose">关闭</button></div>');
   $('acctClose').onclick=closePanel;
   acctBind();
-  if(!ACCT.cloud&&ACCT.sdk!=='fail'&&!cloudWhy())cloudLoadSdk(()=>acctRender());
+  if(!ACCT.cloud&&ACCT.sdk!=='fail'&&!cloudWhy())cloudLoadSdk(()=>{acctRender();acctFetchCloud();});
+  else acctFetchCloud();          // 已登录：顺手把"云端现在是什么"读出来（4.0.19）
 }
 
 /* ---------- 挂上自动同步 ---------- */

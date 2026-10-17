@@ -2,18 +2,32 @@
    启动
    ========================================================= */
 
+/* 【4.0.22】默认进场改成**烽火**（原来一律进闯关）。
+   产品理由（玩家定的）：闯关那套四国地图更接近"原神式"的探索，
+   第一屏给"搜打撤"更接近"三角洲式"的一局 —— 选点 / 难度 / 战备 → 部署 → 拿东西走人。
+   闯关没删，☰ 菜单里一键就能切。
+   lm：清档重开时的一次性标记（见 34_engine_core.js 里写 himath_lastmode 那处），优先于默认。 */
+function bootWorld(lm){
+  if(lm==='epic')return EPIC;
+  if(lm==='blaze')return BLAZE;
+  if(lm==='drill')return DRILL;
+  if(lm==='adv')return ADV;
+  return BLAZE;                     // 没有标记（含全新玩家）→ 烽火
+}
 function startGame(){
   if(!CUR)useWorld(ADV);
-  /* 清档重开后回到玩家刚才所在的世界（一次性标记，读完即清） */
+  let lm=null;
   try{
-    const lm=localStorage.getItem('himath_lastmode');
-    if(lm==='epic' &&CUR===ADV)useWorld(EPIC);
-    if(lm==='blaze'&&CUR===ADV)useWorld(BLAZE);
-    if(lm==='drill'&&CUR===ADV)useWorld(DRILL);
+    lm=localStorage.getItem('himath_lastmode');
     localStorage.removeItem('himath_lastmode');
   }catch(e){}
+  if(CUR===ADV)useWorld(bootWorld(lm));
   entInit();
   load();
+  /* 读档之后再并一次错题本（4.0.22）：四个世界各存各的，读回来的数组互不相干，
+     这里按 text 去重合并，再让四个 state 重新指向同一份 —— 否则"只玩烽火"时
+     ADV 那份存档落后，新错的题会在下次启动时被丢掉。 */
+  if(typeof wbShare==='function')wbShare();
   resize();
   /* 烽火地图是每局现生成的，必须先把地形和点位铺出来再 buildStatic，
      否则会在一张空地图上跑，人物掉进虚空。
@@ -155,12 +169,12 @@ function newsBoot(){
      全屏是必需功能，不能只藏在 ☰ 菜单里 —— 这里给它两个"打开就能看见"的入口。 */
   fsButtonBind($('upFs'),'⛶ 全屏','🗗 退出');
   if(newsSeen())return;
-  /* 全新玩家先看教学，不看"这次改了什么" ——
-     他连上次是什么样都不知道，一上来读更新要点没有意义（4.0.9）。
-     直接记为已读，免得玩到一半又被弹一次。 */
-  try{
-    if(!localStorage.getItem(curKey+'_intro')&&isNewPlayer()){markNewsSeen();return;}
-  }catch(e){}
+  /* 【4.0.20】这里原本有一条"全新玩家先看教学、把公告直接记成已读"的分支
+     （4.0.9 加的理由是"他连上次是什么样都不知道，读更新要点没意义"）。
+     玩家反馈很直接：一点开先被塞一段闯关介绍，公告反而看不到。
+     现在**公告永远第一**：新玩家也是先看公告，关掉之后 maybeIntro 再弹说明
+     （它本来就会等公告关掉，见 maybeIntro 开头那段的等待逻辑）。
+     登录/未登录都一样 —— 这条路径本来就不看账号。 */
   const tryOpen=n=>{
     /* 玩家手快先开了别的面板，就别硬顶掉，等它读完再弹。
        最多等 ~4 秒还不行就放弃本次（别和玩家的操作抢屏幕）。 */
@@ -205,7 +219,9 @@ function maybeIntro(delay){
      那说明玩家正忙着，不该再拦一道。 */
   try{
     if($('news')&&(!newsSeen()||newsIsOpen())){
-      if(++introWaitN<40)setTimeout(()=>maybeIntro(delay),500);
+      /* 等公告关掉。重试时把延时压到 150ms —— 原来传的是初始的 700ms，
+         于是"关掉公告"到"说明出现"要等 1 秒多（4.0.20 实测 0.9 秒还没出来）。 */
+      if(++introWaitN<40)setTimeout(()=>maybeIntro(150),500);
       return;
     }
   }catch(e){}
@@ -257,6 +273,20 @@ function maybeIntro(delay){
     };
   },delay||0);
 }
+/* 📌 每日复习闸的**弹窗**（4.0.22）。
+   公告与首访说明之后才拦，别和它们抢屏幕；最多等 ~6 秒 ——
+   玩家已经点进别的地方就放过这一次（他真想开局时，blazeDeploy 那道闸还会拦，
+   那道是硬的：不复习就开不了新局）。 */
+let reviewWaitN=0;
+function reviewBoot(){
+  if(typeof reviewNeed!=='function'||reviewNeed()<=0)return;
+  if(reviewWaitN>12)return;
+  if(newsIsOpen()||(typeof modal!=='undefined'&&modal&&modal.classList.contains('show'))){
+    reviewWaitN++;setTimeout(reviewBoot,500);return;
+  }
+  if(typeof reviewGate==='function')reviewGate();
+}
 newsBoot();
 maybeIntro(700);
+setTimeout(reviewBoot,2400);
 

@@ -249,7 +249,7 @@ function showMenu(){
   const sndTxt=state.sound?'🔊 音效：开':'🔇 音效：关';
   /* 全屏开关的当前状态：读它来决定菜单里那颗按钮写"全屏"还是"退出全屏" */
   const fsOn=(typeof fullscreenOn==='function')&&fullscreenOn();
-  /* 帧率角标开关的当前状态（默认关，4.0.11） */
+  /* 帧率角标开关的当前状态（4.0.11 默认关 → 4.0.20 起默认开，关过的人保持关） */
   const fpsOn=(typeof fpsBadgeOn==='function')&&fpsBadgeOn();
   /* 错题中心那一项的 HTML：有到期题时**排到菜单最上面**。
      原因见 updateWbBadge 的注释 —— 顶栏 ☰ 顶着「4」，点开菜单却要
@@ -297,8 +297,8 @@ function showMenu(){
           :'扫描线 + 战术网格 + 栅格坐标全开，氛围更足也更花'}</div></span></button>`:''}
       <button class="menu-li" id="mLite"><span class="e">${PERF.lite?'⚡':'🎚️'}</span>
         <span class="tx">画质：${PERF.lite?'流畅':'完整'}<div class="d">${PERF.lite
-          ?'面板和公告的毛玻璃也关掉了 —— 极端弱机再省一点（帧率与完整档已经一样）'
-          :'面板与公告保留玻璃质感（点开时地图会停画，那层模糊只算一次，不花性能）'}</div></span></button>
+          ?'画布降到约 100 万像素（画面略软，光栅化更省）—— 设备跟不上时选它'
+          :'画布约 180 万像素。设备跟不上时会自动切到「流畅」，你也可以自己点'}</div></span></button>
       ${IS_PC?`<button class="menu-li" id="mKeys"><span class="e">⌨️</span>
         <span class="tx">电脑端键位<div class="d">WASD 移动 · Shift 疾跑 · 点地图走过去 · E 互动 · 1~4 选选项</div></span></button>`:''}
       ${!bz&&!ep&&!dr?`<button class="menu-li" id="mTeleport"><span class="e">🌀</span>

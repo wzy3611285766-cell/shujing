@@ -116,18 +116,39 @@ function blazeAsk(o){
         else e2.classList.add('dim');
       });
       const fb=$('feedback');
+      /* 【4.0.21】先画反馈，再做副作用 —— 这是"按下去要立刻变色"的关键。
+         这一段全是 DOM 写入（标记选项 + 写 #feedback），浏览器下一帧就能画出来。
+         但有两个东西会**卡住这一帧的提交**：
+           · SFX.right() 要唤醒 AudioContext（iOS / 安卓上可能几百毫秒，
+             而且第一次进烽火基本必然要唤醒一次）
+           · lingJudge() 要读写觉醒存档
+         它们排在写入之后同步跑，视觉反馈就得陪着一起等 ——
+         在平板上表现就是"摁下去停顿一两秒，然后才看到变绿"。
+         现在把它们挪到下一帧：视觉先落地，声音晚 16ms 完全听不出来。
+         顺手记一个 __ansGap（点击 → 下一帧），?dbg=1 里能看到真机到底等了多少。 */
       if(ok){
         BLAZE_STATE.totalRight=(BLAZE_STATE.totalRight||0)+1;
-        SFX.right();fb.className='ok';
+        fb.className='ok';
         fb.innerHTML=`✅ 答对！${o.okText?'<div class="exp">'+esc(o.okText)+'</div>':''}`;
-        /* 思路灵：战场上花钱要过思路，同样不算独立解出 */
-        try{lingJudge(q,true,hintLv>0);}catch(e){}
       }else{
         BLAZE_STATE.totalWrong=(BLAZE_STATE.totalWrong||0)+1;
-        SFX.wrong();fb.className='no';
+        fb.className='no';
         fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`;
       }
       $('nextBtn').style.display='block';
+      const tPaint=performance.now();
+      const sideFx=()=>{
+        window.__ansGap=Math.round(performance.now()-tPaint);
+        try{ok?SFX.right():SFX.wrong();}catch(e){}
+        /* 思路灵：战场上花钱要过思路，同样不算独立解出 */
+        if(ok){try{lingJudge(q,true,hintLv>0);}catch(e){}}
+      };
+      /* ⚠️ 必须是「rAF + 宏任务」两段，不能只 rAF：
+         rAF 回调跑在**这一帧绘制之前**，慢的副作用（唤醒 AudioContext）照样会
+         把这帧的提交挡住。先等到下一帧开始（此时上一帧已经画完并提交），
+         再用 setTimeout 排到这一帧之后 —— 顺序是：写入 → 绘制提交 → 副作用。 */
+      if(window.requestAnimationFrame)requestAnimationFrame(()=>setTimeout(sideFx,0));
+      else setTimeout(sideFx,0);
       $('nextBtn').onclick=()=>{
         BZ.busy=false;
         const seq=panelSeq;

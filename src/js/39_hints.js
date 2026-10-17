@@ -346,7 +346,9 @@ function session(cfg){
       const apprBonus=(ap&&ap.ok)?2:0;
       const gain=(cfg.gain||4)+bonus+apprBonus;
       state.crystals+=gain;
-      SFX.right();
+      /* 【4.0.21】SFX 挪到"画完之后"（见本函数末尾 sideFx）：
+         它要在真机上唤醒 AudioContext，可能几百毫秒 —— 排在视觉写入之后
+         同步跑，就会把"变绿"那一帧一起拖住（烽火那边实测 800ms）。 */
       fb.className='ok';
       fb.innerHTML=`✅ 答对！用时 ${cost.toFixed(1)} 秒${bonus?'（迅捷 +'+bonus+'）':''}${apprBonus?'（思路对路 +'+apprBonus+'）':''} · 获得 <b>${gain}</b> 🪙`;
       if(!cfg.fixedTier&&state.streak%2===0&&curTier<3){
@@ -360,7 +362,6 @@ function session(cfg){
         curTier--;state.tier[curRid]=curTier;
         toast('📉 降到 '+TIER_NAME[curTier]+'题');
       }
-      SFX.wrong();
       fb.className='no';
       fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`;
       /* 错题本（容量见 WRONG_CAP，1.5.15 起 30 → 200）。
@@ -373,11 +374,24 @@ function session(cfg){
       else if(kind==='new'||kind==='back')toast('📕 '+wbMissWord(kind));
       state.wrongBook=state.wrongBook.slice(0,WRONG_CAP);
     }
-    /* 思路灵：独立答对才觉醒 / 涨羁绊（看了提示这题不计） */
-    try{lingJudge(q,correct,usedHint);}catch(e){}
-    save();updateHUD();
     $('nextBtn').style.display='block';
     $('nextBtn').textContent=(i+1>=cfg.count||(cfg.allowWrong!=null&&wrong>cfg.allowWrong))?'完成 ✓':'继续 →';
+    /* 【4.0.21】先画反馈，再做副作用（顺序就是这几行的全部意义）：
+       上面已经写完了 DOM（选项变绿/变红 + #feedback + 下一步按钮），
+       浏览器下一帧就能画出来；音效要唤醒 AudioContext、lingJudge 与 save 要读写存档，
+       这些**不能**排在写入之后同步跑 —— 会卡住这一帧的提交，玩家看到的就是
+       "按下去停一下才变色"（慢音效模拟实测：800ms → 改成 8ms）。
+       ⚠️ 必须「rAF + 宏任务」两段：光 rAF 的回调跑在绘制**之前**，挡不住。 */
+    const tPaint=performance.now();
+    const sideFx=()=>{
+      window.__ansGap=Math.round(performance.now()-tPaint);
+      try{correct?SFX.right():SFX.wrong();}catch(e){}
+      /* 思路灵：独立答对才觉醒 / 涨羁绊（看了提示这题不计） */
+      try{lingJudge(q,correct,usedHint);}catch(e){}
+      save();updateHUD();
+    };
+    if(window.requestAnimationFrame)requestAnimationFrame(()=>setTimeout(sideFx,0));
+    else setTimeout(sideFx,0);
   }
   render();
 }

@@ -1,0 +1,96 @@
+{
+  "name": "更新汇报_v4.0.22",
+  "version": "4.0.22",
+  "date": "2026-10-18",
+  "kicker": "SHUJING · 进场",
+  "title": "默认进烽火 + 每天先复习一批才开新局",
+  "tagline": "产品决定三条：<b>先弹今天该复习的错题</b>、<b>复习完才允许开新局</b>、<b>默认模式换烽火</b>。实现时撞出一个真 bug：<b>错题本在烽火里一直是空的</b>。",
+  "pills": ["默认 = 烽火", "复习闸只拦第一批", "错题本改全局共享"],
+
+  "sections": [
+    {
+      "h": "一、默认进场：原来永远是闯关",
+      "code": "// 查代码前以为「会记住上次模式」，其实不是：\nconst lm = localStorage.getItem('himath_lastmode');   // 只是「清档重开后回到刚才的世界」\nif(lm==='blaze') useWorld(BLAZE);                    // 读不到 → 一直是 ADV\n\n// 改后：一处决定默认\nfunction bootWorld(lm){\n  if(lm==='epic') return EPIC;\n  if(lm==='blaze') return BLAZE;\n  if(lm==='drill') return DRILL;\n  if(lm==='adv') return ADV;\n  return BLAZE;          // 没有标记（含全新玩家）→ 烽火\n}",
+      "note": {
+        "html": "所以「一点开就是闯关介绍」是必然的，不是错觉。<b>清档重开的标记仍然优先</b>，闯关也没删（☰ 一键切）。"
+      }
+    },
+
+    {
+      "h": "二、每日复习闸：拦什么、不拦什么",
+      "items": [
+        "<b>开机弹</b>：公告 / 首访说明之后才弹「今天到期 N 题」，最多等 6 秒 —— 玩家已经点进别处就放过这一次。",
+        "<b>硬闸在部署上</b>：<code>blazeDeploy()</code> 第一行查 <code>reviewNeed()</code>，今天没复习就不让开新局；复习完成后<b>回调部署自己</b>，不用再点一次。",
+        "<b>完成标记写在练完之后</b>（不是点「开始复习」那一刻）—— 半路退出，下次照样拦。",
+        "<b>每天只拦第一批</b>（<code>REVIEW_BATCH=10</code>）：到期几十题时一次全拦，人会直接关掉游戏，那就连复习也没有了。",
+        "<b>只拦开新局</b>：地图 / 菜单 / 练枪照常 —— 练枪本来就在做题。"
+      ],
+      "note": {
+        "kind": "warn",
+        "html": "两条分寸是我加的（你说的是「复习完才能玩」）。要更严就说：把 <code>REVIEW_BATCH</code> 调到 99（等于全拦），或者把闸门也挂到闯关入口上。"
+      }
+    },
+
+    {
+      "h": "三、撞出来的真 bug：错题本在烽火里是空的",
+      "code": "wrongBook / wrongDone 只定义在 ADV_STATE 上\n全项目 99 处读写用的是 state.wrongBook —— 而 state 指向「当前世界」\n\n⇒ 进了烽火 / 史诗 / 练枪之后：\n   · 错题中心显示 0 题\n   · ☰ 菜单「今日待复习 N」永远 0\n   · 烽火里答错的题进不了错题本（正是复习闸要拦的东西）\n\n改法：wbShare() —— 四个世界的 state 指向**同一份数组**（引用别名），\n99 处调用一行不改；读档后按 text 去重再并一次（ADV 优先），\n避免「只玩烽火」时 ADV 存档落后把新错题丢掉。",
+      "paras": [
+        "这个 bug 是撞在我自己写的检查上才暴露的：检查里造的到期题，一切到烽火就「消失」了 —— 于是顺着查下去，才发现错题本压根不在烽火里。"
+      ]
+    },
+
+    {
+      "h": "四、两处检查踩坑（都是检查写错，不是代码错）",
+      "steps": [
+        {"b": "① 假数据被 `useWorld` 换掉了：", "html": "到期题塞在 <code>state.wrongBook</code> 上，而 <code>useWorld(BLAZE)</code> 会把 <code>state</code> 换成 BLAZE —— 假数据跟着消失，于是「闸门没拦住」。改成塞在 <code>ADV_STATE</code> 上再 <code>wbShare()</code>。"},
+        {"b": "② 把返回值当契约：", "html": "断言写成 <code>!!blazeDeploy()</code>，可它<b>成功时返回 <code>undefined</code></b>（整个函数没有 <code>return true</code>）。改成看 <code>BZ.active</code>。<b>这类假设比 bug 更容易骗人。</b>"}
+      ]
+    },
+
+    {
+      "h": "五、验证",
+      "table": {
+        "head": ["项目", "结果"],
+        "rows": [
+          ["默认进场（全新 profile）", "公告 → 关掉 → <b>🔥 烽火地带</b> 首访说明"],
+          ["默认进烽火 / 清档标记可覆盖", "✅ <code>bootWorld(null)===BLAZE</code> · <code>bootWorld('adv')===ADV</code>"],
+          ["错题本全局共享", "✅ 切到烽火后到期题仍在"],
+          ["有到期题时部署", "✅ 被拦（<code>BZ.active</code> 仍为 false）"],
+          ["复习完之后", "✅ 自动放行（回调部署）"],
+          ["冒烟 / 静态体检", "111 项全过 · 9 项全过"]
+        ]
+      },
+      "shots": [
+        {"file": "shots_auto/first_screen.png", "cap": "全新设备首屏：公告看过之后直接落到「🔥 烽火地带」首访说明（默认模式已改）"}
+      ]
+    },
+
+    {
+      "h": "六、下一步",
+      "items": [
+        "线上仍是 v4.0.18 —— v4.0.19 ~ v4.0.22 四个版本都还没部署。",
+        "复习闸要不要更严（全拦 / 也拦闯关入口），你说一句我就改，只动一个常量和一个调用点。",
+        "错题本全局共享之后，<b>烽火里答错的题会进本子</b>了 —— 但烽火的结算界面还没提示「这题进了错题本」。要不要补一句？"
+      ]
+    }
+  ],
+
+  "files": [
+    {"path": "src/js/55_boot_news.js", "delta": "−5 / +34", "note": "bootWorld() 默认烽火 · 读档后 wbShare() · 开机复习闸弹窗"},
+    {"path": "src/js/45_wrongbook_io.js", "delta": "+66", "note": "每日复习闸（reviewNeed/reviewGate/reviewDoneToday）· startWrongDrill 加完成回调"},
+    {"path": "src/js/44_wrongbook_core.js", "delta": "+38", "note": "wbShare()：错题本全局共享 + 按 text 去重合并"},
+    {"path": "src/js/53_drill4.js", "delta": "+4", "note": "useWorld() 里调 wbShare()"},
+    {"path": "src/js/64_blaze_deploy.js", "delta": "+7", "note": "部署第一行：复习闸（复习完回调自己）"},
+    {"path": "tools/smoke.py", "delta": "+50", "note": "新增「默认烽火与复习闸」：默认值 / 全局共享 / 拦截 / 放行"}
+  ],
+
+  "checks": [
+    {"name": "构建 + 公告同源", "ok": true, "detail": "74 个模块 · news.json 最新 v4.0.22"},
+    {"name": "无头浏览器冒烟", "ok": true, "detail": "111 项全过 / 0 失败"},
+    {"name": "静态体检", "ok": true, "detail": "9 项全过"},
+    {"name": "首屏实测", "ok": true, "detail": "全新 profile：公告 → 🔥 烽火地带"},
+    {"name": "真机复核", "ok": false, "detail": "需要在平板上真玩一次：部署时被拦 → 复习 → 自动接着部署"}
+  ],
+
+  "rollback": "拿 <code>releases/数境169_v4.0.21_2026-10-18.html</code> 覆盖 <code>shujing-app/index.html</code> 即可退回。<br>退回会恢复「默认进闯关」，并让错题本重新变回「只在闯关里有效」。"
+}

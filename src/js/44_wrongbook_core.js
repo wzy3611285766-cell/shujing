@@ -47,6 +47,44 @@ function wbHealAll(){
   });
   (state.wrongDone||[]).forEach(w=>wbHeal(w,false));
 }
+/* 错题本是**全局**的（4.0.22）
+   ---------------------------------------------------------------
+   以前 wrongBook / wrongDone 只挂在 ADV_STATE 上，而 `state` 指向"当前世界" ——
+   于是进了烽火 / 史诗 / 练枪之后，全项目 99 处 `state.wrongBook` 的读写
+   都落在**一个不存在的字段**上：静默变空。表现是
+     · 烽火里点「错题中心」显示 0 题
+     · 烽火里答错的题进不了错题本（而这正是"先复习错题"要拦的东西）
+     · ☰ 菜单里那行「今日待复习 N」在烽火下永远是 0
+   改法：让四个世界的 state **指向同一份数组**（引用别名），
+   99 处调用一行都不用改。读档之后再并一次（按 text 去重、ADV 那份优先），
+   避免"只玩烽火"时 ADV 的存档落后、把新错的题丢掉。 */
+function wbShare(){
+  try{
+    const keep=(typeof ADV_STATE!=='undefined'&&ADV_STATE)?ADV_STATE:null;
+    if(!keep)return null;
+    keep.wrongBook=keep.wrongBook||[];
+    keep.wrongDone=keep.wrongDone||[];
+    const others=[(typeof EPIC_STATE!=='undefined')?EPIC_STATE:null,
+                  (typeof BLAZE_STATE!=='undefined')?BLAZE_STATE:null,
+                  (typeof DRILL_STATE!=='undefined')?DRILL_STATE:null].filter(Boolean);
+    const merge=(field)=>{
+      const seen=new Set((keep[field]||[]).map(w=>String(w&&w.text)));
+      others.forEach(o=>{
+        (o[field]||[]).forEach(w=>{
+          const k=String(w&&w.text);
+          if(w&&k&&!seen.has(k)){seen.add(k);keep[field].push(w);}
+        });
+      });
+    };
+    merge('wrongBook');
+    merge('wrongDone');
+    if(!keep.wbRev)keep.wbRev={streak:0,last:''};
+    [keep].concat(others).forEach(o=>{
+      o.wrongBook=keep.wrongBook;o.wrongDone=keep.wrongDone;o.wbRev=keep.wbRev;
+    });
+    return keep;
+  }catch(e){return null;}
+}
 /* 到期的题：今天该复习哪几题，全靠它 */
 function wbDueList(){
   const t=todayStr();

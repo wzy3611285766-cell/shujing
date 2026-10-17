@@ -1,0 +1,98 @@
+{
+  "name": "更新汇报_v4.0.21",
+  "version": "4.0.21",
+  "date": "2026-10-18",
+  "kicker": "SHUJING · 手感",
+  "title": "答题反馈：按下就变色，声音晚一帧",
+  "tagline": "反馈说「摁完正确选项会停一两秒才变色」。<b>先复现</b> —— 复现不出来；再沿着「真机上什么会慢」往下找，最后用一个<b>忙等 800ms 的假音效</b>把它逼出来。",
+  "pills": ["800.4ms → 8.1ms", "烽火 + 闯关都改", "?dbg=1 新增一格读数"],
+
+  "sections": [
+    {
+      "h": "一、先复现：复现不出来",
+      "paras": [
+        "写了探针（<code>tools/answerperf_plain.py</code>）点正确选项，分三段量：处理器同步耗时 / 下一帧延迟 / 之后 2.5 秒的帧间隔。"
+      ],
+      "table": {
+        "head": ["项目", "无头环境实测"],
+        "rows": [
+          ["点击处理器同步耗时", "0.3 ms"],
+          ["反馈是否当帧出现", "是（✅ 答对！）"],
+          ["之后 2.5 秒的帧", "151 帧 · p50 16.7 · p95 16.7 · 最长 16.8 ms"]
+        ]
+      },
+      "note": {
+        "html": "说明问题不在手写逻辑本身，而在<b>真机上某些调用很慢</b> —— 这类问题在本机测不出来，只能靠「真机上什么会慢」去推理，再用假慢去验证。"
+      }
+    },
+
+    {
+      "h": "二、定位：副作用排在视觉写入之后同步跑",
+      "code": "答对分支（改前）\n  写 DOM（选项变绿 + #feedback + 下一步按钮）\n  SFX.right()          ← 要唤醒 AudioContext（iOS / 安卓可能几百毫秒）\n  lingJudge(...)       ← 读写觉醒存档\n\n问题：这三步在同一个任务里。浏览器的绘制要等这个任务跑完，\n于是「变绿」那一帧被后两步一起拖住 —— 玩家看到的就是「停一两秒才变色」。",
+      "note": {
+        "kind": "good",
+        "html": "改法就一句话：<b>写入 → 这一帧画完 → 再做副作用</b>。音效晚一帧（16ms），听不出来。"
+      }
+    },
+
+    {
+      "h": "三、改法（注意一个坑）",
+      "code": "fb.className='ok'; fb.innerHTML=…; nextBtn.style.display='block';\nconst sideFx = ()=>{ SFX.right(); lingJudge(…); };\nrequestAnimationFrame(()=>setTimeout(sideFx,0));\n\n// ⚠️ 必须 rAF + 宏任务 两段：\n//   rAF 回调跑在**这一帧绘制之前** —— 只用 rAF，慢副作用照样挡在绘制前面。\n//   先等下一帧开始（上一帧已提交），再用 setTimeout 排到这一帧之后。",
+      "paras": [
+        "烽火（<code>59_interact.js</code>）与闯关（<code>39_hints.js</code>）都改了。闯关那边把 <code>save()/updateHUD()</code> 也一起挪后 —— 它们同样是写入之后的同步开销，而存档每 5 秒还会再存一次，不差这一帧。"
+      ]
+    },
+
+    {
+      "h": "四、决定性实验：把音效换成忙等 800ms",
+      "paras": [
+        "只改代码不算证明。把 <code>SFX.right</code> 换成一个忙等 800ms 的空函数（模拟真机唤醒音频的代价），量「点击 → 反馈上屏」（<code>tools/answerperf.py</code>）："
+      ],
+      "table": {
+        "head": ["版本", "点击同步耗时", "反馈上屏"],
+        "rows": [
+          ["改前 v4.0.20", "<b>800.3 ms</b>", "<b>800.4 ms</b>"],
+          ["改后", "<b>0.3 ms</b>", "<b>8.1 ms</b>"]
+        ]
+      },
+      "note": {
+        "kind": "warn",
+        "html": "中间踩了一次<b>度量错误</b>：一开始用「两次 rAF」当上屏时刻，结果第二次 rAF 自己也被副作用挡住，改后照样读出 820ms。<br>改成<b>只等一帧</b>才对（DOM 写在 click 里就完成了，这一帧画出来的就是带反馈的画面）。<b>度量口径错了，结论会反着来。</b>"
+      },
+      "shots": [
+        {"file": "shots_auto/h21_烽火答题.png", "cap": "烽火答题：答对之后（绿选项 + ✅ 答对 + 「搜刮完毕 →」），反馈当帧就到"}
+      ]
+    },
+
+    {
+      "h": "五、给真机留一格读数",
+      "paras": [
+        "<code>?dbg=1</code> 面板最后新增一行：<b>答题反馈 Xms</b> —— 从写入到真的画到屏幕上隔了多久（答题路径写入 <code>window.__ansGap</code>）。",
+        "真机上如果这格是几百毫秒，说明还有别的东西在拖（比如面板本身的重排、或者别的音效），把截图发我继续查；如果是十几毫秒，那这次改的就是那一处。"
+      ]
+    }
+  ],
+
+  "files": [
+    {"path": "src/js/59_interact.js", "delta": "−4 / +26", "note": "烽火答题：先画反馈，SFX/lingJudge 挪到这一帧之后"},
+    {"path": "src/js/39_hints.js", "delta": "−4 / +19", "note": "闯关答题：同上，并把 save/updateHUD 一起挪后"},
+    {"path": "src/js/74_dbg.js", "delta": "+5", "note": "?dbg=1 新增「答题反馈 Xms」"},
+    {"path": "tools/answerperf.py", "delta": "新增", "note": "慢音效实验：忙等 800ms，量点击→上屏（新旧版可对比）"},
+    {"path": "tools/answerperf_plain.py", "delta": "新增", "note": "不带假慢的基线探针：同步耗时 / 下一帧 / 之后 2.5 秒"}
+  ],
+
+  "checks": [
+    {"name": "构建 + 公告同源", "ok": true, "detail": "74 个模块 · news.json 最新 v4.0.21"},
+    {"name": "无头浏览器冒烟", "ok": true, "detail": "108 项全过 / 0 失败（延后 save/updateHUD 未打破任何检查）"},
+    {"name": "静态体检", "ok": true, "detail": "9 项全过"},
+    {"name": "慢音效实验", "ok": true, "detail": "点击→上屏 800.4ms → 8.1ms"},
+    {"name": "真机复核", "ok": false, "detail": "需要在平板 / 手机上答题一次，看 ?dbg=1 的「答题反馈 Xms」"}
+  ],
+
+  "rollback": "拿 <code>releases/数境169_v4.0.20_2026-10-18.html</code> 覆盖 <code>shujing-app/index.html</code> 即可退回。",
+
+  "next": [
+    "线上仍是 v4.0.18 —— v4.0.19 / 4.0.20 / 4.0.21 都要部署一次才生效。",
+    "部署后在平板上答一题，把 <code>?dbg=1</code> 最后一行「答题反馈 Xms」截图发我：<b>十几毫秒</b>说明这次改对了；<b>几百毫秒</b>说明还有别的东西在拖，我按那个数继续查。"
+  ]
+}

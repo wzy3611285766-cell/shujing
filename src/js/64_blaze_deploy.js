@@ -36,6 +36,13 @@ function blazeIntelBrief(){
 }
 
 function blazeDeploy(){
+  /* 📌 每日复习闸（4.0.22）：今天到期的错题还没复习完，就不让开新的一局。
+     放在最前面 —— 连战备核算都别做，免得白扣东西。
+     复习完会回调 blazeDeploy 自己，玩家不用再点一次部署。 */
+  if(typeof reviewNeed==='function'&&reviewNeed()>0){
+    if(typeof reviewGate==='function')reviewGate(blazeDeploy);
+    return false;
+  }
   const pick=BLAZE_STATE.pick||{site:'math',diff:1};
   const site=BLAZE_SITE_OF[pick.site]||BLAZE_SITES[0];
   const diff=BLAZE_DIFF_OF[pick.diff]||BLAZE_DIFF[0];

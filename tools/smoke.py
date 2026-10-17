@@ -366,6 +366,102 @@ PROBE = r"""
       }
       useWorld(ADV);syncModeButtons();
       return msg;});
+    /* 默认进场 = 烽火 + 每日复习闸（4.0.22）
+       —— 两条都是产品决定（"先复习完才能开新局""第一屏给搜打撤"），
+          改起来都只有几行，被重构悄悄弄丢也不会有人发现，所以钉死。
+       闸门只拦"开新局"（blazeDeploy），不拦整个游戏 —— 这条也要钉：
+       否则以后有人把 reviewNeed 塞进 draw 或 update，整个游戏就卡在复习页出不来。 */
+    out.checks.默认烽火与复习闸 = safe('boot2',function(){
+      if(typeof bootWorld!=='function')throw new Error('没有 bootWorld()');
+      if(bootWorld(null)!==BLAZE)throw new Error('全新玩家没有默认进烽火');
+      if(bootWorld('adv')!==ADV)throw new Error('清档标记 adv 没生效（应当还能回到闯关）');
+      if(typeof reviewNeed!=='function'||typeof reviewGate!=='function')
+        throw new Error('没有 reviewNeed()/reviewGate()');
+      const keepDay=localStorage.getItem('himath_review_day');
+      const keepBook=JSON.stringify(state.wrongBook||[]);
+      let r={ok:false};
+      try{
+        try{localStorage.removeItem('himath_review_day');}catch(e){}
+        /* 造一道"早就到期"的错题。注意造在 ADV_STATE 上 —— 错题本是全局的（wbShare） */
+        useWorld(ADV);
+        state.wrongBook=[{text:'__smoke_due__',ans:'1',exp:'x',opts:['1','2'],
+          rid:'func',due:'2000-01-01',box:0}];
+        if(typeof wbShare==='function')wbShare();
+        r.need=reviewNeed();
+        useWorld(BLAZE);
+        /* 切到烽火之后，"到期题"必须还在（这就是 wbShare 存在的理由） */
+        r.needInBlaze=reviewNeed();
+        BLAZE_STATE.naked=true;                /* 免票：别让战备值挡在前面 */
+        BLAZE_STATE.pick={site:'math',diff:1};
+        BZ.carry={};BZ.active=false;
+        r.blocked=blazeDeploy();
+        r.entered=!!BZ.active;
+        closePanel();                          /* reviewGate 会弹一个面板 */
+        reviewMarkDone();
+        r.after=reviewNeed();
+        try{
+          r.need2=reviewNeed();
+          /* 注意：blazeDeploy() 成功时不返回 true（没有 return），
+             所以判据只能看 BZ.active，别拿返回值当成功标志。 */
+          blazeDeploy();r.entered2=!!BZ.active;
+        }
+        catch(err2){r.err2=String(err2).slice(0,140);r.entered2=!!BZ.active;}
+      }finally{
+        /* 复原：错题本是共享数组，必须把**四个世界**都指回干净的那份，
+           否则伪造的 __smoke_due__ 会被后面的检查看到。 */
+        try{
+          var clean=JSON.parse(keepBook);
+          useWorld(ADV);
+          state.wrongBook=clean;
+          [ADV_STATE,EPIC_STATE,BLAZE_STATE,DRILL_STATE].forEach(function(o){
+            if(o)o.wrongBook=clean;
+          });
+        }catch(e){}
+        try{
+          if(keepDay==null)localStorage.removeItem('himath_review_day');
+          else localStorage.setItem('himath_review_day',keepDay);
+        }catch(e){}
+        BZ.active=false;BLAZE_STATE.run=null;
+        try{blazeToLobby(true);}catch(e){}
+        useWorld(ADV);syncModeButtons();closePanel();
+      }
+      if(!(r.need>0))throw new Error('造了到期错题，reviewNeed() 还是 0');
+      if(!(r.needInBlaze>0))throw new Error('切到烽火后到期题就丢了（错题本没全局共享）');
+      if(r.blocked!==false||r.entered)throw new Error('有到期错题时居然能部署入局');
+      if(r.after!==0)throw new Error('标记复习完之后 reviewNeed() 还是 '+r.after);
+      if(!r.entered2)throw new Error('复习完之后还是开不了新局'+(r.err2?('：'+r.err2):('｜need='+r.need2)));
+      return '默认进场=烽火（清档标记可覆盖）· 错题本全局共享 · 有到期题时部署被拦 · 复习完自动放行';});
+    /* 首屏顺序 + 帧率角标（4.0.20）：两条都是玩家直接提的要求，
+       而且都属于"被以后的重构悄悄弄丢"的类型。
+       ① 一点开先弹**更新公告**（新玩家也一样，不再先塞闯关说明）；
+       ② 右上角帧率角标**默认开**，手动关过的人保持关。 */
+    out.checks.首屏顺序 = safe('boot',function(){
+      if(typeof fpsBadgeOn!=='function'||typeof setFpsBadge!=='function')
+        throw new Error('没有 fpsBadgeOn()/setFpsBadge()');
+      if(typeof newsBoot!=='function')throw new Error('没有 newsBoot()');
+      /* ② 角标：清掉记录 → 默认必须是开；关掉之后必须是关 */
+      const hadFps=localStorage.getItem(FPS_KEY);
+      try{localStorage.removeItem(FPS_KEY);}catch(e){}
+      const defOn=fpsBadgeOn();
+      setFpsBadge(false);
+      const afterOff=fpsBadgeOn();
+      try{localStorage.removeItem(FPS_KEY);}catch(e){}   // 复原成"从没设过"
+      setFpsBadge(true);
+      const el=document.getElementById('fps');
+      if(!defOn)throw new Error('帧率角标默认是关的（应当默认开）');
+      if(afterOff)throw new Error('手动关掉之后 fpsBadgeOn() 还是返回开');
+      if(!el)throw new Error('默认开的时候右上角没有 #fps 元素');
+      /* ① 公告优先：newsBoot 里不许再把公告"静默记成已读"。
+         它那个 420ms 的定时器是异步的，同步单测没法等它 ——
+         所以直接钉住那条规则：函数体里不该出现 markNewsSeen。
+         （4.0.9 加过一条"全新玩家先看教学、公告记成已读"，玩家反馈很直接：
+           一点开先被塞闯关介绍，公告看不到。4.0.20 删掉了。） */
+      const src=String(newsBoot);
+      if(src.indexOf('markNewsSeen')>=0)
+        throw new Error('newsBoot 里又把公告记成已读了（玩家会先看到说明、看不到公告）');
+      if(typeof fpsBadgeApply!=='function')throw new Error('没有 fpsBadgeApply()');
+      if(hadFps!==null)fpsBadgeApply();                  // 复原别人留下的设置
+      return '公告优先（newsBoot 不再静默标已读）· 帧率角标默认开 · 关掉能记住';});
     /* 画质档（4.0.16 建，4.0.17 收窄并转正）：
        平板掉帧的两大来源是 ① 压在地图上的 backdrop-filter 每帧重算、
        ② 2400×1900 的地形图层每帧被合成器重采样（后者是 1850 万像素的活儿）。
@@ -389,13 +485,27 @@ PROBE = r"""
         const bf=String(getComputedStyle(el).backdropFilter||'none');
         return bf.indexOf('none')<0;});
       if(huds.length)throw new Error('这些 HUD 还带毛玻璃（每帧跟着地图重算）：'+huds.join('/'));
-      /* ③ 面板/公告的模糊：完整档要**在**，流畅档才关（它们开着时地图停画，不花性能） */
+      /* ③ 现在**整站零 backdrop-filter**（4.0.19）。
+         面板那层也曾留着，理由是"地图停画、模糊只算一次"—— 实测推翻了：
+         面板一滚动就要重新合成整屏模糊，40 行列表 p50 100ms → 去掉 16.7ms。
+         所以这条检查升级成"谁把毛玻璃加回来就红"。 */
+      const zones='#upbar,#topbar *,#quest,#pcHint,#moveHint,#modal,#news';
+      const blurred=[];
+      document.querySelectorAll(zones).forEach(function(el){
+        const bf=String(getComputedStyle(el).backdropFilter||'none');
+        if(bf.indexOf('none')<0)blurred.push(el.id||el.className||el.tagName);
+      });
+      /* 面板内部也要查（要先把面板打开，元素才存在） */
       showMenu();
-      const modal=document.getElementById('modal');
-      const fullBf=String(getComputedStyle(modal).backdropFilter||'none');
+      document.querySelectorAll('#panel *').forEach(function(el){
+        const bf=String(getComputedStyle(el).backdropFilter||'none');
+        if(bf.indexOf('none')<0)blurred.push(el.id||el.className||el.tagName);
+      });
+      /* ④ 流畅档 = 画布分辨率降一档（毛玻璃没了之后，这是它唯一做的事） */
+      const px0=cv.width*cv.height;
       setPerfLite(true,'smoke');
       const onBody=document.body.classList.contains('perf-lite');
-      const liteBf=String(getComputedStyle(modal).backdropFilter||'none');
+      const pxLite=cv.width*cv.height;
       /* 菜单要重开一次：那颗开关的标题是渲染时按档位写死的，不会自己变 */
       showMenu();
       const item=document.getElementById('mLite');
@@ -403,12 +513,14 @@ PROBE = r"""
       closePanel();
       setPerfLite(false,'smoke');
       const offBody=document.body.classList.contains('perf-lite');
-      if(fullBf.indexOf('blur')<0)throw new Error('完整档下连面板的毛玻璃都没了：'+fullBf);
-      if(liteBf.indexOf('none')<0)throw new Error('流畅档下面板还带毛玻璃：'+liteBf);
+      const px2=cv.width*cv.height;
+      if(blurred.length)throw new Error('还有元素挂着毛玻璃（滚动时会每帧重算）：'+blurred.slice(0,4).join(' / '));
       if(!onBody)throw new Error('开了流畅档，body 上却没有 perf-lite');
       if(offBody)throw new Error('关掉流畅档后 class 没摘掉');
+      if(!(pxLite<px0))throw new Error('流畅档没降分辨率：'+px0+' → '+pxLite);
+      if(Math.abs(px2-px0)>px0*.05)throw new Error('切回完整档没恢复分辨率：'+px0+' → '+px2);
       if(label.indexOf('流畅')<0)throw new Error('☰ 菜单那颗开关没跟着显示「流畅」：'+label.slice(0,50));
-      return '地形层已离屏（DOM 里没有 #bg）· HUD 无毛玻璃 · 面板完整档有/流畅档无 · ☰ 显示「画质：流畅」';});
+      return '地形层已离屏 · 整站零毛玻璃 · 流畅档 '+Math.round(px0/1e4)+'万→'+Math.round(pxLite/1e4)+'万像素 · ☰ 显示「画质：流畅」';});
     /* 烽火只有一种卡：房卡（4.0.12）。保险箱钥匙卡并进了房卡 ——
        💠 高价值保险箱改成刷一张房卡（扣手里等级最低的那张）。 */
     out.checks.房卡唯一 = safe('cards',function(){
@@ -555,7 +667,8 @@ PROBE = r"""
           setTimeout(function(){
             r.oldPlayer=isIntro();
             closePanel();
-            /* 全新玩家连「本次更新」都不该弹：他连上次是什么样都不知道 */
+            /* 【4.0.20 改】全新玩家也**先看公告**，关掉之后才轮到首访说明。
+               旧规则是反的（4.0.9 定的"新玩家先看教学、公告记已读"），玩家反馈很直接。 */
             try{localStorage.removeItem(ikey);}catch(e){}
             Object.assign(state,blank);
             healState();
@@ -565,24 +678,33 @@ PROBE = r"""
             newsBoot();
             setTimeout(function(){
               r.newsForNew=newsEl.classList.contains('show');
+              r.introToo=r.introShown=isIntro();        /* 公告开着时不该同时弹说明 */
               try{r.newsMarked=String(localStorage.getItem(NEWS_KEY)||'');}catch(e){r.newsMarked='';}
-              /* 还原现场，别把后面的检查带跑偏 */
-              try{Object.assign(state,JSON.parse(snap));}catch(e){}
-              try{
-                if(savedSave==null)localStorage.removeItem(curKey);else localStorage.setItem(curKey,savedSave);
-                if(savedFlag==null)localStorage.removeItem(ikey);else localStorage.setItem(ikey,savedFlag);
-                localStorage.setItem(NEWS_KEY,newsVer());
-              }catch(e){}
-              NEWS_SEEN=true;NEWS_OPEN=false;closePanel();
-              out.checks.首访说明只弹一次 = safe('intro',function(){
-                if(!r.opened)throw new Error('新玩家没弹说明');
-                if(r.marked!=='1')throw new Error('点掉说明后没写已读位（"每次都弹"的老病根）');
-                if(r.again)throw new Error('读过一次了还弹');
-                if(r.oldPlayer)throw new Error('有进度的老玩家又被弹了说明');
-                if(r.newsForNew)throw new Error('全新玩家被弹了「本次更新」公告');
-                if(!r.newsMarked)throw new Error('新玩家的公告没记已读位，玩到一半还会弹');
-                return '新玩家只弹教学（公告记已读）· 点掉即写已读位 · 重开不再弹 · 老玩家不弹教学';});
-              dump();
+              try{hideNews();}catch(e){}
+              maybeIntro(0);                            /* 关掉公告之后，说明才该出现 */
+              setTimeout(function(){
+                r.introAfterNews=isIntro();
+                closePanel();
+                /* 还原现场，别把后面的检查带跑偏 */
+                try{Object.assign(state,JSON.parse(snap));}catch(e){}
+                try{
+                  if(savedSave==null)localStorage.removeItem(curKey);else localStorage.setItem(curKey,savedSave);
+                  if(savedFlag==null)localStorage.removeItem(ikey);else localStorage.setItem(ikey,savedFlag);
+                  localStorage.setItem(NEWS_KEY,newsVer());
+                }catch(e){}
+                NEWS_SEEN=true;NEWS_OPEN=false;closePanel();
+                out.checks.首访说明只弹一次 = safe('intro',function(){
+                  if(!r.opened)throw new Error('新玩家没弹说明');
+                  if(r.marked!=='1')throw new Error('点掉说明后没写已读位（"每次都弹"的老病根）');
+                  if(r.again)throw new Error('读过一次了还弹');
+                  if(r.oldPlayer)throw new Error('有进度的老玩家又被弹了说明');
+                  if(!r.newsForNew)throw new Error('全新玩家没有先看到「本次更新」公告（4.0.20 起公告永远第一）');
+                  if(r.introToo)throw new Error('公告还开着就把首访说明弹出来了（两个弹窗一起糊脸）');
+                  if(r.newsMarked)throw new Error('公告还没看就被记成已读了（玩家会再也看不到）');
+                  if(!r.introAfterNews)throw new Error('关掉公告之后没弹首访说明');
+                  return '公告永远第一 · 关掉后弹说明 · 点掉即写已读位 · 重开不再弹 · 老玩家不弹教学';});
+                dump();
+              },260);
             },600);
           },140);
         },140);

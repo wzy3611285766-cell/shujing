@@ -345,8 +345,10 @@ function showExportWrong(){
 }
 /* ---------- 重练一批错题（免费，最多 n 题）----------
    review=true 表示这是「今日复习」队列：结束后报一遍熟炼度变化
-   （毕业几题 / 升星几题 / 打回几题），并发复习奖励。 */
-function startWrongDrill(list,n,review){
+   （毕业几题 / 升星几题 / 打回几题），并发复习奖励。
+   onDone(r,t)（4.0.22）：练完通知一声 —— 「每日复习闸」要靠它放行
+   （复习完才允许开新的一局）。 */
+function startWrongDrill(list,n,review,onDone){
   list=(list||[]).filter(Boolean);
   if(!list.length){toast('没有可练的题');return;}
   const pick=shuffle(list).slice(0,Math.max(1,Math.min(n||5,list.length)));
@@ -373,12 +375,69 @@ function startWrongDrill(list,n,review){
       +(back?'↩️ '+back+' 题从归档区拉回来重学<br>':'')
       +(review?'🪙 复习奖励 +'+coin+' · 连续复习 '
         +((state.wbRev&&state.wbRev.streak)||1)+' 天<br>':'')
-      +'<span style="color:#9cc0e0;font-size:var(--fs-sm)">'
-      +(r>=t?'这几题全拿下，可以放下了 💪':'还有没收干净的，明天再来')+'</span></div>'
+      +'</div>'
       +'<div class="row"><button class="btn" id="pvWb">📕 回到错题本</button>'
       +'<button class="btn primary" id="ok">好</button></div>');
     $('ok').onclick=closePanel;
     $('pvWb').onclick=()=>showWrongBook(review?'today':'all');
+    if(typeof onDone==='function'){try{onDone(r,t);}catch(e){}}
   });
+}
+
+/* =========================================================
+   📌 每日复习闸（4.0.22）
+   ---------------------------------------------------------
+   产品决定：**每天先复习错题，复习完才能开新的一局。**
+   理由不再解释（是玩家自己定的规矩），这里只写实现上的三个取舍：
+
+   1. 只拦"第一批"（REVIEW_BATCH 题，按到期顺序随机抽）。
+      到期题可能是几十道 —— 一次全拦等于把人挡在门外，他会关掉页面，
+      那就连复习也没有了。拦一批（3~5 分钟）既保住"每天先复习"，
+      又不至于变成惩罚。批完的提示里会说"还有 M 道到期，明天继续"。
+   2. 拦的是**开新局**（烽火部署），不是整个游戏。
+      已经进来的玩家可以自由看地图、翻菜单、去练枪（练枪本来就在做题）。
+      "复习完才能开始新的游戏"这句，落在部署那一下最准确。
+   3. 完成标记记在**练完之后**（不是点"开始复习"那一刻）。
+      半路退出 → 下次启动照样拦，这才叫"复习完"。
+   ========================================================= */
+const REVIEW_DAY='himath_review_day';
+const REVIEW_BATCH=10;              // 每天拦下来的第一批题数
+function reviewDoneToday(){
+  try{return localStorage.getItem(REVIEW_DAY)===todayStr();}catch(e){return true;}
+}
+function reviewMarkDone(){
+  try{localStorage.setItem(REVIEW_DAY,todayStr());}catch(e){}
+}
+/* 今天"还欠着"几题（0 = 不拦） */
+function reviewNeed(){
+  if(reviewDoneToday())return 0;
+  return wbDueList().length;
+}
+/* 弹闸门。onPass：复习完之后接着做玩家原本想做的事（例如直接部署入局） */
+function reviewGate(onPass){
+  const due=wbDueList();
+  if(!due.length||reviewDoneToday()){if(onPass)onPass();return;}
+  const n=Math.min(due.length,REVIEW_BATCH);
+  /* 4.0.23：这段文案砍到最短。
+     玩家到此为止只想知道两件事：为什么拦我、要点几下。
+     「这些题按熟炼度排到今天」「认真答比快点答划算」—— 说教，删。
+     「每天只拦第一批」—— 解释规则，也删（按钮上的题数已经说清了）。 */
+  openPanel(`<h2>📌 今天该复习 ${due.length} 题</h2>
+    <div class="sub">先做 ${n} 题，做完就能开新的一局</div>
+    <div class="row"><button class="btn primary" id="rvGo">开始（${n} 题）</button></div>`);
+  const go=$('rvGo');
+  if(go)go.onclick=()=>{
+    audioKick();closePanel();
+    startWrongDrill(due,n,true,()=>{
+      reviewMarkDone();            // 练完才算今天复习过
+      /* 4.0.23：不播报"可以去玩了"—— 按钮上已经写着「去开始新的一局 →」，
+         再弹一个 toast 只是把同一句话说两遍。 */
+      const ok=$('ok');
+      if(ok){
+        ok.textContent='去开始新的一局 →';
+        ok.onclick=()=>{closePanel();audioKick();if(onPass)onPass();};
+      }
+    });
+  };
 }
 

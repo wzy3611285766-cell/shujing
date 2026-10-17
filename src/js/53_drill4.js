@@ -137,6 +137,10 @@ function useWorld(w){
   WORLD_TITLE=w.title;WORLD_SUB=w.sub;
   REGIONS=w.regions;BRIDGES=w.bridges;SPOTS=w.spots;LOOSE=w.loose;SPIRITS=w.spirits;
   state=w.st;curKey=w.save;
+  /* 错题本全局共享（4.0.22）：每次切世界都把四个 state 指回同一份数组。
+     不这么做的话，烽火 / 史诗 / 练枪里读到的 state.wrongBook 是 undefined —— 
+     错题中心在那些世界等于空的，而"先复习错题"正好要在烽火开局前拦人。 */
+  if(typeof wbShare==='function')wbShare();
 }
 
 /* ---------------- 判定与标签 ---------------- */

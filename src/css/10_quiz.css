@@ -7,12 +7,13 @@
    卡片自带三段：hero（金带标题）/ body（更新点 + 全屏教学）/ foot（主按钮）。
    不绑遮罩点击关闭：公告的功能就是"让你看见"，点掉它得是个明确动作。
    ================================================================ */
+/* 4.0.19：公告这层同样去掉 blur(12px)（理由见 00_base.css 里 #modal 那段：
+   全屏模糊在内容滚动/变化时每帧重算，实测滚动 100ms → 16.7ms）。
+   背景从 84% 提到 95%，观感几乎一致。 */
 #news{position:fixed;inset:0;z-index:66;display:none;
   align-items:center;justify-content:center;
   padding:max(12px,var(--safeT)) max(12px,var(--safeR)) max(12px,var(--safeB)) max(12px,var(--safeL));
-  background:rgba(3,9,18,.84);
-  -webkit-backdrop-filter:blur(12px) saturate(140%);
-  backdrop-filter:blur(12px) saturate(140%);
+  background:rgba(3,9,18,.95);
   overscroll-behavior:contain}
 #news.show{display:flex}
 /* 顶部一道暖光、底部一道冷光：让"压暗"不等于"变黑"，中间还是亮的 */

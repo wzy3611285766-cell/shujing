@@ -1,0 +1,71 @@
+{
+  "name": "更新汇报_v4.0.20",
+  "version": "4.0.20",
+  "date": "2026-10-18",
+  "kicker": "SHUJING · 首屏",
+  "title": "进场先看公告；帧率角标默认打开",
+  "tagline": "两条都是「顺序 / 默认值」，改起来小；但正因为小，<b>最容易被以后的重构悄悄弄丢</b> —— 所以各配了一条永久检查。",
+  "pills": ["公告永远第一", "角标默认开", "两条新检查"],
+
+  "sections": [
+    {
+      "h": "一、公告看不到：一条 4.0.9 的分支在静默跳过它",
+      "code": "// 改前（newsBoot）\nif(newsSeen())return;\n/* 全新玩家先看教学，不看「这次改了什么」 */\ntry{\n  if(!localStorage.getItem(curKey+'_intro') && isNewPlayer()){\n    markNewsSeen();      // ← 公告被记成已读\n    return;              // ← 于是永远不弹\n  }\n}catch(e){}",
+      "paras": [
+        "当初的理由是「他连上次是什么样都不知道，一上来读更新要点没意义」。玩家的反馈很直接：<b>一点开先被塞一段闯关介绍，公告反而看不到</b>。",
+        "现在这条删掉：公告照常弹 → 关掉之后 `maybeIntro` 再弹首访说明。它本来就等着公告关掉（`newsSeen()/newsIsOpen()` 轮询），所以顺序天然是对的，错的只是「公告被跳过」这一半。",
+        "顺带：重试时原来还带着初始的 700ms 延时 —— 实测「关掉公告 → 说明出现」要 1 秒多，看着像卡住。现在重试传 150ms，约半秒就到。"
+      ]
+    },
+
+    {
+      "h": "二、帧率角标：默认从关改成开（但别翻掉别人手动关的）",
+      "code": "function fpsBadgeOn(){\n  const v = localStorage.getItem(FPS_KEY);\n  return v===null ? true : v==='1';   // 没存过 → 开；存过 → 照存的来\n}\n// 读取抛异常（无痕模式）→ 也当首次，开",
+      "note": {
+        "kind": "good",
+        "html": "☰ 菜单里那一项没变（「帧率角标：开/关」），切完会记住。<b>手动关过的人不会被翻回来</b> —— 这是默认值开关最容易踩的坑。"
+      }
+    },
+
+    {
+      "h": "三、两条永久检查（这才是这类改动的价值）",
+      "steps": [
+        {"b": "①「首屏顺序」：", "html": "帧率角标默认必须是开、关掉后必须能记住、<code>#fps</code> 元素必须真的挂上；并且 <code>newsBoot</code> 的函数体里<b>不许出现 <code>markNewsSeen</code></b>。那条定时器是异步的、同步单测等不到，所以直接钉住「公告不能被静默标已读」这条规则。"},
+        {"b": "②「首访说明只弹一次」改成正向断言：", "html": "全新玩家<b>必须先看到公告</b>、公告开着时<b>不许</b>同时弹说明、关掉公告之后说明<b>必须</b>出现、公告不能在没看之前被记已读。<br>原来这条检查钉的是旧规则（「全新玩家不该看到公告」），改需求后它一起红了 —— 检查里写着旧规矩，改需求时正好提醒你「这里有东西要一起改」。"}
+      ]
+    },
+
+    {
+      "h": "四、真机模拟验证（全新 profile · 空 localStorage）",
+      "code": "2.2s 刚进场      公告=False 面板=False 角标=—fps · 0ms\n2.5s           公告=True  面板=False 角标=0fps · 0ms      ← 公告先弹\n关掉公告 1.6s 后  公告=False 面板=True  角标=0fps · 0ms      ← 然后才弹说明「数理群岛」",
+      "paras": [
+        "工具留在 <code>tools/firstscreen.py</code>（每次清空 profile，等于一台全新设备）。角标在顶栏下面、右对齐，不挡 ☰ 与任务条 —— 见下图。"
+      ],
+      "shots": [
+        {"file": "shots_auto/first_screen.png", "cap": "全新设备首屏：公告先弹；右上角那条小药丸就是帧率角标（顶栏下方，不挡按钮）"}
+      ]
+    }
+  ],
+
+  "files": [
+    {"path": "src/js/55_boot_news.js", "delta": "−6 / +12", "note": "删掉「新玩家静默跳过公告」；maybeIntro 重试延时 700→150ms"},
+    {"path": "src/js/74_dbg.js", "delta": "−1 / +10", "note": "fpsBadgeOn() 默认开（存过就照存的）"},
+    {"path": "src/js/70_blaze_overrides.js", "delta": "注释", "note": "菜单那一项的说明同步"},
+    {"path": "tools/smoke.py", "delta": "+50 行", "note": "新增「首屏顺序」检查；「首访说明」改成正向断言"},
+    {"path": "tools/firstscreen.py", "delta": "新增", "note": "首屏探针：全新 profile 启动，打印公告/面板/角标三态，可截图"}
+  ],
+
+  "checks": [
+    {"name": "构建 + 公告同源", "ok": true, "detail": "74 个模块 · news.json 最新 v4.0.20"},
+    {"name": "无头浏览器冒烟", "ok": true, "detail": "108 项全过 / 0 失败（新增「首屏顺序」· 「首访说明」改为正向断言）"},
+    {"name": "静态体检", "ok": true, "detail": "9 项全过"},
+    {"name": "首屏实测", "ok": true, "detail": "公告先弹 → 关掉后弹「数理群岛」说明 · 角标默认在（无本地记录时）"}
+  ],
+
+  "rollback": "拿 <code>releases/数境169_v4.0.19_2026-10-17.html</code> 覆盖 <code>shujing-app/index.html</code> 即可退回。<br>退回会恢复「新玩家先看说明、公告看不到」和「角标默认关」。",
+
+  "next": [
+    "线上仍是 v4.0.18 —— v4.0.19 与 v4.0.20 都要部署一次才生效。部署后跑 <code>tools/verify_live.py</code> 核对。",
+    "云存档那条还等你两台设备各开一次面板，把「云端存档」那行对一下（4.0.19 的报告里有说明）。"
+  ]
+}

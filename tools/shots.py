@@ -157,6 +157,34 @@ setTimeout(function(){
   },700);
 },1200);
 """, 7000, "部署后的战场地面（撤离点附近）"),
+    # 烽火答题：4.0.21 修的是"摁完正确选项停一两秒才变色"
+    "烽火答题": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  (async function(){
+    try{
+      useWorld(BLAZE);
+      BLAZE_STATE.naked=true;BLAZE_STATE.pick={site:'math',diff:1};BZ.carry={};
+      BLAZE_STATE.run=null;BZ.map=null;
+      blazeDeploy();
+      /* 反复开箱直到点中正确答案（错的也走同一条渲染路径，但截图想看绿色那条） */
+      for(var k=0;k<8;k++){
+        blazeAsk({rid:'func',tier:1,title:'📦 物资箱',sub:'正在撬锁 · 零点演算场',
+          tag:'📐 常规 · 搜索',bar:'',nextText:'搜刮完毕 →',onDone:function(){}});
+        await new Promise(function(r){setTimeout(r,240);});
+        var o=document.querySelector('#panel .opt');
+        if(!o)break;
+        o.click();
+        var fb=document.getElementById('feedback');
+        if(fb&&fb.className==='ok')break;
+        closePanel();
+      }
+    }catch(e){}
+  })();
+},1200);
+""", 7000, "烽火答题：答对之后的样子（反馈当帧就到）"),
     # 战术地图：4.0.13 修的是它"图中间拖不动"（画布吃掉了手势）
     "战术地图": ("""
 setTimeout(function(){

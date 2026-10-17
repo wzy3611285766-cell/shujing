@@ -57,6 +57,16 @@ function setQuestText(txt,showMs,force){
   if(force||txt!==questShown){questShown=txt;el.style.opacity='1';questTimer=showMs;}
 }
 function flashQuest(force){setQuestText(questText(),QUEST_SHOW_MS,force);}
+/* ⚠️ toast 的使用规矩（4.0.23，来自「让用户无感更高级」那条反馈）
+   ---------------------------------------------------------------
+   只有两种情况下才该弹它：
+     ① 玩家做了决定、必须知道结果（买了什么 / 扣了多少 / 被拦住了）
+     ② 出了问题、不告诉他他会误判（失败、降级、断网）
+   除此之外一律别弹 —— 尤其这几种（都真发生过）：
+     · 成功且本该如此的：云存档已更新、自动保存、已同步
+     · 解释规则与说教的：每天只拦第一批 / 认真答比快速答划算
+     · 重复播报状态变化的：已经用界面本身表达过的结果
+   界面已经说清的事，再弹一次就是噪音。 */
 function toast(msg,ms){
   const box=$('toast');
   if(!box)return;

@@ -102,20 +102,37 @@
    #topbar .btn），不在这里加覆盖 —— 同选择器出现两条时后者全盖前者，
    体检的静态分析会把它当成"零贡献规则"报出来（4.0.18 就报过一次）。 */
 
-/* ============ 省电档（body.perf-lite）· 4.0.16 ============
-   4.0.17 之后，压在地图上的毛玻璃与"合成器地形层"都已经默认收掉了
-   （见上面那段与 36_loop.js 的 draw），所以这一档现在只做一件事：
-   连**面板与公告**的模糊也收掉，给最弱的那批设备再省一点。
-   进这一档的方式没变：节拍器连着几次"降了档还迟到"自动进，☰ 菜单也能手动切。 */
-body.perf-lite #modal,body.perf-lite #news,
-body.perf-lite .news-x,body.perf-lite .opt,body.perf-lite .menu-li{
+/* ============ 面板内部的毛玻璃：一律不用（4.0.19） ============
+   实测（tools/scrollperf.py，40 行列表每帧滚 6px）：
+     带毛玻璃  帧间隔 p50 266.7ms（3.7fps）
+     去掉之后  帧间隔 p50  33.3ms（30fps）        ← 8 倍
+   原因很直白：每个按钮 / 选项 / 菜单项各挂一层 blur(16px) saturate(180%)，
+   滚动时它们的"底"一直在动，合成器就得每帧把几十层模糊全部重算一遍。
+   而它们底下是**面板自己的深色底**，本来就是平的 —— 模糊几乎不产生任何可见效果，
+   只是在滚动时白白烧掉一帧的预算。去掉之后观感靠渐变 + 描边 + 高光撑着，看不出差别。
+   ⚠️ #modal / #news 自己那层全屏模糊也一起去掉了（在各自规则里改的）：
+      我一度以为"面板开着地图就停画，那层模糊只算一次、不花钱"，
+      但实测反过来 —— 面板一滚动就要重新合成整屏模糊，40 行列表 p50 100ms。
+      现在整站**零 backdrop-filter**，玻璃感靠不透明度 + 描边 + 高光撑着。
+   ⚠️ **背景**用 :not() 让开 .primary / .on（那两种有金色状态底，不能刷成白玻璃），
+      但**模糊要连它们一起关** —— 之前一起排除了，结果整页还剩三颗金色主键挂着
+      blur(16px)（开机那颗「开始」、公告那颗、面板那颗「确认」），
+      是"整页零毛玻璃"这条检查把它们揪出来的。 */
+#modal .btn,#modal .opt,#modal .menu-li,#modal .fitbtn,
+#news .btn,#news .news-x{
   backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-/* 遮罩要更厚一点：完整档靠 blur 把背后糊掉，省电档没模糊，
-   只压 68% 的话面板后面那排顶栏会清清楚楚透出来，看着很乱 */
-body.perf-lite #modal{background:rgba(4,12,24,.93)}
-body.perf-lite #news{background:rgba(3,9,18,.95)}
-body.perf-lite .menu-li{
-  background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%)}
+/* 没了模糊，白玻璃面会显"薄"：面板内这两类控件把底色补厚一档 */
+#modal .btn:not(.primary){
+  background:linear-gradient(180deg,rgba(255,255,255,.20) 0%,rgba(255,255,255,.11) 100%)}
+#modal .menu-li:not(.on){
+  background:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.07) 100%)}
+
+/* ============ 省电档（body.perf-lite）· 4.0.19 起改做别的事 ============
+   4.0.16~4.0.18 这一档是"关毛玻璃"。可到了 4.0.19，毛玻璃已经**默认全站关掉**
+   （HUD、面板、公告三类都改在各自的规则里了），这一档再关就没东西可关了。
+   所以它现在改管**画布分辨率**：像素预算 180 万 → 100 万（JS 里 PIX_BUDGET_LITE），
+   这是真能省光栅化开销的那一档 —— 代价是画面略软。
+   进这一档的方式没变：节拍器连着几次"降了档还迟到"自动进，☰ 菜单也能手动切。 */
 
 /* ⚠️ 这里和 #app 以前都是 touch-action:none —— 面板因此完全划不动。
    touch-action 的实际取值是「命中元素到根这条路径上所有值的交集」：
@@ -376,8 +393,14 @@ body.pc #stick.active{opacity:1}
 @keyframes tstIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 
 /* ============ 弹窗 ============ */
-#modal{position:absolute;inset:0;background:rgba(4,12,24,.68);backdrop-filter:blur(4px);
-  -webkit-backdrop-filter:blur(4px);
+/* 4.0.19：去掉全屏 blur(4px)。实测（tools/scrollperf.py）：
+   40 行列表滚动时，带这层模糊 p50 = 100ms，去掉后 16.7ms（-83%）；
+   而"只关行阴影 / 只关高光层 / 关掉所有阴影"都是 0% —— 钱全在这一层。
+   原因：这层覆盖整屏，面板一滚动就要重新合成整屏模糊。
+   （我上一轮判断"面板开着地图就停画、模糊只算一次"是错的，实测推翻了。）
+   观感：模糊背后是一张被压到 68% 的深色地图，本来就看不出来 ——
+   改成更厚的不透明度之后，视觉差别几乎为零。 */
+#modal{position:absolute;inset:0;background:rgba(4,12,24,.93);
   z-index:40;display:none;align-items:center;justify-content:center;
   padding:max(10px,var(--safeT)) max(10px,var(--safeR)) max(10px,var(--safeB)) max(10px,var(--safeL));
   touch-action:pan-y;overscroll-behavior:contain}

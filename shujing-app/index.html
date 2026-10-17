@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>格物纪元 · 四国远征</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.0.18 · 2026-10-16 23:40 · 源码摘要 48269dc4 · 74 个模块 -->
+<!-- build: v4.0.23 · 2026-10-18 00:53 · 源码摘要 e48d4c52 · 74 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -115,20 +115,37 @@
    #topbar .btn），不在这里加覆盖 —— 同选择器出现两条时后者全盖前者，
    体检的静态分析会把它当成"零贡献规则"报出来（4.0.18 就报过一次）。 */
 
-/* ============ 省电档（body.perf-lite）· 4.0.16 ============
-   4.0.17 之后，压在地图上的毛玻璃与"合成器地形层"都已经默认收掉了
-   （见上面那段与 36_loop.js 的 draw），所以这一档现在只做一件事：
-   连**面板与公告**的模糊也收掉，给最弱的那批设备再省一点。
-   进这一档的方式没变：节拍器连着几次"降了档还迟到"自动进，☰ 菜单也能手动切。 */
-body.perf-lite #modal,body.perf-lite #news,
-body.perf-lite .news-x,body.perf-lite .opt,body.perf-lite .menu-li{
+/* ============ 面板内部的毛玻璃：一律不用（4.0.19） ============
+   实测（tools/scrollperf.py，40 行列表每帧滚 6px）：
+     带毛玻璃  帧间隔 p50 266.7ms（3.7fps）
+     去掉之后  帧间隔 p50  33.3ms（30fps）        ← 8 倍
+   原因很直白：每个按钮 / 选项 / 菜单项各挂一层 blur(16px) saturate(180%)，
+   滚动时它们的"底"一直在动，合成器就得每帧把几十层模糊全部重算一遍。
+   而它们底下是**面板自己的深色底**，本来就是平的 —— 模糊几乎不产生任何可见效果，
+   只是在滚动时白白烧掉一帧的预算。去掉之后观感靠渐变 + 描边 + 高光撑着，看不出差别。
+   ⚠️ #modal / #news 自己那层全屏模糊也一起去掉了（在各自规则里改的）：
+      我一度以为"面板开着地图就停画，那层模糊只算一次、不花钱"，
+      但实测反过来 —— 面板一滚动就要重新合成整屏模糊，40 行列表 p50 100ms。
+      现在整站**零 backdrop-filter**，玻璃感靠不透明度 + 描边 + 高光撑着。
+   ⚠️ **背景**用 :not() 让开 .primary / .on（那两种有金色状态底，不能刷成白玻璃），
+      但**模糊要连它们一起关** —— 之前一起排除了，结果整页还剩三颗金色主键挂着
+      blur(16px)（开机那颗「开始」、公告那颗、面板那颗「确认」），
+      是"整页零毛玻璃"这条检查把它们揪出来的。 */
+#modal .btn,#modal .opt,#modal .menu-li,#modal .fitbtn,
+#news .btn,#news .news-x{
   backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-/* 遮罩要更厚一点：完整档靠 blur 把背后糊掉，省电档没模糊，
-   只压 68% 的话面板后面那排顶栏会清清楚楚透出来，看着很乱 */
-body.perf-lite #modal{background:rgba(4,12,24,.93)}
-body.perf-lite #news{background:rgba(3,9,18,.95)}
-body.perf-lite .menu-li{
-  background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%)}
+/* 没了模糊，白玻璃面会显"薄"：面板内这两类控件把底色补厚一档 */
+#modal .btn:not(.primary){
+  background:linear-gradient(180deg,rgba(255,255,255,.20) 0%,rgba(255,255,255,.11) 100%)}
+#modal .menu-li:not(.on){
+  background:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.07) 100%)}
+
+/* ============ 省电档（body.perf-lite）· 4.0.19 起改做别的事 ============
+   4.0.16~4.0.18 这一档是"关毛玻璃"。可到了 4.0.19，毛玻璃已经**默认全站关掉**
+   （HUD、面板、公告三类都改在各自的规则里了），这一档再关就没东西可关了。
+   所以它现在改管**画布分辨率**：像素预算 180 万 → 100 万（JS 里 PIX_BUDGET_LITE），
+   这是真能省光栅化开销的那一档 —— 代价是画面略软。
+   进这一档的方式没变：节拍器连着几次"降了档还迟到"自动进，☰ 菜单也能手动切。 */
 
 /* ⚠️ 这里和 #app 以前都是 touch-action:none —— 面板因此完全划不动。
    touch-action 的实际取值是「命中元素到根这条路径上所有值的交集」：
@@ -389,8 +406,14 @@ body.pc #stick.active{opacity:1}
 @keyframes tstIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 
 /* ============ 弹窗 ============ */
-#modal{position:absolute;inset:0;background:rgba(4,12,24,.68);backdrop-filter:blur(4px);
-  -webkit-backdrop-filter:blur(4px);
+/* 4.0.19：去掉全屏 blur(4px)。实测（tools/scrollperf.py）：
+   40 行列表滚动时，带这层模糊 p50 = 100ms，去掉后 16.7ms（-83%）；
+   而"只关行阴影 / 只关高光层 / 关掉所有阴影"都是 0% —— 钱全在这一层。
+   原因：这层覆盖整屏，面板一滚动就要重新合成整屏模糊。
+   （我上一轮判断"面板开着地图就停画、模糊只算一次"是错的，实测推翻了。）
+   观感：模糊背后是一张被压到 68% 的深色地图，本来就看不出来 ——
+   改成更厚的不透明度之后，视觉差别几乎为零。 */
+#modal{position:absolute;inset:0;background:rgba(4,12,24,.93);
   z-index:40;display:none;align-items:center;justify-content:center;
   padding:max(10px,var(--safeT)) max(10px,var(--safeR)) max(10px,var(--safeB)) max(10px,var(--safeL));
   touch-action:pan-y;overscroll-behavior:contain}
@@ -428,12 +451,13 @@ body.pc #stick.active{opacity:1}
    卡片自带三段：hero（金带标题）/ body（更新点 + 全屏教学）/ foot（主按钮）。
    不绑遮罩点击关闭：公告的功能就是"让你看见"，点掉它得是个明确动作。
    ================================================================ */
+/* 4.0.19：公告这层同样去掉 blur(12px)（理由见 00_base.css 里 #modal 那段：
+   全屏模糊在内容滚动/变化时每帧重算，实测滚动 100ms → 16.7ms）。
+   背景从 84% 提到 95%，观感几乎一致。 */
 #news{position:fixed;inset:0;z-index:66;display:none;
   align-items:center;justify-content:center;
   padding:max(12px,var(--safeT)) max(12px,var(--safeR)) max(12px,var(--safeB)) max(12px,var(--safeL));
-  background:rgba(3,9,18,.84);
-  -webkit-backdrop-filter:blur(12px) saturate(140%);
-  backdrop-filter:blur(12px) saturate(140%);
+  background:rgba(3,9,18,.95);
   overscroll-behavior:contain}
 #news.show{display:flex}
 /* 顶部一道暖光、底部一道冷光：让"压暗"不等于"变黑"，中间还是亮的 */
@@ -1740,20 +1764,17 @@ margin-top:8px;padding:5px 0}
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新 · v4.0.18</span>
-        <div class="news-title">平板帧率 30 → 60：两处「隐形开销」拿掉了</div>
-        <div class="news-sub">画质几乎没动 · 面板的玻璃质感保留 · 顺手修掉「自己把自己降到 30fps」</div>
+        <span class="news-badge">📣 版本更新 · v4.0.23</span>
+        <div class="news-title">少说话</div>
+        <div class="news-sub">该安静的都安静了</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
           <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">⚡</span><span><b>真凶找到了</b>：怪的不是「画得慢」（主线程画一帧只要 0.5ms），而是压在地图上的<b>毛玻璃</b>每帧都要跟着地图重算一遍，加上那块 <b>2400×1900 的地形图层</b>每帧被重采样一遍（DPR2 平板上等于每帧光栅化 1850 万像素）。这两条各自都能把 60fps 砍成 30fps</span></div>
-          <div class="news-li"><span class="e">🖼️</span><span><b>地形改成「主线程自己贴一次」</b>（1.3ms）。观感几乎没变 —— 拖动时的位移改成以像素为步长，反而更稳、网格不会逐帧游走发糊</span></div>
-          <div class="news-li"><span class="e">🧊</span><span><b>压在地图上的那几条小条不再用毛玻璃</b>（顶栏、任务条、「点地图走过去」的提示）：换成同色底，在深色地图上几乎看不出差别。<b>面板与公告的玻璃质感保留</b> —— 它们一打开地图就停画，那层模糊只算一次，不花性能</span></div>
-          <div class="news-li"><span class="e">🐢</span><span><b>顺手修掉一个「自己把自己降到 30fps」</b>：节拍器原来「这批有 1/4 帧迟到」就降半档，开局那几下加载抖动就够凑满 —— 本机明明能跑满 60，也被它永久砍成 30（复测时同一台机器两次分别跑出 60 与 30 两档）。现在要求<b>过半迟到且连着两批</b>；已经降下来的档，恢复也更快（3 批而不是 6 批）</span></div>
-          <div class="news-li"><span class="e">📊</span><span><b>实测（同一台无头机、同一套脚本、改动前后各跑一遍）</b>：帧间隔 <b>50ms → 16.7ms</b>；帧数 <b>27fps → 60fps</b>；跑热之后 p95 从 <b>149ms → 16.8ms</b>（以前是一顿一顿的，现在平的）</span></div>
-          <div class="news-li"><span class="e">⚙️</span><span>☰ 菜单里的「画质」档位现在只剩一件事：要不要<b>连面板的毛玻璃也关掉</b>（给极端弱机留一手）。两档帧率已经一样</span></div>
+          <div class="news-li"><span class="e">🤫</span><span>云存档同步成功不再弹提示（每 15 秒一次，本来就不需要你知道）</span></div>
+          <div class="news-li"><span class="e">✂️</span><span>复习提示只留两句话：今天该复习几题、点一下开始</span></div>
+          <div class="news-li"><span class="e">🧹</span><span>删掉「认真答比快点答划算」「这几题全拿下」这类说教</span></div>
         </div>
 
         <div class="news-sec">
@@ -13002,13 +13023,24 @@ if(IS_PC){
    超了就按面积开方降 dpr —— 平板落到 dpr≈1.14、画布约 180 万像素，
    主线程光栅化的活直接少掉 2/3。
    画质代价很小：#game 上只有光晕、影子、圈、小地图这些没有细节的东西，
-   文字和 emoji 全在 DOM 实体层，不经过这张画布。 */
-const PIX_BUDGET=1800000;
+   文字和 emoji 全在 DOM 实体层，不经过这张画布。
+
+   【4.0.19】预算变成两档：完整 180 万 / 流畅 100 万。
+   因为"关毛玻璃"那件事已经默认做掉了（整站零 backdrop-filter），
+   「流畅档」原来无事可做 —— 现在它改管分辨率，这是最后一块真能省下来的开销。 */
+const PIX_BUDGET_FULL=1800000;
+const PIX_BUDGET_LITE=1000000;
+let PIX_BUDGET=PIX_BUDGET_FULL;
 function resize(){
   stickMetrics();          // 旋转屏幕 / 换设备后，摇杆直径会跟着 --stick 变
   VW=appEl.clientWidth||window.innerWidth;
   VH=appEl.clientHeight||window.innerHeight;
+  /* 下限不低于 1（别把画面糊掉）—— 但流畅档要**在所有设备上都有感**：
+     小屏的像素数本来就低于预算，"只压预算"在小屏上等于没发生
+     （冒烟那条「流畅档要降分辨率」就是这么红起来的：888448 → 888448）。
+     所以流畅档额外把 DPR 乘 0.8（线性 80% = 像素少 36%），下限 0.75。 */
   DPR=clamp(Math.sqrt(PIX_BUDGET/Math.max(1,VW*VH)),1,Math.min(window.devicePixelRatio||1,2));
+  if(typeof PERF!=='undefined'&&PERF.lite)DPR=Math.max(0.75,DPR*0.8);
   cv.width=Math.floor(VW*DPR);cv.height=Math.floor(VH*DPR);
   cv.style.width=VW+'px';cv.style.height=VH+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -13379,9 +13411,16 @@ function setPerfLite(on, why){
   PERF.lite = !!on;
   try{document.body.classList.toggle('perf-lite', PERF.lite);}catch(e){}
   try{localStorage.setItem(LITE_KEY, PERF.lite ? '1' : '0');}catch(e){}
+  /* 4.0.19：这一档改为压画布分辨率（毛玻璃已经默认全关了，它没别的可关）。
+     预算变了要重新量一次画布 —— 但开机那会儿 VW/VH 还没量，别急着调 resize。 */
+  const want = PERF.lite ? PIX_BUDGET_LITE : PIX_BUDGET_FULL;
+  if(PIX_BUDGET !== want){
+    PIX_BUDGET = want;
+    if(VW > 0 && VH > 0){ try{ resize(); }catch(e){} }
+  }
   /* 自动切的时候要说一声：悄悄把画面变差，玩家会以为游戏坏了 */
   if(why === 'auto')try{
-    toast('⚡ 已自动切到「流畅画质」：这台设备连面板毛玻璃都跑不顺。☰ 菜单里可以改回来');
+    toast('⚡ 已自动切到「流畅画质」：这台设备带不动完整分辨率，已降一档。☰ 菜单里可以改回来');
   }catch(e){}
 }
 try{if(localStorage.getItem(LITE_KEY) === '1')setPerfLite(true, 'boot');}catch(e){}
@@ -13529,6 +13568,16 @@ function setQuestText(txt,showMs,force){
   if(force||txt!==questShown){questShown=txt;el.style.opacity='1';questTimer=showMs;}
 }
 function flashQuest(force){setQuestText(questText(),QUEST_SHOW_MS,force);}
+/* ⚠️ toast 的使用规矩（4.0.23，来自「让用户无感更高级」那条反馈）
+   ---------------------------------------------------------------
+   只有两种情况下才该弹它：
+     ① 玩家做了决定、必须知道结果（买了什么 / 扣了多少 / 被拦住了）
+     ② 出了问题、不告诉他他会误判（失败、降级、断网）
+   除此之外一律别弹 —— 尤其这几种（都真发生过）：
+     · 成功且本该如此的：云存档已更新、自动保存、已同步
+     · 解释规则与说教的：每天只拦第一批 / 认真答比快速答划算
+     · 重复播报状态变化的：已经用界面本身表达过的结果
+   界面已经说清的事，再弹一次就是噪音。 */
 function toast(msg,ms){
   const box=$('toast');
   if(!box)return;
@@ -14428,7 +14477,9 @@ function session(cfg){
       const apprBonus=(ap&&ap.ok)?2:0;
       const gain=(cfg.gain||4)+bonus+apprBonus;
       state.crystals+=gain;
-      SFX.right();
+      /* 【4.0.21】SFX 挪到"画完之后"（见本函数末尾 sideFx）：
+         它要在真机上唤醒 AudioContext，可能几百毫秒 —— 排在视觉写入之后
+         同步跑，就会把"变绿"那一帧一起拖住（烽火那边实测 800ms）。 */
       fb.className='ok';
       fb.innerHTML=`✅ 答对！用时 ${cost.toFixed(1)} 秒${bonus?'（迅捷 +'+bonus+'）':''}${apprBonus?'（思路对路 +'+apprBonus+'）':''} · 获得 <b>${gain}</b> 🪙`;
       if(!cfg.fixedTier&&state.streak%2===0&&curTier<3){
@@ -14442,7 +14493,6 @@ function session(cfg){
         curTier--;state.tier[curRid]=curTier;
         toast('📉 降到 '+TIER_NAME[curTier]+'题');
       }
-      SFX.wrong();
       fb.className='no';
       fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`;
       /* 错题本（容量见 WRONG_CAP，1.5.15 起 30 → 200）。
@@ -14455,11 +14505,24 @@ function session(cfg){
       else if(kind==='new'||kind==='back')toast('📕 '+wbMissWord(kind));
       state.wrongBook=state.wrongBook.slice(0,WRONG_CAP);
     }
-    /* 思路灵：独立答对才觉醒 / 涨羁绊（看了提示这题不计） */
-    try{lingJudge(q,correct,usedHint);}catch(e){}
-    save();updateHUD();
     $('nextBtn').style.display='block';
     $('nextBtn').textContent=(i+1>=cfg.count||(cfg.allowWrong!=null&&wrong>cfg.allowWrong))?'完成 ✓':'继续 →';
+    /* 【4.0.21】先画反馈，再做副作用（顺序就是这几行的全部意义）：
+       上面已经写完了 DOM（选项变绿/变红 + #feedback + 下一步按钮），
+       浏览器下一帧就能画出来；音效要唤醒 AudioContext、lingJudge 与 save 要读写存档，
+       这些**不能**排在写入之后同步跑 —— 会卡住这一帧的提交，玩家看到的就是
+       "按下去停一下才变色"（慢音效模拟实测：800ms → 改成 8ms）。
+       ⚠️ 必须「rAF + 宏任务」两段：光 rAF 的回调跑在绘制**之前**，挡不住。 */
+    const tPaint=performance.now();
+    const sideFx=()=>{
+      window.__ansGap=Math.round(performance.now()-tPaint);
+      try{correct?SFX.right():SFX.wrong();}catch(e){}
+      /* 思路灵：独立答对才觉醒 / 涨羁绊（看了提示这题不计） */
+      try{lingJudge(q,correct,usedHint);}catch(e){}
+      save();updateHUD();
+    };
+    if(window.requestAnimationFrame)requestAnimationFrame(()=>setTimeout(sideFx,0));
+    else setTimeout(sideFx,0);
   }
   render();
 }
@@ -16545,6 +16608,44 @@ function wbHealAll(){
   });
   (state.wrongDone||[]).forEach(w=>wbHeal(w,false));
 }
+/* 错题本是**全局**的（4.0.22）
+   ---------------------------------------------------------------
+   以前 wrongBook / wrongDone 只挂在 ADV_STATE 上，而 `state` 指向"当前世界" ——
+   于是进了烽火 / 史诗 / 练枪之后，全项目 99 处 `state.wrongBook` 的读写
+   都落在**一个不存在的字段**上：静默变空。表现是
+     · 烽火里点「错题中心」显示 0 题
+     · 烽火里答错的题进不了错题本（而这正是"先复习错题"要拦的东西）
+     · ☰ 菜单里那行「今日待复习 N」在烽火下永远是 0
+   改法：让四个世界的 state **指向同一份数组**（引用别名），
+   99 处调用一行都不用改。读档之后再并一次（按 text 去重、ADV 那份优先），
+   避免"只玩烽火"时 ADV 的存档落后、把新错的题丢掉。 */
+function wbShare(){
+  try{
+    const keep=(typeof ADV_STATE!=='undefined'&&ADV_STATE)?ADV_STATE:null;
+    if(!keep)return null;
+    keep.wrongBook=keep.wrongBook||[];
+    keep.wrongDone=keep.wrongDone||[];
+    const others=[(typeof EPIC_STATE!=='undefined')?EPIC_STATE:null,
+                  (typeof BLAZE_STATE!=='undefined')?BLAZE_STATE:null,
+                  (typeof DRILL_STATE!=='undefined')?DRILL_STATE:null].filter(Boolean);
+    const merge=(field)=>{
+      const seen=new Set((keep[field]||[]).map(w=>String(w&&w.text)));
+      others.forEach(o=>{
+        (o[field]||[]).forEach(w=>{
+          const k=String(w&&w.text);
+          if(w&&k&&!seen.has(k)){seen.add(k);keep[field].push(w);}
+        });
+      });
+    };
+    merge('wrongBook');
+    merge('wrongDone');
+    if(!keep.wbRev)keep.wbRev={streak:0,last:''};
+    [keep].concat(others).forEach(o=>{
+      o.wrongBook=keep.wrongBook;o.wrongDone=keep.wrongDone;o.wbRev=keep.wbRev;
+    });
+    return keep;
+  }catch(e){return null;}
+}
 /* 到期的题：今天该复习哪几题，全靠它 */
 function wbDueList(){
   const t=todayStr();
@@ -17176,8 +17277,10 @@ function showExportWrong(){
 }
 /* ---------- 重练一批错题（免费，最多 n 题）----------
    review=true 表示这是「今日复习」队列：结束后报一遍熟炼度变化
-   （毕业几题 / 升星几题 / 打回几题），并发复习奖励。 */
-function startWrongDrill(list,n,review){
+   （毕业几题 / 升星几题 / 打回几题），并发复习奖励。
+   onDone(r,t)（4.0.22）：练完通知一声 —— 「每日复习闸」要靠它放行
+   （复习完才允许开新的一局）。 */
+function startWrongDrill(list,n,review,onDone){
   list=(list||[]).filter(Boolean);
   if(!list.length){toast('没有可练的题');return;}
   const pick=shuffle(list).slice(0,Math.max(1,Math.min(n||5,list.length)));
@@ -17204,13 +17307,70 @@ function startWrongDrill(list,n,review){
       +(back?'↩️ '+back+' 题从归档区拉回来重学<br>':'')
       +(review?'🪙 复习奖励 +'+coin+' · 连续复习 '
         +((state.wbRev&&state.wbRev.streak)||1)+' 天<br>':'')
-      +'<span style="color:#9cc0e0;font-size:var(--fs-sm)">'
-      +(r>=t?'这几题全拿下，可以放下了 💪':'还有没收干净的，明天再来')+'</span></div>'
+      +'</div>'
       +'<div class="row"><button class="btn" id="pvWb">📕 回到错题本</button>'
       +'<button class="btn primary" id="ok">好</button></div>');
     $('ok').onclick=closePanel;
     $('pvWb').onclick=()=>showWrongBook(review?'today':'all');
+    if(typeof onDone==='function'){try{onDone(r,t);}catch(e){}}
   });
+}
+
+/* =========================================================
+   📌 每日复习闸（4.0.22）
+   ---------------------------------------------------------
+   产品决定：**每天先复习错题，复习完才能开新的一局。**
+   理由不再解释（是玩家自己定的规矩），这里只写实现上的三个取舍：
+
+   1. 只拦"第一批"（REVIEW_BATCH 题，按到期顺序随机抽）。
+      到期题可能是几十道 —— 一次全拦等于把人挡在门外，他会关掉页面，
+      那就连复习也没有了。拦一批（3~5 分钟）既保住"每天先复习"，
+      又不至于变成惩罚。批完的提示里会说"还有 M 道到期，明天继续"。
+   2. 拦的是**开新局**（烽火部署），不是整个游戏。
+      已经进来的玩家可以自由看地图、翻菜单、去练枪（练枪本来就在做题）。
+      "复习完才能开始新的游戏"这句，落在部署那一下最准确。
+   3. 完成标记记在**练完之后**（不是点"开始复习"那一刻）。
+      半路退出 → 下次启动照样拦，这才叫"复习完"。
+   ========================================================= */
+const REVIEW_DAY='himath_review_day';
+const REVIEW_BATCH=10;              // 每天拦下来的第一批题数
+function reviewDoneToday(){
+  try{return localStorage.getItem(REVIEW_DAY)===todayStr();}catch(e){return true;}
+}
+function reviewMarkDone(){
+  try{localStorage.setItem(REVIEW_DAY,todayStr());}catch(e){}
+}
+/* 今天"还欠着"几题（0 = 不拦） */
+function reviewNeed(){
+  if(reviewDoneToday())return 0;
+  return wbDueList().length;
+}
+/* 弹闸门。onPass：复习完之后接着做玩家原本想做的事（例如直接部署入局） */
+function reviewGate(onPass){
+  const due=wbDueList();
+  if(!due.length||reviewDoneToday()){if(onPass)onPass();return;}
+  const n=Math.min(due.length,REVIEW_BATCH);
+  /* 4.0.23：这段文案砍到最短。
+     玩家到此为止只想知道两件事：为什么拦我、要点几下。
+     「这些题按熟炼度排到今天」「认真答比快点答划算」—— 说教，删。
+     「每天只拦第一批」—— 解释规则，也删（按钮上的题数已经说清了）。 */
+  openPanel(`<h2>📌 今天该复习 ${due.length} 题</h2>
+    <div class="sub">先做 ${n} 题，做完就能开新的一局</div>
+    <div class="row"><button class="btn primary" id="rvGo">开始（${n} 题）</button></div>`);
+  const go=$('rvGo');
+  if(go)go.onclick=()=>{
+    audioKick();closePanel();
+    startWrongDrill(due,n,true,()=>{
+      reviewMarkDone();            // 练完才算今天复习过
+      /* 4.0.23：不播报"可以去玩了"—— 按钮上已经写着「去开始新的一局 →」，
+         再弹一个 toast 只是把同一句话说两遍。 */
+      const ok=$('ok');
+      if(ok){
+        ok.textContent='去开始新的一局 →';
+        ok.onclick=()=>{closePanel();audioKick();if(onPass)onPass();};
+      }
+    });
+  };
 }
 
 /* =========================================================
@@ -20693,6 +20853,10 @@ function useWorld(w){
   WORLD_TITLE=w.title;WORLD_SUB=w.sub;
   REGIONS=w.regions;BRIDGES=w.bridges;SPOTS=w.spots;LOOSE=w.loose;SPIRITS=w.spirits;
   state=w.st;curKey=w.save;
+  /* 错题本全局共享（4.0.22）：每次切世界都把四个 state 指回同一份数组。
+     不这么做的话，烽火 / 史诗 / 练枪里读到的 state.wrongBook 是 undefined —— 
+     错题中心在那些世界等于空的，而"先复习错题"正好要在烽火开局前拦人。 */
+  if(typeof wbShare==='function')wbShare();
 }
 
 /* ---------------- 判定与标签 ---------------- */
@@ -21175,18 +21339,32 @@ function epicIntroHtml(){
    启动
    ========================================================= */
 
+/* 【4.0.22】默认进场改成**烽火**（原来一律进闯关）。
+   产品理由（玩家定的）：闯关那套四国地图更接近"原神式"的探索，
+   第一屏给"搜打撤"更接近"三角洲式"的一局 —— 选点 / 难度 / 战备 → 部署 → 拿东西走人。
+   闯关没删，☰ 菜单里一键就能切。
+   lm：清档重开时的一次性标记（见 34_engine_core.js 里写 himath_lastmode 那处），优先于默认。 */
+function bootWorld(lm){
+  if(lm==='epic')return EPIC;
+  if(lm==='blaze')return BLAZE;
+  if(lm==='drill')return DRILL;
+  if(lm==='adv')return ADV;
+  return BLAZE;                     // 没有标记（含全新玩家）→ 烽火
+}
 function startGame(){
   if(!CUR)useWorld(ADV);
-  /* 清档重开后回到玩家刚才所在的世界（一次性标记，读完即清） */
+  let lm=null;
   try{
-    const lm=localStorage.getItem('himath_lastmode');
-    if(lm==='epic' &&CUR===ADV)useWorld(EPIC);
-    if(lm==='blaze'&&CUR===ADV)useWorld(BLAZE);
-    if(lm==='drill'&&CUR===ADV)useWorld(DRILL);
+    lm=localStorage.getItem('himath_lastmode');
     localStorage.removeItem('himath_lastmode');
   }catch(e){}
+  if(CUR===ADV)useWorld(bootWorld(lm));
   entInit();
   load();
+  /* 读档之后再并一次错题本（4.0.22）：四个世界各存各的，读回来的数组互不相干，
+     这里按 text 去重合并，再让四个 state 重新指向同一份 —— 否则"只玩烽火"时
+     ADV 那份存档落后，新错的题会在下次启动时被丢掉。 */
+  if(typeof wbShare==='function')wbShare();
   resize();
   /* 烽火地图是每局现生成的，必须先把地形和点位铺出来再 buildStatic，
      否则会在一张空地图上跑，人物掉进虚空。
@@ -21230,7 +21408,7 @@ startGame();
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.0.18-de28d598';
+const NEWS_KEY='genji_news', NEWS_VER='v4.0.23-c87bb953';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
@@ -21328,12 +21506,12 @@ function newsBoot(){
      全屏是必需功能，不能只藏在 ☰ 菜单里 —— 这里给它两个"打开就能看见"的入口。 */
   fsButtonBind($('upFs'),'⛶ 全屏','🗗 退出');
   if(newsSeen())return;
-  /* 全新玩家先看教学，不看"这次改了什么" ——
-     他连上次是什么样都不知道，一上来读更新要点没有意义（4.0.9）。
-     直接记为已读，免得玩到一半又被弹一次。 */
-  try{
-    if(!localStorage.getItem(curKey+'_intro')&&isNewPlayer()){markNewsSeen();return;}
-  }catch(e){}
+  /* 【4.0.20】这里原本有一条"全新玩家先看教学、把公告直接记成已读"的分支
+     （4.0.9 加的理由是"他连上次是什么样都不知道，读更新要点没意义"）。
+     玩家反馈很直接：一点开先被塞一段闯关介绍，公告反而看不到。
+     现在**公告永远第一**：新玩家也是先看公告，关掉之后 maybeIntro 再弹说明
+     （它本来就会等公告关掉，见 maybeIntro 开头那段的等待逻辑）。
+     登录/未登录都一样 —— 这条路径本来就不看账号。 */
   const tryOpen=n=>{
     /* 玩家手快先开了别的面板，就别硬顶掉，等它读完再弹。
        最多等 ~4 秒还不行就放弃本次（别和玩家的操作抢屏幕）。 */
@@ -21378,7 +21556,9 @@ function maybeIntro(delay){
      那说明玩家正忙着，不该再拦一道。 */
   try{
     if($('news')&&(!newsSeen()||newsIsOpen())){
-      if(++introWaitN<40)setTimeout(()=>maybeIntro(delay),500);
+      /* 等公告关掉。重试时把延时压到 150ms —— 原来传的是初始的 700ms，
+         于是"关掉公告"到"说明出现"要等 1 秒多（4.0.20 实测 0.9 秒还没出来）。 */
+      if(++introWaitN<40)setTimeout(()=>maybeIntro(150),500);
       return;
     }
   }catch(e){}
@@ -21430,8 +21610,22 @@ function maybeIntro(delay){
     };
   },delay||0);
 }
+/* 📌 每日复习闸的**弹窗**（4.0.22）。
+   公告与首访说明之后才拦，别和它们抢屏幕；最多等 ~6 秒 ——
+   玩家已经点进别的地方就放过这一次（他真想开局时，blazeDeploy 那道闸还会拦，
+   那道是硬的：不复习就开不了新局）。 */
+let reviewWaitN=0;
+function reviewBoot(){
+  if(typeof reviewNeed!=='function'||reviewNeed()<=0)return;
+  if(reviewWaitN>12)return;
+  if(newsIsOpen()||(typeof modal!=='undefined'&&modal&&modal.classList.contains('show'))){
+    reviewWaitN++;setTimeout(reviewBoot,500);return;
+  }
+  if(typeof reviewGate==='function')reviewGate();
+}
 newsBoot();
 maybeIntro(700);
+setTimeout(reviewBoot,2400);
 
 /* =========================================================
    题库自检：地址栏加 ?selftest=1 打开本页，控制台会给出报告
@@ -22459,18 +22653,39 @@ function blazeAsk(o){
         else e2.classList.add('dim');
       });
       const fb=$('feedback');
+      /* 【4.0.21】先画反馈，再做副作用 —— 这是"按下去要立刻变色"的关键。
+         这一段全是 DOM 写入（标记选项 + 写 #feedback），浏览器下一帧就能画出来。
+         但有两个东西会**卡住这一帧的提交**：
+           · SFX.right() 要唤醒 AudioContext（iOS / 安卓上可能几百毫秒，
+             而且第一次进烽火基本必然要唤醒一次）
+           · lingJudge() 要读写觉醒存档
+         它们排在写入之后同步跑，视觉反馈就得陪着一起等 ——
+         在平板上表现就是"摁下去停顿一两秒，然后才看到变绿"。
+         现在把它们挪到下一帧：视觉先落地，声音晚 16ms 完全听不出来。
+         顺手记一个 __ansGap（点击 → 下一帧），?dbg=1 里能看到真机到底等了多少。 */
       if(ok){
         BLAZE_STATE.totalRight=(BLAZE_STATE.totalRight||0)+1;
-        SFX.right();fb.className='ok';
+        fb.className='ok';
         fb.innerHTML=`✅ 答对！${o.okText?'<div class="exp">'+esc(o.okText)+'</div>':''}`;
-        /* 思路灵：战场上花钱要过思路，同样不算独立解出 */
-        try{lingJudge(q,true,hintLv>0);}catch(e){}
       }else{
         BLAZE_STATE.totalWrong=(BLAZE_STATE.totalWrong||0)+1;
-        SFX.wrong();fb.className='no';
+        fb.className='no';
         fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`;
       }
       $('nextBtn').style.display='block';
+      const tPaint=performance.now();
+      const sideFx=()=>{
+        window.__ansGap=Math.round(performance.now()-tPaint);
+        try{ok?SFX.right():SFX.wrong();}catch(e){}
+        /* 思路灵：战场上花钱要过思路，同样不算独立解出 */
+        if(ok){try{lingJudge(q,true,hintLv>0);}catch(e){}}
+      };
+      /* ⚠️ 必须是「rAF + 宏任务」两段，不能只 rAF：
+         rAF 回调跑在**这一帧绘制之前**，慢的副作用（唤醒 AudioContext）照样会
+         把这帧的提交挡住。先等到下一帧开始（此时上一帧已经画完并提交），
+         再用 setTimeout 排到这一帧之后 —— 顺序是：写入 → 绘制提交 → 副作用。 */
+      if(window.requestAnimationFrame)requestAnimationFrame(()=>setTimeout(sideFx,0));
+      else setTimeout(sideFx,0);
       $('nextBtn').onclick=()=>{
         BZ.busy=false;
         const seq=panelSeq;
@@ -24887,6 +25102,13 @@ function blazeIntelBrief(){
 }
 
 function blazeDeploy(){
+  /* 📌 每日复习闸（4.0.22）：今天到期的错题还没复习完，就不让开新的一局。
+     放在最前面 —— 连战备核算都别做，免得白扣东西。
+     复习完会回调 blazeDeploy 自己，玩家不用再点一次部署。 */
+  if(typeof reviewNeed==='function'&&reviewNeed()>0){
+    if(typeof reviewGate==='function')reviewGate(blazeDeploy);
+    return false;
+  }
   const pick=BLAZE_STATE.pick||{site:'math',diff:1};
   const site=BLAZE_SITE_OF[pick.site]||BLAZE_SITES[0];
   const diff=BLAZE_DIFF_OF[pick.diff]||BLAZE_DIFF[0];
@@ -26384,7 +26606,7 @@ function showMenu(){
   const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'格物纪元 · 四国远征'));
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
-     没经过构建（4.0.18 占位）时不显示，免得把占位符贴到界面上。 */
+     没经过构建（4.0.23 占位）时不显示，免得把占位符贴到界面上。 */
   const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
     ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
@@ -26413,7 +26635,7 @@ function showMenu(){
   const sndTxt=state.sound?'🔊 音效：开':'🔇 音效：关';
   /* 全屏开关的当前状态：读它来决定菜单里那颗按钮写"全屏"还是"退出全屏" */
   const fsOn=(typeof fullscreenOn==='function')&&fullscreenOn();
-  /* 帧率角标开关的当前状态（默认关，4.0.11） */
+  /* 帧率角标开关的当前状态（4.0.11 默认关 → 4.0.20 起默认开，关过的人保持关） */
   const fpsOn=(typeof fpsBadgeOn==='function')&&fpsBadgeOn();
   /* 错题中心那一项的 HTML：有到期题时**排到菜单最上面**。
      原因见 updateWbBadge 的注释 —— 顶栏 ☰ 顶着「4」，点开菜单却要
@@ -26461,8 +26683,8 @@ function showMenu(){
           :'扫描线 + 战术网格 + 栅格坐标全开，氛围更足也更花'}</div></span></button>`:''}
       <button class="menu-li" id="mLite"><span class="e">${PERF.lite?'⚡':'🎚️'}</span>
         <span class="tx">画质：${PERF.lite?'流畅':'完整'}<div class="d">${PERF.lite
-          ?'面板和公告的毛玻璃也关掉了 —— 极端弱机再省一点（帧率与完整档已经一样）'
-          :'面板与公告保留玻璃质感（点开时地图会停画，那层模糊只算一次，不花性能）'}</div></span></button>
+          ?'画布降到约 100 万像素（画面略软，光栅化更省）—— 设备跟不上时选它'
+          :'画布约 180 万像素。设备跟不上时会自动切到「流畅」，你也可以自己点'}</div></span></button>
       ${IS_PC?`<button class="menu-li" id="mKeys"><span class="e">⌨️</span>
         <span class="tx">电脑端键位<div class="d">WASD 移动 · Shift 疾跑 · 点地图走过去 · E 互动 · 1~4 选选项</div></span></button>`:''}
       ${!bz&&!ep&&!dr?`<button class="menu-li" id="mTeleport"><span class="e">🌀</span>
@@ -26933,7 +27155,9 @@ const ACCT={
   lastSync:0,
   autoTimer:null,
   dirty:false,
-  atWritten:0
+  atWritten:0,
+  cloudInfo:null,      // 云端那一行：{at,dev,prog,scoped} / {empty} / {fail}
+  cloudBusy:false
 };
 
 /* 输入框统一这一套，跟「AI 设置」里的 Key 输入框保持一致 */
@@ -27036,6 +27260,19 @@ function fmtAt(ms){
   const d=new Date(ms),p=n=>String(n).padStart(2,'0');
   return (d.getMonth()+1)+'月'+d.getDate()+'日 '+p(d.getHours())+':'+p(d.getMinutes());
 }
+/* 这个账号在云端那一行属于谁（4.0.19）。
+   ---------------------------------------------------------------
+   以前 push/pull 都**不写也**不按 owner 过滤，全凭服务端的行级权限兜：
+     · cloudPull():  db().from('saves').select(...).limit(1)          ← 表里第一行
+     · push 兜底:   db().from('saves').select('id').limit(1) → update ← 改表里第一行
+   两台设备"同一个手机号、数据却不一样"，最可能的来源就是这条：
+   谁拿到哪一行取决于服务端策略，前端根本没参与。
+   现在把 owner 显式带上：能拿到 id 就一定按它查/写；
+   拿不到（老 SDK 的 session 形状不同）就退回原行为，并在面板上说出来。 */
+function ownerId(){
+  const u=ACCT.user||{};
+  return u.id||u.uid||u.sub||u.openid||null;
+}
 function syncOff(){try{return localStorage.getItem(SYNC_OFF)==='1';}catch(e){return false;}}
 function setSyncOff(v){
   try{v?localStorage.setItem(SYNC_OFF,'1'):localStorage.removeItem(SYNC_OFF);}catch(e){}
@@ -27066,13 +27303,17 @@ async function cloudPush(silent){
     owner_name:(ACCT.user&&ACCT.user.name)||null,
     updated_at:new Date().toISOString()
   };
+  const oid=ownerId();
+  if(oid)row.owner_id=oid;                 // 显式写 owner（不再指望服务端默认值）
   let ok=false,errTxt='';
   try{
     let r=await db().from('saves').upsert(row,{onConflict:'owner_id'}).select();
     if(r&&r.error){
       /* upsert 万一不被支持，退回「查一行 → 更新，没有才插入」。
-         owner_id 上有唯一约束，两条路都不会写出重复行。 */
-      const q=await db().from('saves').select('id').limit(1);
+         4.0.19：查的时候必须按 owner 限定 —— 以前是"表里第一行"，
+         触发这条路就等于去改别人的存档（两台设备数据不一致的元凶之一）。 */
+      let q=db().from('saves').select('id');
+      q=oid?await q.eq('owner_id',oid).limit(1):await q.limit(1);
       if(q&&q.data&&q.data.length){
         r=await db().from('saves').update(row).eq('id',q.data[0].id).select();
       }else{
@@ -27088,8 +27329,11 @@ async function cloudPush(silent){
     try{localStorage.setItem(SYNC_AT,String(pack.at));}catch(e){}
     ACCT.atWritten=pack.at;
     ACCT.lastSync=pack.at;ACCT.dirty=false;
-    if(silent)toast('☁️ 云存档已更新');
-    else acctMsg('已上传 ✓ 云端存下了本机 '+fmtAt(pack.at)+' 的进度。','ok');
+    /* 4.0.23：成功**不播报**。
+       后台同步成功是"本该如此"，每 15 秒弹一次「云存档已更新」纯属噪音 ——
+       玩家没做任何需要反馈的决定。失败也不弹（会自动重试，面板里看得到状态）；
+       只有玩家自己按「上传」时才给文字反馈。 */
+    if(!silent)acctMsg('已上传 ✓ 云端存下了本机 '+fmtAt(pack.at)+' 的进度。','ok');
   }else if(!silent){
     acctMsg('上传失败：'+(errTxt||'请稍后再试'),'bad');
   }
@@ -27097,8 +27341,13 @@ async function cloudPush(silent){
 }
 async function cloudPull(){
   if(!ACCT.cloud)return null;
+  const oid=ownerId();
   try{
-    const r=await db().from('saves').select('id,payload,saved_at,device,updated_at').limit(1);
+    /* 4.0.19：按 owner 限定。以前只有 .limit(1) —— 拿的是"表里第一行"，
+       等于把"这份存档是谁的"交给服务端权限去兜；兜不住就是两台设备读到同一行 / 读到别人的。 */
+    let q=db().from('saves').select('id,payload,saved_at,device,updated_at');
+    q=oid?q.eq('owner_id',oid):q;
+    const r=await q.limit(1);
     if(r&&r.error)throw new Error(r.error.message||'读取失败');
     if(!r||!r.data||!r.data.length)return null;
     const row=r.data[0];
@@ -27106,8 +27355,24 @@ async function cloudPull(){
     try{pack=JSON.parse(row.payload);}catch(e){}
     if(!pack||!pack.keys)return null;
     pack.rowId=row.id;pack.savedAt=Number(row.saved_at)||0;
+    pack.dev=row.device||pack.dev||'';
+    pack.scoped=!!oid;
     return pack;
   }catch(e){return null;}
+}
+/* 面板上那条"云端现在是什么"（4.0.19）。
+   两台设备数据不一致时，玩家只需要看两行：云端是哪台设备、什么时候、多少分。
+   两边读到的这份不一样 → 说明压根不是同一行（owner / 账号问题），不是"没同步"。 */
+async function acctFetchCloud(){
+  if(!ACCT.cloud||!ACCT.user)return;
+  ACCT.cloudBusy=true;
+  try{
+    const p=await cloudPull();
+    ACCT.cloudInfo=p?{at:p.savedAt,dev:p.dev,prog:Number(p.prog)||0,scoped:!!p.scoped}
+                    :{empty:true};
+  }catch(e){ACCT.cloudInfo={fail:true};}
+  ACCT.cloudBusy=false;
+  if($('acctWrap'))acctRender();
 }
 /* 用云端盖本机：先留一份本机的，再写云端那份，最后整页重载 ——
    存档散在四五个键里，重载是唯一能保证「整份一起生效」的做法。 */
@@ -27327,7 +27592,25 @@ function acctBodyHtml(){
       +'本机最后存档：<b>'+fmtAt(localAt())+'</b><br>'
       +'本机进度：<b>'+localProgress()+'</b> 分<br>'
       +'自动同步：<b style="color:'+(off?'#ffd76a':'#8fe0a8')+'">'+(off?'已关闭':'开启中')+'</b>'
-      +'</div>'+m
+      +'</div>'
+      /* 云端那一行（4.0.19）：两台设备不一致时，这几行就能指出是哪一类问题 */
+      +(()=>{
+        const ci=ACCT.cloudInfo;
+        if(ACCT.cloudBusy)return '<div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin:8px 0">正在读云端…</div>';
+        if(!ci)return '';
+        if(ci.empty)return '<div style="background:rgba(255,180,90,.10);border:1px solid rgba(255,180,90,.28);'
+          +'border-radius:12px;padding:9px 12px;font-size:var(--fs-xs);color:#ffd9a8;margin:8px 0;line-height:1.7">'
+          +'云端这一行还是空的 —— 点下面的「上传本机进度」建一份。</div>';
+        if(ci.fail)return '<div style="font-size:var(--fs-xs);color:#ffb0b0;margin:8px 0">云端没读出来（网络或权限）</div>';
+        return '<div style="background:rgba(94,214,255,.08);border:1px solid rgba(94,214,255,.22);'
+          +'border-radius:12px;padding:9px 12px;font-size:var(--fs-xs);color:#cfe6ff;margin:8px 0;line-height:1.7">'
+          +'云端存档：<b>'+fmtAt(ci.at)+'</b>'
+          +(ci.dev?'（来自「'+esc(ci.dev)+'」）':'')+'<br>'
+          +'云端进度：<b>'+ci.prog+'</b> 分'
+          +(ci.scoped?'':' <span style="color:#ffd76a">· 按账号定位失败，可能读到别人的行</span>')
+          +'</div>';
+      })()
+      +m
       +'<div class="row" style="margin-top:12px">'
       +'<button class="btn primary" id="acctUp">⬆️ 上传本机进度</button>'
       +'<button class="btn" id="acctDown">⬇️ 取回云端进度</button></div>'
@@ -27372,12 +27655,15 @@ function acctBind(){
   on('acctGo',()=>{if(ACCT.busy)return;ACCT.step==='code'?acctVerify():acctSendCode();});
   on('acctBack',()=>{ACCT.step='phone';ACCT.pending=null;acctMsg('');acctRender();});
   on('acctWx',()=>{if(!ACCT.busy)acctWechat();});
-  on('acctUp',()=>cloudPush(false));
+  on('acctUp',async()=>{
+    await cloudPush(false);
+    acctFetchCloud();                 // 传完把"云端现在是什么"刷一遍
+  });
   on('acctDown',async()=>{
     acctMsg('正在取回…','');
     const p=await cloudPull();
-    if(!p){acctMsg('云端还没有存档 —— 先在这台设备上传一次。','bad');return;}
-    acctMsg('云端存的是 '+fmtAt(p.savedAt)+' 的进度，正在换过来…','ok');
+    if(!p){acctMsg('云端还没有存档 —— 先在这台设备上传一次。','bad');acctFetchCloud();return;}
+    acctMsg('云端存的是 '+fmtAt(p.savedAt)+'（来自「'+(p.dev||'未知设备')+'」）的进度，正在换过来…','ok');
     setTimeout(()=>applyCloud(p),500);
   });
   on('acctToggle',()=>{
@@ -27402,7 +27688,8 @@ function showAccountPanel(){
     +'<div class="row" style="margin-top:12px"><button class="btn" id="acctClose">关闭</button></div>');
   $('acctClose').onclick=closePanel;
   acctBind();
-  if(!ACCT.cloud&&ACCT.sdk!=='fail'&&!cloudWhy())cloudLoadSdk(()=>acctRender());
+  if(!ACCT.cloud&&ACCT.sdk!=='fail'&&!cloudWhy())cloudLoadSdk(()=>{acctRender();acctFetchCloud();});
+  else acctFetchCloud();          // 已登录：顺手把"云端现在是什么"读出来（4.0.19）
 }
 
 /* ---------- 挂上自动同步 ---------- */
@@ -27448,7 +27735,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.0.18';
+const BUILD_VER='4.0.23';
 const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
 function upbarSkipped(v){
   try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}
@@ -27507,7 +27794,7 @@ function showUpbar(j){
    帧率显示 —— 两个版本，别混
    ---------------------------------------------------------
    ① 玩家版（4.0.11 起）：#fps，**右上角一行**，☰ 菜单 → 帧率角标 开关，
-      开关记在本机。默认关着（绝大多数玩家不需要看这个）。
+      开关记在本机。4.0.20 起**默认开着**（玩家要求：一直看得见，想关再去菜单关）。
       一行就两个数：渲染 fps · 每帧耗时 ms。
       每帧耗时超过这一档的预算时变黄 —— 那一格才是"该降画质了"的信号。
    ② 诊断版：URL 带 ?dbg=1 时的 #dbg，屏幕左侧六行。
@@ -27530,9 +27817,18 @@ function showUpbar(j){
    ========================================================= */
 
 /* ---------- ① 玩家版：右上角一行 ---------- */
+/* 【4.0.20】默认**开**（原来默认关）。
+   玩家的要求很合理：右上角一直显示，想关再去 ☰ 里关。
+   实现上分两种情况，别把人手动关掉的又打开：
+     · 本机没存过这个键（首次进来）→ 开
+     · 存过 '1' / '0' → 照存的来（关过的人不会被翻回来）
+   无痕模式读不到 localStorage（抛异常）→ 也当"首次"，开。 */
 const FPS_KEY='genji_fps';
 function fpsBadgeOn(){
-  try{return localStorage.getItem(FPS_KEY)==='1';}catch(e){return false;}
+  try{
+    const v=localStorage.getItem(FPS_KEY);
+    return v===null?true:v==='1';
+  }catch(e){return true;}
 }
 let fpsEl=null,fpsTimer=null,fpsT0=0,fpsD0=0;
 /* fps 传 null 表示"还没攒够一个统计窗口"—— 那种时候只画每帧耗时。
@@ -27620,7 +27916,10 @@ fpsBadgeApply();
       '渲染 '+fps+'fps rAF '+raf+'\n'+
       '每帧 '+round1(PERF.work)+'ms/预算 '+round1(PERF.vs*PERF.multi)+'ms\n'+
       '迟到 '+PERF.miss+'/'+PERF.n+' 缩放'+SCALE.toFixed(3)+'\n'+
-      (panelOpen()?'面板开':'面板关')+(IS_PC?' · PC':'');
+      (panelOpen()?'面板开':'面板关')+(IS_PC?' · PC':'')+'\n'+
+      /* 上一次答题：从"写入反馈"到"反馈真的画到屏幕上"隔了多久（4.0.21）。
+         真机上如果这一格是几百毫秒，就是"按下去停一下才变色"的现场证据。 */
+      '答题反馈 '+(window.__ansGap==null?'—':window.__ansGap+'ms');
   },500);
 })();
 </script>
