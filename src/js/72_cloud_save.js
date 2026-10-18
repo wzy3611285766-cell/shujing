@@ -349,9 +349,34 @@ function cloudDecide(d){
   if(prog<=0)return 'apply';                //    本机空、云端有 → 取回
   if(cp<=0)return 'push';                   //    云端空、本机有 → 推上去（别拿空档盖掉真进度）
   if(!mine)return 'push';                   //    本机练过但从没同步过 → 保本机（原有规矩）
+  /* 【4.0.24】两边都有进度、而且**半斤八两却对不上** → 问，别静默覆盖。
+     这是"两台设备进度不一致"的另一半：以前后玩的那台直接 push，把另一台盖掉，
+     被盖的那台永远不知道自己丢了进度（虽然留了本机备份，但没人知道要撤销）。
+     判据用**比例**而不是绝对值：小的 ≥ 大的 35% 才算"两台都在玩"。
+     差距悬殊（比如本机 10 分、云端 99 分）说明这是新设备第一次取回，直接 apply 就好，
+     弹框只会碍事。 */
+  const hi=Math.max(prog,cp), lo=Math.min(prog,cp);
+  if(at>0&&hi-lo>=2&&lo>=hi*0.35&&applied!==at)return 'ask';
   if(at>mine+2000)return 'apply';           //    云端更新 → 取回
   if(d.dirty||mine>at)return 'push';        //    本机更新 → 推上去
   return 'none';
+}
+/* 两份进度不一样，让玩家自己挑（4.0.24）。
+   选完记 applied 标记，同一份云端不再问第二次。 */
+function askWhich(pack,n){
+  n=n||0;
+  if(n>10)return;
+  /* 已经有面板开着（公告 / 复习闸 / 商店）就别抢屏幕 */
+  if(modal.classList.contains('show')){setTimeout(()=>askWhich(pack,n+1),800);return;}
+  const at=Number(pack.savedAt)||0;
+  const mine=localProgress(), cp=Number(pack.prog)||0;
+  openPanel('<h2>☁️ 两份进度不一样</h2>'
+    +'<div class="sub">云端 '+fmtAt(at)+(pack.dev?'（'+esc(pack.dev)+'）':'')+'</div>'
+    +'<div class="row"><button class="btn primary" id="wkCloud">用云端的 · '+cp+' 分</button></div>'
+    +'<div class="row"><button class="btn" id="wkLocal">用本机的 · '+mine+' 分</button></div>');
+  const c=$('wkCloud'), l=$('wkLocal');
+  if(c)c.onclick=()=>{markApplied(at);applyCloud(pack);};
+  if(l)l.onclick=()=>{markApplied(at);closePanel();cloudPush(false);};
 }
 async function cloudAutoSync(){
   if(syncOff()||!ACCT.cloud)return;
@@ -365,6 +390,7 @@ async function cloudAutoSync(){
   });
   if(act==='apply'){applyCloud(pack);return;}
   if(act==='push'){cloudPush(true);return;}
+  if(act==='ask'){askWhich(pack);return;}
   /* 走到这儿说明"不用动"。如果这份云端刚取回过、本机却还是空的，
      那就是云端那份也救不了本机 —— 说明白，别让玩家对着空白页猜。 */
   if(localProgress()<=0&&pack.savedAt&&appliedAt()===pack.savedAt){

@@ -201,13 +201,27 @@ function blazeFinish(ok,reason){
     BLAZE_STATE.bstat.wipe=(BLAZE_STATE.bstat.wipe|0)+1;
     SFX.wrong();
   }
+  /* 【4.0.25】结算必须分得清"保住"与"丢掉"。
+     被 🔒 保密箱 / 📄 行动保险 留下的那几件**已经入库了**，不能还算进"丢失"里 ——
+     以前这一行的数量与估值用的都是**整个背包**，于是同一张面板上
+     一边写「丢失 10 件（估值 980）」，一边写「📄 行动保险保住了 2 件」——
+     玩家看到的就是"保住了，但显示说丢了"（真实反馈）。
+     保住的可能来自两处，文案也要说全（它们可以叠加）。 */
+  const keepBy=[];
+  if(!ok&&!BZ.naked){
+    if(hqSecured())keepBy.push('🔒 保密箱');
+    if(BZ.gear&&BZ.gear.ins)keepBy.push('📄 行动保险');
+  }
+  const lostList=(!ok&&saved.length)?bag.filter(L=>saved.indexOf(L)<0):bag.slice();
+  const lostVal=lostList.reduce((a,b)=>a+b.val,0);
   const bagVal=bag.reduce((a,b)=>a+b.val,0);
   BZ.active=false;BZ.phase='over';BZ.busy=false;BZ.loot=0;BZ.bag=[];
   BLAZE_STATE.run=null;
   save();
   updateHUD();
 
-  const topBag=bag.slice().sort((a,b)=>b.val-a.val).slice(0,8);
+  /* 阵亡时这张清单只列**真丢掉的**：保住的已经进仓库，不该再以灰卡出现在"没能带出去"里 */
+  const topBag=(ok?bag:lostList).slice().sort((a,b)=>b.val-a.val).slice(0,8);
 
   /* 结算面板不再上锁：它是这一局的终点，不是"正在作答的题"。
      以前它跟着答题面板一起上了锁，Esc 关不掉、点遮罩没反应、
@@ -238,10 +252,10 @@ function blazeFinish(ok,reason){
     :`
       <div class="center" style="line-height:var(--lh-loose)">
         ${esc(reason||'被淘汰')}<br>
-        丢失 <b style="color:#ff8a8a;font-size:var(--fs-2xl)">${bag.length}</b> 件物资
-        <span style="font-size:var(--fs-sm);color:#9cc0e0">（估值 ${bagVal} 🪙）</span><br>
+        丢失 <b style="color:#ff8a8a;font-size:var(--fs-2xl)">${lostList.length}</b> 件物资
+        <span style="font-size:var(--fs-sm);color:#9cc0e0">（估值 ${lostVal} 🪙）</span><br>
         ${saved.length
-          ?`<span style="color:#b9f2d3;font-size:var(--fs-sm)">${(BZ.gear&&BZ.gear.ins)?'📄 行动保险':'🔒 保密箱'}保住了 ${saved.length} 件：
+          ?`<span style="color:#b9f2d3;font-size:var(--fs-sm)">${keepBy.join(' + ')||'保底'}保住了 ${saved.length} 件：
             ${saved.map(L=>L.e+esc(L.n)).join('、')}</span>`
           :(BZ.naked
             ?`<span style="color:#ff8a8a;font-size:var(--fs-sm)">🪖 跑刀阵亡：没买保险，一件都留不下</span>`
@@ -251,7 +265,7 @@ function blazeFinish(ok,reason){
       </div>`}
     ${topBag.length?`
       <div class="center" style="font-size:var(--fs-sm);color:#9cc0e0;margin:10px 0 6px">
-        ${ok?'随你一起上机的战利品':'没能带出去的战利品'}${bag.length>topBag.length?'（最好的 '+topBag.length+' 件）':''}</div>
+        ${ok?'随你一起上机的战利品':'没能带出去的战利品'}${(ok?bag.length:lostList.length)>topBag.length?'（最好的 '+topBag.length+' 件）':''}</div>
       <div class="lootgrid">${topBag.map(L=>{
         const r=RAR_OF[L.r]||RARITY[0];
         return `<div class="lootcell" style="background:${r.bg};border-color:${r.bd};

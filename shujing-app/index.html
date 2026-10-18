@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>格物纪元 · 四国远征</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.0.23 · 2026-10-18 00:53 · 源码摘要 e48d4c52 · 74 个模块 -->
+<!-- build: v4.0.26 · 2026-10-18 10:22 · 源码摘要 d1078052 · 74 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -1764,17 +1764,16 @@ margin-top:8px;padding:5px 0}
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新 · v4.0.23</span>
-        <div class="news-title">少说话</div>
-        <div class="news-sub">该安静的都安静了</div>
+        <span class="news-badge">📣 版本更新 · v4.0.26</span>
+        <div class="news-title">修：烽火里答错的题进不了错题本</div>
+        <div class="news-sub">顺带补了后台标签页的一个坑</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
           <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">🤫</span><span>云存档同步成功不再弹提示（每 15 秒一次，本来就不需要你知道）</span></div>
-          <div class="news-li"><span class="e">✂️</span><span>复习提示只留两句话：今天该复习几题、点一下开始</span></div>
-          <div class="news-li"><span class="e">🧹</span><span>删掉「认真答比快点答划算」「这几题全拿下」这类说教</span></div>
+          <div class="news-li"><span class="e">📕</span><span>烽火答错的题现在会进错题本了 —— 以前那个分支只加了统计，<b>一条都没记</b>，所以「每天先复习」永远复习不到战场上的错题</span></div>
+          <div class="news-li"><span class="e">🌙</span><span>顺带：切到后台 / 省电模式时，音效、错题入本、存档这些「画完再做」的活可能<b>整个不执行</b>（浏览器不派下一帧）。现在补了兜底</span></div>
         </div>
 
         <div class="news-sec">
@@ -12580,6 +12579,25 @@ document.addEventListener('pointerdown',function(e){
   },{passive:true});
 })();
 
+/* 「等这一帧画完再执行」—— 答题反馈的"先画后算"用的就是它（4.0.21）。
+   ---------------------------------------------------------------
+   为什么不用 rAF 一把梭：rAF 的回调跑在**绘制之前**，慢的副作用
+   （唤醒 AudioContext、读写存档）照样会挡住这一帧的提交。
+   所以先等下一帧开始（此时上一帧已经提交），再用 setTimeout 排到这一帧之后。
+
+   4.0.26 补一个 120ms 兜底：**rAF 不保证会来** ——
+   后台标签页、省电模式、无头浏览器的虚拟时钟里都可能长时间不推进，
+   那样"先画后算"的副作用就永远不会执行：音效不响、错题不进本、存档不写。
+   兜底与 rAF 谁先到谁执行，只跑一次。 */
+function afterPaint(fn){
+  let done=false;
+  const run=()=>{if(done)return;done=true;try{fn();}catch(e){}};
+  if(window.requestAnimationFrame){
+    requestAnimationFrame(()=>setTimeout(run,0));
+    setTimeout(run,120);
+  }else setTimeout(run,0);
+}
+
 /* ---------------- 地图预渲染 ---------------- */
 const cv=document.getElementById('game'),ctx=cv.getContext('2d');
 /* 静态地形层：一块**离屏**画布（4.0.17 起）。
@@ -14521,8 +14539,7 @@ function session(cfg){
       try{lingJudge(q,correct,usedHint);}catch(e){}
       save();updateHUD();
     };
-    if(window.requestAnimationFrame)requestAnimationFrame(()=>setTimeout(sideFx,0));
-    else setTimeout(sideFx,0);
+    afterPaint(sideFx);
   }
   render();
 }
@@ -20391,7 +20408,6 @@ function makeLoot(rid,siteId,diffMul,bagMul){
    ========================================================= */
 const BLAZE_GEAR=[
  {id:'battery',e:'🔋',n:'备用电池',  price:120,d:'本局信号值上限 +1（多扛一次答错）'},
- {id:'beacon', e:'📡',n:'撤离信标',  price:260,d:'本局额外开启 1 个撤离点'},
  {id:'bag',    e:'🎒',n:'扩容背包',  price:220,d:'背包 +10 格 · 物资估值 +20% · 稀有度权重 +15%'},
  {id:'ins',    e:'📄',n:'行动保险',  price:160,d:'阵亡时保住背包里最贵的 2 件物资（可与保密箱叠加）'},
  {id:'scan',   e:'📟',n:'情报终端',  price:300,d:'开局就在地图上标出保险箱房与全部容器'},
@@ -21408,7 +21424,7 @@ startGame();
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.0.23-c87bb953';
+const NEWS_KEY='genji_news', NEWS_VER='v4.0.26-d314ba53';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
@@ -22679,13 +22695,31 @@ function blazeAsk(o){
         try{ok?SFX.right():SFX.wrong();}catch(e){}
         /* 思路灵：战场上花钱要过思路，同样不算独立解出 */
         if(ok){try{lingJudge(q,true,hintLv>0);}catch(e){}}
+        else{
+          /* 【4.0.26】烽火的错题以前**根本不进错题本**。
+             这个分支原来只加了 BLAZE_STATE.totalWrong，没调 wbMiss ——
+             而闯关（39_hints）与练枪（49_drill）都调了。
+             4.0.22 让四个模式共享了同一份错题本，可烽火从来没往里写过一笔，
+             于是「每天先复习」永远复习不到战场上的错题 ——
+             而战场恰恰是错得最多的地方（每题都可能掉信号值）。
+             wbMiss 会写好熟炼度与复习日期，返回 'new' / 'down' / 'back' / 'full'。 */
+          try{
+            const kind=wbMiss({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,
+              opts:q.opts.slice(),rid:o.rid,subject:subjOfRid(o.rid),src2:'烽火'});
+            const box=$('feedback');
+            if(box&&box.className==='no'){
+              box.innerHTML+=kind==='full'
+                ?'<div class="exp">📕 错题本满了（'+WRONG_CAP+' 题），这题没存下</div>'
+                :'<div class="exp">📕 已收进错题本</div>';
+            }
+          }catch(e){}
+        }
       };
       /* ⚠️ 必须是「rAF + 宏任务」两段，不能只 rAF：
          rAF 回调跑在**这一帧绘制之前**，慢的副作用（唤醒 AudioContext）照样会
          把这帧的提交挡住。先等到下一帧开始（此时上一帧已经画完并提交），
          再用 setTimeout 排到这一帧之后 —— 顺序是：写入 → 绘制提交 → 副作用。 */
-      if(window.requestAnimationFrame)requestAnimationFrame(()=>setTimeout(sideFx,0));
-      else setTimeout(sideFx,0);
+      afterPaint(sideFx);
       $('nextBtn').onclick=()=>{
         BZ.busy=false;
         const seq=panelSeq;
@@ -24116,7 +24150,8 @@ function blazeGenMap(siteId,diffId,gear,savedMap){
   const fromSave=!!(saved&&Array.isArray(saved.spots)&&saved.spots.length);
 
   /* ② 撤离点：贴着不规则边缘放，彼此拉开距离 */
-  const nEx=diff.exfils+(gear&&gear.beacon?1:0);
+  /* 4.0.24：撤离信标已删（玩家反馈"没用"）——撤离点数量只由难度决定 */
+  const nEx=diff.exfils;
   /* 撤离点按方位命名（东侧 / 西南 …）：
      方形战区上"北岭""南门"这类名字跟实际位置对不上，
      报点时报"西南侧撤离点"，队友才能照着方位找过去。 */
@@ -25267,13 +25302,27 @@ function blazeFinish(ok,reason){
     BLAZE_STATE.bstat.wipe=(BLAZE_STATE.bstat.wipe|0)+1;
     SFX.wrong();
   }
+  /* 【4.0.25】结算必须分得清"保住"与"丢掉"。
+     被 🔒 保密箱 / 📄 行动保险 留下的那几件**已经入库了**，不能还算进"丢失"里 ——
+     以前这一行的数量与估值用的都是**整个背包**，于是同一张面板上
+     一边写「丢失 10 件（估值 980）」，一边写「📄 行动保险保住了 2 件」——
+     玩家看到的就是"保住了，但显示说丢了"（真实反馈）。
+     保住的可能来自两处，文案也要说全（它们可以叠加）。 */
+  const keepBy=[];
+  if(!ok&&!BZ.naked){
+    if(hqSecured())keepBy.push('🔒 保密箱');
+    if(BZ.gear&&BZ.gear.ins)keepBy.push('📄 行动保险');
+  }
+  const lostList=(!ok&&saved.length)?bag.filter(L=>saved.indexOf(L)<0):bag.slice();
+  const lostVal=lostList.reduce((a,b)=>a+b.val,0);
   const bagVal=bag.reduce((a,b)=>a+b.val,0);
   BZ.active=false;BZ.phase='over';BZ.busy=false;BZ.loot=0;BZ.bag=[];
   BLAZE_STATE.run=null;
   save();
   updateHUD();
 
-  const topBag=bag.slice().sort((a,b)=>b.val-a.val).slice(0,8);
+  /* 阵亡时这张清单只列**真丢掉的**：保住的已经进仓库，不该再以灰卡出现在"没能带出去"里 */
+  const topBag=(ok?bag:lostList).slice().sort((a,b)=>b.val-a.val).slice(0,8);
 
   /* 结算面板不再上锁：它是这一局的终点，不是"正在作答的题"。
      以前它跟着答题面板一起上了锁，Esc 关不掉、点遮罩没反应、
@@ -25304,10 +25353,10 @@ function blazeFinish(ok,reason){
     :`
       <div class="center" style="line-height:var(--lh-loose)">
         ${esc(reason||'被淘汰')}<br>
-        丢失 <b style="color:#ff8a8a;font-size:var(--fs-2xl)">${bag.length}</b> 件物资
-        <span style="font-size:var(--fs-sm);color:#9cc0e0">（估值 ${bagVal} 🪙）</span><br>
+        丢失 <b style="color:#ff8a8a;font-size:var(--fs-2xl)">${lostList.length}</b> 件物资
+        <span style="font-size:var(--fs-sm);color:#9cc0e0">（估值 ${lostVal} 🪙）</span><br>
         ${saved.length
-          ?`<span style="color:#b9f2d3;font-size:var(--fs-sm)">${(BZ.gear&&BZ.gear.ins)?'📄 行动保险':'🔒 保密箱'}保住了 ${saved.length} 件：
+          ?`<span style="color:#b9f2d3;font-size:var(--fs-sm)">${keepBy.join(' + ')||'保底'}保住了 ${saved.length} 件：
             ${saved.map(L=>L.e+esc(L.n)).join('、')}</span>`
           :(BZ.naked
             ?`<span style="color:#ff8a8a;font-size:var(--fs-sm)">🪖 跑刀阵亡：没买保险，一件都留不下</span>`
@@ -25317,7 +25366,7 @@ function blazeFinish(ok,reason){
       </div>`}
     ${topBag.length?`
       <div class="center" style="font-size:var(--fs-sm);color:#9cc0e0;margin:10px 0 6px">
-        ${ok?'随你一起上机的战利品':'没能带出去的战利品'}${bag.length>topBag.length?'（最好的 '+topBag.length+' 件）':''}</div>
+        ${ok?'随你一起上机的战利品':'没能带出去的战利品'}${(ok?bag.length:lostList.length)>topBag.length?'（最好的 '+topBag.length+' 件）':''}</div>
       <div class="lootgrid">${topBag.map(L=>{
         const r=RAR_OF[L.r]||RARITY[0];
         return `<div class="lootcell" style="background:${r.bg};border-color:${r.bd};
@@ -25427,7 +25476,8 @@ function blazeRestoreRun(){
   BZ.opened=Math.max(0,parseInt(r.opened,10)||0);
   BZ.killed=Math.max(0,parseInt(r.killed,10)||0);
   BZ.busy=false;
-  BZ.gear=r.gear||{battery:0,beacon:0,bag:0,ins:0,key:0,scan:0,medkit:0,luck:0};BZ._sv=0;
+  /* beacon 已删（4.0.24），老存档里残留的 gear.beacon 就让它躺着，不再读 */
+  BZ.gear=r.gear||{battery:0,bag:0,ins:0,key:0,scan:0,medkit:0,luck:0};BZ._sv=0;
   BZ.bag=Array.isArray(r.bag)?r.bag.filter(L=>L&&L.n):[];
   BZ.medkitUsed=!!r.medkitUsed;
   BZ.naked=!!r.naked;BZ.fee=r.fee|0;
@@ -25493,7 +25543,6 @@ function questTextBlaze(){
   /* 携带的物资挂在任务条末尾，局中随时能确认自己带了什么（尤其保险） */
   let perk='';
   if(BZ.gear.battery)perk+=' 🔋';
-  if(BZ.gear.beacon) perk+=' 📡';
   if(BZ.gear.bag)    perk+=' 🎒';
   if(BZ.gear.ins)    perk+=' 📄';
   if(BZ.gear.scan)   perk+=' 📟';
@@ -25884,7 +25933,6 @@ function blazeRenderLobby(){
   if(naked)perk.push('🪖 跑刀：不带任何物资，仓库一件都不动');
   else{
     if(carry.battery)perk.push('信号值 +1');
-    if(carry.beacon) perk.push('多 1 个撤离点');
     if(carry.bag)    perk.push('背包 +10 格 · 估值 +20% · 稀有度 +15%');
     if(carry.ins)    perk.push('阵亡保住最贵 2 件');
     if(carry.scan)   perk.push('保险箱房上小地图');
@@ -25966,7 +26014,7 @@ function blazeRenderLobby(){
         ${site.emoji} ${esc(site.name)} · ${diff.emoji} ${esc(diff.name)}</div>
       <div style="font-size:var(--fs-sm);color:#9cc0e0;margin-top:4px;line-height:var(--lh-base)">
         物资箱 ${diff.crates} 个 · 巡逻队 ${diff.patrols} 队 ·
-        撤离点 ${diff.exfils+(carry.beacon?1:0)} 个 ·
+        撤离点 ${diff.exfils} 个 ·
         🔐 保险箱房 ${1+(deptLevel('cmd')>=4?1:0)} 座<br>
         🗺️ 不规则战场 · 🔒 上锁房间 ${blazeLockRoomCount(diff.id)} 间（需房卡）<br>
         信号值 ${Math.max(1,diff.sig+((!naked&&carry.battery)?1:0)+hqSigBonus()-(naked?1:0))} ·
@@ -26234,7 +26282,7 @@ function blazeIntroHtml(){
       <b style="color:#ffd76a">${BLAZE_DIFF.map(d=>d.emoji+d.name+' 🎖️'+d.req+' · 🎟️'+d.fee+'🪙').join('　')}</b></div><div class="il">🪖 <b>跑刀</b>：没钱可以光着进去捡垃圾 —— 免票，但估值 ×${BLAZE_NAKED_MUL}、
       阵亡<b>零保底</b>、信号值 -1，而且<b>只够进常规场</b></div><div class="il">🔍 <b>搜</b>：走到 📦 物资箱答题，答对开出<b>物资</b>，
       答错触发警报、慌乱中还从背包掉一件</div><div class="il">🔐 <b>保险箱房</b>：最远那间楼有守卫把守，<b>必须打赢才打得开箱子</b>；最里面那座 💠 高价值箱另外要<b>刷一张房卡</b></div><div class="il">💥 <b>打</b>：撞上 👾 巡逻队打三题，错两道当场阵亡；打赢从他们身上搜出物资</div><div class="il">🚁 <b>撤</b>：到 🚁 撤离点开始撤离，路上每波一题，
-      <b>错一道，背包里的东西一件都带不走</b></div><div class="il">📶 <b>信号值</b>：答错就掉，归零直接被锁定淘汰</div><div class="il">🎒 <b>背包</b>：<b>按格数算，不是按件数</b> —— 一个 12 格的大红顶六件小货</div><div class="il">满了会挤掉<b>单格价值最低</b>的那件，装不下就先撤</div><div class="il">🏪 <b>战备采购</b>：电池 / 信标 / 背包 / 保险 / <b>房卡</b>，带进去就没了</div><div class="il">💱 <b>交易站</b>：战场上只掉物资，<b>一文现金都没有</b> ——
+      <b>错一道，背包里的东西一件都带不走</b></div><div class="il">📶 <b>信号值</b>：答错就掉，归零直接被锁定淘汰</div><div class="il">🎒 <b>背包</b>：<b>按格数算，不是按件数</b> —— 一个 12 格的大红顶六件小货</div><div class="il">满了会挤掉<b>单格价值最低</b>的那件，装不下就先撤</div><div class="il">🏪 <b>战备采购</b>：电池 / 背包 / 保险 / <b>房卡</b>，带进去就没了</div><div class="il">💱 <b>交易站</b>：战场上只掉物资，<b>一文现金都没有</b> ——
       活着回基地，把东西卖给回收商才变成哈夫币</div><div class="il">🏛️ <b>特勤处</b>：指挥部 · 后勤处 · 医疗站 · 情报处 · 军械库，
       花哈夫币 + 上缴稀有物资升级（卖光了就没材料了）</div><div class="il">⚠️ <b>核心规则</b>：战利品只有<b>活着走出去</b>才入账，<b>卖掉了</b>才变成钱</div><div class="il">💱 <b>上缴</b>：仓库结晶可以转回闯关模式花</div><div class="il">🔀 <b>切模式</b>：顶部「⚔️ 闯关」回去刷题，三个模式进度分开保存
     ${IS_PC?`</div><div class="il">⌨️ <b style="color:#ffd76a">电脑端</b>：WASD 移动 · Shift 疾跑 · 点地图自动走 ·
@@ -26606,7 +26654,7 @@ function showMenu(){
   const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'格物纪元 · 四国远征'));
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
-     没经过构建（4.0.23 占位）时不显示，免得把占位符贴到界面上。 */
+     没经过构建（4.0.26 占位）时不显示，免得把占位符贴到界面上。 */
   const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
     ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
@@ -27445,9 +27493,34 @@ function cloudDecide(d){
   if(prog<=0)return 'apply';                //    本机空、云端有 → 取回
   if(cp<=0)return 'push';                   //    云端空、本机有 → 推上去（别拿空档盖掉真进度）
   if(!mine)return 'push';                   //    本机练过但从没同步过 → 保本机（原有规矩）
+  /* 【4.0.24】两边都有进度、而且**半斤八两却对不上** → 问，别静默覆盖。
+     这是"两台设备进度不一致"的另一半：以前后玩的那台直接 push，把另一台盖掉，
+     被盖的那台永远不知道自己丢了进度（虽然留了本机备份，但没人知道要撤销）。
+     判据用**比例**而不是绝对值：小的 ≥ 大的 35% 才算"两台都在玩"。
+     差距悬殊（比如本机 10 分、云端 99 分）说明这是新设备第一次取回，直接 apply 就好，
+     弹框只会碍事。 */
+  const hi=Math.max(prog,cp), lo=Math.min(prog,cp);
+  if(at>0&&hi-lo>=2&&lo>=hi*0.35&&applied!==at)return 'ask';
   if(at>mine+2000)return 'apply';           //    云端更新 → 取回
   if(d.dirty||mine>at)return 'push';        //    本机更新 → 推上去
   return 'none';
+}
+/* 两份进度不一样，让玩家自己挑（4.0.24）。
+   选完记 applied 标记，同一份云端不再问第二次。 */
+function askWhich(pack,n){
+  n=n||0;
+  if(n>10)return;
+  /* 已经有面板开着（公告 / 复习闸 / 商店）就别抢屏幕 */
+  if(modal.classList.contains('show')){setTimeout(()=>askWhich(pack,n+1),800);return;}
+  const at=Number(pack.savedAt)||0;
+  const mine=localProgress(), cp=Number(pack.prog)||0;
+  openPanel('<h2>☁️ 两份进度不一样</h2>'
+    +'<div class="sub">云端 '+fmtAt(at)+(pack.dev?'（'+esc(pack.dev)+'）':'')+'</div>'
+    +'<div class="row"><button class="btn primary" id="wkCloud">用云端的 · '+cp+' 分</button></div>'
+    +'<div class="row"><button class="btn" id="wkLocal">用本机的 · '+mine+' 分</button></div>');
+  const c=$('wkCloud'), l=$('wkLocal');
+  if(c)c.onclick=()=>{markApplied(at);applyCloud(pack);};
+  if(l)l.onclick=()=>{markApplied(at);closePanel();cloudPush(false);};
 }
 async function cloudAutoSync(){
   if(syncOff()||!ACCT.cloud)return;
@@ -27461,6 +27534,7 @@ async function cloudAutoSync(){
   });
   if(act==='apply'){applyCloud(pack);return;}
   if(act==='push'){cloudPush(true);return;}
+  if(act==='ask'){askWhich(pack);return;}
   /* 走到这儿说明"不用动"。如果这份云端刚取回过、本机却还是空的，
      那就是云端那份也救不了本机 —— 说明白，别让玩家对着空白页猜。 */
   if(localProgress()<=0&&pack.savedAt&&appliedAt()===pack.savedAt){
@@ -27735,7 +27809,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.0.23';
+const BUILD_VER='4.0.26';
 const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
 function upbarSkipped(v){
   try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}

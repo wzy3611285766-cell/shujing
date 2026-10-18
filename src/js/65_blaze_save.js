@@ -61,7 +61,8 @@ function blazeRestoreRun(){
   BZ.opened=Math.max(0,parseInt(r.opened,10)||0);
   BZ.killed=Math.max(0,parseInt(r.killed,10)||0);
   BZ.busy=false;
-  BZ.gear=r.gear||{battery:0,beacon:0,bag:0,ins:0,key:0,scan:0,medkit:0,luck:0};BZ._sv=0;
+  /* beacon 已删（4.0.24），老存档里残留的 gear.beacon 就让它躺着，不再读 */
+  BZ.gear=r.gear||{battery:0,bag:0,ins:0,key:0,scan:0,medkit:0,luck:0};BZ._sv=0;
   BZ.bag=Array.isArray(r.bag)?r.bag.filter(L=>L&&L.n):[];
   BZ.medkitUsed=!!r.medkitUsed;
   BZ.naked=!!r.naked;BZ.fee=r.fee|0;

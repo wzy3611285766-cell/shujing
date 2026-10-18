@@ -51,7 +51,6 @@ function questTextBlaze(){
   /* 携带的物资挂在任务条末尾，局中随时能确认自己带了什么（尤其保险） */
   let perk='';
   if(BZ.gear.battery)perk+=' 🔋';
-  if(BZ.gear.beacon) perk+=' 📡';
   if(BZ.gear.bag)    perk+=' 🎒';
   if(BZ.gear.ins)    perk+=' 📄';
   if(BZ.gear.scan)   perk+=' 📟';

@@ -157,6 +157,26 @@ setTimeout(function(){
   },700);
 },1200);
 """, 7000, "部署后的战场地面（撤离点附近）"),
+    # 阵亡结算：4.0.25 修的是"保住了却显示丢失"
+    "阵亡结算": ("""
+setTimeout(function(){
+  quiet();
+  try{hideNews();}catch(e){}
+  closePanel();
+  try{
+    useWorld(BLAZE);
+    BLAZE_STATE.naked=false;BLAZE_STATE.pick={site:'math',diff:1};BZ.carry={};
+    BZ.active=true;BZ.site='math';BZ.diff=1;
+    BZ.gear={battery:0,bag:0,ins:1,key:0,scan:0,medkit:0,luck:0};
+    BZ.opened=3;BZ.killed=1;BZ.cards=0;BZ.fee=40;BZ.naked=false;BZ.usedTicket=false;
+    BZ.bag=[{n:'服务器内存条',e:'💾',r:2,val:620,slot:2},
+            {n:'军用电台',  e:'📻',r:1,val:340,slot:3},
+            {n:'铜线卷',    e:'🔌',r:0,val:90, slot:1},
+            {n:'绝缘胶带',  e:'🩹',r:0,val:40, slot:1}];
+    blazeFinish(false,'信号值归零 · 被守卫锁定');
+  }catch(e){}
+},1400);
+""", 6500, "阵亡结算：行动保险保住 2 件，丢失数不再重复计算"),
     # 烽火答题：4.0.21 修的是"摁完正确选项停一两秒才变色"
     "烽火答题": ("""
 setTimeout(function(){

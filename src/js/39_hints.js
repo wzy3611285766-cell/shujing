@@ -390,8 +390,7 @@ function session(cfg){
       try{lingJudge(q,correct,usedHint);}catch(e){}
       save();updateHUD();
     };
-    if(window.requestAnimationFrame)requestAnimationFrame(()=>setTimeout(sideFx,0));
-    else setTimeout(sideFx,0);
+    afterPaint(sideFx);
   }
   render();
 }

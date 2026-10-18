@@ -147,7 +147,6 @@ function blazeRenderLobby(){
   if(naked)perk.push('🪖 跑刀：不带任何物资，仓库一件都不动');
   else{
     if(carry.battery)perk.push('信号值 +1');
-    if(carry.beacon) perk.push('多 1 个撤离点');
     if(carry.bag)    perk.push('背包 +10 格 · 估值 +20% · 稀有度 +15%');
     if(carry.ins)    perk.push('阵亡保住最贵 2 件');
     if(carry.scan)   perk.push('保险箱房上小地图');
@@ -229,7 +228,7 @@ function blazeRenderLobby(){
         ${site.emoji} ${esc(site.name)} · ${diff.emoji} ${esc(diff.name)}</div>
       <div style="font-size:var(--fs-sm);color:#9cc0e0;margin-top:4px;line-height:var(--lh-base)">
         物资箱 ${diff.crates} 个 · 巡逻队 ${diff.patrols} 队 ·
-        撤离点 ${diff.exfils+(carry.beacon?1:0)} 个 ·
+        撤离点 ${diff.exfils} 个 ·
         🔐 保险箱房 ${1+(deptLevel('cmd')>=4?1:0)} 座<br>
         🗺️ 不规则战场 · 🔒 上锁房间 ${blazeLockRoomCount(diff.id)} 间（需房卡）<br>
         信号值 ${Math.max(1,diff.sig+((!naked&&carry.battery)?1:0)+hqSigBonus()-(naked?1:0))} ·
@@ -497,7 +496,7 @@ function blazeIntroHtml(){
       <b style="color:#ffd76a">${BLAZE_DIFF.map(d=>d.emoji+d.name+' 🎖️'+d.req+' · 🎟️'+d.fee+'🪙').join('　')}</b></div><div class="il">🪖 <b>跑刀</b>：没钱可以光着进去捡垃圾 —— 免票，但估值 ×${BLAZE_NAKED_MUL}、
       阵亡<b>零保底</b>、信号值 -1，而且<b>只够进常规场</b></div><div class="il">🔍 <b>搜</b>：走到 📦 物资箱答题，答对开出<b>物资</b>，
       答错触发警报、慌乱中还从背包掉一件</div><div class="il">🔐 <b>保险箱房</b>：最远那间楼有守卫把守，<b>必须打赢才打得开箱子</b>；最里面那座 💠 高价值箱另外要<b>刷一张房卡</b></div><div class="il">💥 <b>打</b>：撞上 👾 巡逻队打三题，错两道当场阵亡；打赢从他们身上搜出物资</div><div class="il">🚁 <b>撤</b>：到 🚁 撤离点开始撤离，路上每波一题，
-      <b>错一道，背包里的东西一件都带不走</b></div><div class="il">📶 <b>信号值</b>：答错就掉，归零直接被锁定淘汰</div><div class="il">🎒 <b>背包</b>：<b>按格数算，不是按件数</b> —— 一个 12 格的大红顶六件小货</div><div class="il">满了会挤掉<b>单格价值最低</b>的那件，装不下就先撤</div><div class="il">🏪 <b>战备采购</b>：电池 / 信标 / 背包 / 保险 / <b>房卡</b>，带进去就没了</div><div class="il">💱 <b>交易站</b>：战场上只掉物资，<b>一文现金都没有</b> ——
+      <b>错一道，背包里的东西一件都带不走</b></div><div class="il">📶 <b>信号值</b>：答错就掉，归零直接被锁定淘汰</div><div class="il">🎒 <b>背包</b>：<b>按格数算，不是按件数</b> —— 一个 12 格的大红顶六件小货</div><div class="il">满了会挤掉<b>单格价值最低</b>的那件，装不下就先撤</div><div class="il">🏪 <b>战备采购</b>：电池 / 背包 / 保险 / <b>房卡</b>，带进去就没了</div><div class="il">💱 <b>交易站</b>：战场上只掉物资，<b>一文现金都没有</b> ——
       活着回基地，把东西卖给回收商才变成哈夫币</div><div class="il">🏛️ <b>特勤处</b>：指挥部 · 后勤处 · 医疗站 · 情报处 · 军械库，
       花哈夫币 + 上缴稀有物资升级（卖光了就没材料了）</div><div class="il">⚠️ <b>核心规则</b>：战利品只有<b>活着走出去</b>才入账，<b>卖掉了</b>才变成钱</div><div class="il">💱 <b>上缴</b>：仓库结晶可以转回闯关模式花</div><div class="il">🔀 <b>切模式</b>：顶部「⚔️ 闯关」回去刷题，三个模式进度分开保存
     ${IS_PC?`</div><div class="il">⌨️ <b style="color:#ffd76a">电脑端</b>：WASD 移动 · Shift 疾跑 · 点地图自动走 ·

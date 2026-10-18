@@ -46,7 +46,8 @@ function blazeGenMap(siteId,diffId,gear,savedMap){
   const fromSave=!!(saved&&Array.isArray(saved.spots)&&saved.spots.length);
 
   /* ② 撤离点：贴着不规则边缘放，彼此拉开距离 */
-  const nEx=diff.exfils+(gear&&gear.beacon?1:0);
+  /* 4.0.24：撤离信标已删（玩家反馈"没用"）——撤离点数量只由难度决定 */
+  const nEx=diff.exfils;
   /* 撤离点按方位命名（东侧 / 西南 …）：
      方形战区上"北岭""南门"这类名字跟实际位置对不上，
      报点时报"西南侧撤离点"，队友才能照着方位找过去。 */

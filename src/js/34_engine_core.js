@@ -383,6 +383,25 @@ document.addEventListener('pointerdown',function(e){
   },{passive:true});
 })();
 
+/* 「等这一帧画完再执行」—— 答题反馈的"先画后算"用的就是它（4.0.21）。
+   ---------------------------------------------------------------
+   为什么不用 rAF 一把梭：rAF 的回调跑在**绘制之前**，慢的副作用
+   （唤醒 AudioContext、读写存档）照样会挡住这一帧的提交。
+   所以先等下一帧开始（此时上一帧已经提交），再用 setTimeout 排到这一帧之后。
+
+   4.0.26 补一个 120ms 兜底：**rAF 不保证会来** ——
+   后台标签页、省电模式、无头浏览器的虚拟时钟里都可能长时间不推进，
+   那样"先画后算"的副作用就永远不会执行：音效不响、错题不进本、存档不写。
+   兜底与 rAF 谁先到谁执行，只跑一次。 */
+function afterPaint(fn){
+  let done=false;
+  const run=()=>{if(done)return;done=true;try{fn();}catch(e){}};
+  if(window.requestAnimationFrame){
+    requestAnimationFrame(()=>setTimeout(run,0));
+    setTimeout(run,120);
+  }else setTimeout(run,0);
+}
+
 /* ---------------- 地图预渲染 ---------------- */
 const cv=document.getElementById('game'),ctx=cv.getContext('2d');
 /* 静态地形层：一块**离屏**画布（4.0.17 起）。

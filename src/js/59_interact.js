@@ -142,13 +142,31 @@ function blazeAsk(o){
         try{ok?SFX.right():SFX.wrong();}catch(e){}
         /* 思路灵：战场上花钱要过思路，同样不算独立解出 */
         if(ok){try{lingJudge(q,true,hintLv>0);}catch(e){}}
+        else{
+          /* 【4.0.26】烽火的错题以前**根本不进错题本**。
+             这个分支原来只加了 BLAZE_STATE.totalWrong，没调 wbMiss ——
+             而闯关（39_hints）与练枪（49_drill）都调了。
+             4.0.22 让四个模式共享了同一份错题本，可烽火从来没往里写过一笔，
+             于是「每天先复习」永远复习不到战场上的错题 ——
+             而战场恰恰是错得最多的地方（每题都可能掉信号值）。
+             wbMiss 会写好熟炼度与复习日期，返回 'new' / 'down' / 'back' / 'full'。 */
+          try{
+            const kind=wbMiss({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,
+              opts:q.opts.slice(),rid:o.rid,subject:subjOfRid(o.rid),src2:'烽火'});
+            const box=$('feedback');
+            if(box&&box.className==='no'){
+              box.innerHTML+=kind==='full'
+                ?'<div class="exp">📕 错题本满了（'+WRONG_CAP+' 题），这题没存下</div>'
+                :'<div class="exp">📕 已收进错题本</div>';
+            }
+          }catch(e){}
+        }
       };
       /* ⚠️ 必须是「rAF + 宏任务」两段，不能只 rAF：
          rAF 回调跑在**这一帧绘制之前**，慢的副作用（唤醒 AudioContext）照样会
          把这帧的提交挡住。先等到下一帧开始（此时上一帧已经画完并提交），
          再用 setTimeout 排到这一帧之后 —— 顺序是：写入 → 绘制提交 → 副作用。 */
-      if(window.requestAnimationFrame)requestAnimationFrame(()=>setTimeout(sideFx,0));
-      else setTimeout(sideFx,0);
+      afterPaint(sideFx);
       $('nextBtn').onclick=()=>{
         BZ.busy=false;
         const seq=panelSeq;

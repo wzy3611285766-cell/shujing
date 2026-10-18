@@ -187,7 +187,11 @@ PROBE = r"""
         [{prog:10,cp:5,mine:0,savedAt:100,applied:0},'push','本机练过但从没同步过'],
         [{prog:10,cp:99,mine:1,savedAt:99999,applied:0},'apply','云端明显更新'],
         [{prog:10,cp:99,mine:99999,savedAt:1,applied:0},'push','本机明显更新'],
-        [{prog:10,cp:99,mine:99999,savedAt:99998,applied:0,dirty:true},'push','本机有新改动']
+        [{prog:10,cp:99,mine:99999,savedAt:99998,applied:0,dirty:true},'push','本机有新改动'],
+        /* 4.0.24：两台都在玩、进度半斤八两却对不上 → 必须问，不许静默覆盖 */
+        [{prog:40,cp:55,mine:5000,savedAt:4000,applied:0},'ask','两台都在玩·进度对不上 → 问一句'],
+        [{prog:40,cp:55,mine:5000,savedAt:4000,applied:4000},'none','同一份云端问过就不再问'],
+        [{prog:8,cp:60,mine:1000,savedAt:90000,applied:0},'apply','本机明显落后（新设备）→ 直接取回，别弹框']
       ];
       var bad=[];
       cases.forEach(function(c){
@@ -366,6 +370,53 @@ PROBE = r"""
       }
       useWorld(ADV);syncModeButtons();
       return msg;});
+    /* 阵亡结算不能把"保住的"算成"丢失"（4.0.25）
+       玩家实测：带了 📄 行动保险，东西确实保住了，但结算页写"丢失 N 件"——
+       因为那一行用的是**整个背包**的数量与估值。
+       这里钉的是恒等式：丢失 + 保住 = 背包总数，且保住的必须真的进了仓库。 */
+    out.checks.阵亡结算不误报 = safe('finish',function(){
+      useWorld(BLAZE);
+      const keepStash=JSON.stringify(BLAZE_STATE.stash||{});
+      const keepBag=BZ.bag;
+      let lost=-1,keptN=-1,txt='';
+      try{
+        BLAZE_STATE.pick={site:'math',diff:1};
+        BZ.active=true;BZ.site='math';BZ.diff=1;BZ.carry={};
+        BZ.gear={battery:0,bag:0,ins:1,key:0,scan:0,medkit:0,luck:0};
+        BZ.opened=0;BZ.killed=0;BZ.cards=0;BZ.fee=0;BZ.naked=false;BZ.usedTicket=false;
+        BZ.bag=[{n:'__t1__',e:'🅰️',r:1,val:500,slot:1},
+                {n:'__t2__',e:'🅱️',r:1,val:400,slot:1},
+                {n:'__t3__',e:'🅲',r:0,val:100,slot:1},
+                {n:'__t4__',e:'🅳',r:0,val:80,slot:1},
+                {n:'__t5__',e:'🅴',r:0,val:60,slot:1}];
+        blazeFinish(false,'冒烟');
+        txt=String(panel.textContent||'');
+        const a=txt.match(/丢失\s*(\d+)\s*件/), b=txt.match(/保住了\s*(\d+)\s*件/);
+        lost=a?+a[1]:-1;keptN=b?+b[1]:0;
+      }finally{
+        closePanel();
+        try{BLAZE_STATE.stash=JSON.parse(keepStash);}catch(e){}
+        BZ.bag=keepBag||[];BZ.active=false;BLAZE_STATE.run=null;
+        try{blazeToLobby(true);}catch(e){}
+        useWorld(ADV);syncModeButtons();
+      }
+      if(keptN<=0)throw new Error('带了行动保险却没保住任何东西（应当保住 2 件）');
+      if(lost+keptN!==5)
+        throw new Error('5 件阵亡：结算说丢失 '+lost+' 件、保住 '+keptN+' 件，加起来不等于 5');
+      return '5 件 + 📄行动保险 → 丢失 '+lost+' 件 / 保住 '+keptN+' 件（恒等）';});
+    /* 撤离信标删干净（4.0.24）：玩家说"没用，删掉"。
+       它本来是真加撤离点的（nEx=diff.exfils+(gear.beacon?1:0)），
+       但多一个撤离点在图上几乎看不出来 —— 与其留着占一个购买位，不如删。 */
+    out.checks.撤离信标已删 = safe('gear',function(){
+      if(typeof BLAZE_GEAR!=='undefined'){
+        const hit=[];
+        for(let i=0;i<BLAZE_GEAR.length;i++){
+          const g=BLAZE_GEAR[i]||{};
+          if(/beacon/i.test(String(g.id))||/信标/.test(String(g.n)))hit.push(g.n);
+        }
+        if(hit.length)throw new Error('战备采购里还有信标：'+hit.join('/'));
+      }
+      return '战备清单里已无信标 · 撤离点只由难度决定';});
     /* 默认进场 = 烽火 + 每日复习闸（4.0.22）
        —— 两条都是产品决定（"先复习完才能开新局""第一屏给搜打撤"），
           改起来都只有几行，被重构悄悄弄丢也不会有人发现，所以钉死。
@@ -709,6 +760,53 @@ PROBE = r"""
           },140);
         },140);
       },140);
+    })();
+    /* 烽火的错题必须进错题本（4.0.26）
+       4.0.22 让四个模式共享了同一份错题本，但烽火的答错分支**压根没调 wbMiss** ——
+       于是"每天先复习"永远复习不到战场上的错题，而战场恰恰是错得最多的地方。
+       这里真答一题（点第一个选项，蒙对了就换一题），看它有没有进本。 */
+    (function(){
+      var tries=0,qt='',before=0;
+      function cleanup(){
+        try{
+          [ADV_STATE,EPIC_STATE,BLAZE_STATE,DRILL_STATE].forEach(function(o){
+            if(!o||!o.wrongBook)return;
+            o.wrongBook=o.wrongBook.filter(function(w){return String(w.text)!==qt;});
+          });
+          if(typeof wbShare==='function')wbShare();
+        }catch(e){}
+      }
+      function finish(ok,msg){
+        cleanup();
+        closePanel();useWorld(ADV);syncModeButtons();
+        out.checks.烽火错题进本 = ok
+          ? {ok:true,v:'战场答错一题后已进错题本（'+before+' → '+(before+1)+' 题）· 面板上也写了「已收进错题本」'}
+          : {ok:false,e:msg||'没进本'};
+        dump();
+      }
+      function attempt(){
+        tries++;
+        useWorld(BLAZE);
+        before=(ADV_STATE.wrongBook||[]).length;
+        try{blazeAsk({rid:'func',tier:1,title:'📦 冒烟',sub:'',tag:'',bar:'',
+          nextText:'好',onDone:function(){}});}catch(e){}
+        qt=String((panel.querySelector('.qtext')||{}).textContent||'');
+        var os=panel.querySelectorAll('.opt');
+        if(!os.length){finish(false,'题目没渲染出选项');return;}
+        os[0].click();                       /* 可能是对是错，往下看反馈 */
+        setTimeout(function(){
+          var fb=document.getElementById('feedback');
+          var wrong=fb&&fb.className==='no';
+          if(!wrong){
+            closePanel();
+            if(tries<3)attempt();else finish(false,'连点 3 次都蒙对，测不下去');
+            return;
+          }
+          var hit=(ADV_STATE.wrongBook||[]).some(function(w){return String(w.text)===qt;});
+          finish(hit,hit?'':'答错了，但错题本里找不到这道题');
+        },500);
+      }
+      setTimeout(attempt,1800);
     })();
     dump();
     /* 网页部署下再等一会儿：验「发现新版本 → 提示刷新」这条链路 */
