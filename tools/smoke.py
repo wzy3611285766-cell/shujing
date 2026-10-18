@@ -370,6 +370,30 @@ PROBE = r"""
       }
       useWorld(ADV);syncModeButtons();
       return msg;});
+    /* 时长文案与计时（4.0.28）
+       云存档面板改成显示"玩了多久"（原来印内部加权分，没人看得懂）。 */
+    out.checks.时长文案 = safe('playtext',function(){
+      if(typeof playText!=='function'||typeof playMs!=='function'||typeof playAdd!=='function')
+        throw new Error('没有 playText()/playMs()/playAdd()');
+      const a=playText(30000), b=playText(12*60000), c=playText(3*3600000+12*60000);
+      if(a!=='不到 1 分钟')throw new Error('30 秒应显示「不到 1 分钟」，实得：'+a);
+      if(b!=='12 分钟')throw new Error('12 分钟不对：'+b);
+      if(c!=='3 小时 12 分')throw new Error('3 小时 12 分不对：'+c);
+      /* 落盘 + 单次封顶 */
+      const keep=localStorage.getItem(PLAY_KEY);
+      try{
+        localStorage.setItem(PLAY_KEY,'0');
+        playAdd(65000);
+        if(playMs()!==65000)throw new Error('playAdd 没落盘：'+playMs());
+        playAdd(600000);                       /* 一次灌 10 分钟 → 只算 90 秒 */
+        if(playMs()!==65000+90000)throw new Error('单次增量没封顶：'+playMs());
+      }finally{
+        try{
+          if(keep==null)localStorage.removeItem(PLAY_KEY);
+          else localStorage.setItem(PLAY_KEY,keep);
+        }catch(e){}
+      }
+      return '不到 1 分钟 / 12 分钟 / 3 小时 12 分 · 单次累加封顶 90 秒';});
     /* 阵亡结算不能把"保住的"算成"丢失"（4.0.25）
        玩家实测：带了 📄 行动保险，东西确实保住了，但结算页写"丢失 N 件"——
        因为那一行用的是**整个背包**的数量与估值。

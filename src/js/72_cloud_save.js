@@ -125,6 +125,22 @@ function collectLocal(){
   }catch(e){}
   return keys;
 }
+/* 【4.0.28】给玩家看的"进度"= 玩了多久。
+   ---------------------------------------------------------------
+   上面那个 localProgress() 是**内部加权分**（解碑×3 + 徽章×20 + 精灵×5 +
+   结晶/10 + 错题×1 + 答对/2 …），唯一用途是判断"该不该让云端盖掉本机" ——
+   它不该出现在界面上（4.0.27 曾改成"解碑/徽章/精灵/错题"，
+   玩家还是更想要一句话：**玩了多久**）。
+   云端的时长从存档包里那份原始键值读（pack.keys[PLAY_KEY]），
+   本机的直接读 localStorage。计时规则见 34_engine_core.js 的 playTick。 */
+function packPlayText(pack){
+  let ms=0;
+  try{
+    const raw=(pack&&pack.keys&&pack.keys[PLAY_KEY])||'';
+    if(raw)ms=parseInt(raw,10)||0;
+  }catch(e){}
+  return playText(ms);
+}
 /* 本机这份练到什么程度了 —— 用来判断「要不要让云端盖掉它」。
    刚装好的空档不该拦住云端存档；真练过的档也不能被一份旧云端覆盖。 */
 function localProgress(){
@@ -272,7 +288,8 @@ async function acctFetchCloud(){
   ACCT.cloudBusy=true;
   try{
     const p=await cloudPull();
-    ACCT.cloudInfo=p?{at:p.savedAt,dev:p.dev,prog:Number(p.prog)||0,scoped:!!p.scoped}
+    ACCT.cloudInfo=p?{at:p.savedAt,dev:p.dev,prog:Number(p.prog)||0,scoped:!!p.scoped,
+                     text:packPlayText(p)}          /* 4.0.28：面板上显示"玩了多久" */
                     :{empty:true};
   }catch(e){ACCT.cloudInfo={fail:true};}
   ACCT.cloudBusy=false;
@@ -369,11 +386,14 @@ function askWhich(pack,n){
   /* 已经有面板开着（公告 / 复习闸 / 商店）就别抢屏幕 */
   if(modal.classList.contains('show')){setTimeout(()=>askWhich(pack,n+1),800);return;}
   const at=Number(pack.savedAt)||0;
-  const mine=localProgress(), cp=Number(pack.prog)||0;
+  /* 4.0.28：两边各报"玩了多久 + 最后存档时间"——够用来判断该用哪份，且不用解释任何数字。 */
   openPanel('<h2>☁️ 两份进度不一样</h2>'
-    +'<div class="sub">云端 '+fmtAt(at)+(pack.dev?'（'+esc(pack.dev)+'）':'')+'</div>'
-    +'<div class="row"><button class="btn primary" id="wkCloud">用云端的 · '+cp+' 分</button></div>'
-    +'<div class="row"><button class="btn" id="wkLocal">用本机的 · '+mine+' 分</button></div>');
+    +'<div class="sub">云端 · 玩了 '+esc(packPlayText(pack))
+      +'<br><span style="color:#9cc0e0">'+fmtAt(at)+(pack.dev?' · 来自「'+esc(pack.dev)+'」':'')+'</span></div>'
+    +'<div class="sub">本机 · 玩了 '+esc(playText(playMs()))
+      +'<br><span style="color:#9cc0e0">'+fmtAt(localAt())+'</span></div>'
+    +'<div class="row"><button class="btn primary" id="wkCloud">用云端的</button></div>'
+    +'<div class="row"><button class="btn" id="wkLocal">用本机的</button></div>');
   const c=$('wkCloud'), l=$('wkLocal');
   if(c)c.onclick=()=>{markApplied(at);applyCloud(pack);};
   if(l)l.onclick=()=>{markApplied(at);closePanel();cloudPush(false);};
@@ -520,7 +540,7 @@ function acctBodyHtml(){
       +'padding:11px 13px;font-size:var(--fs-sm);line-height:1.75;color:#cfe6ff">'
       +'账号：'+esc(u.name||u.phone||u.email||'已登录')+'<br>'
       +'本机最后存档：<b>'+fmtAt(localAt())+'</b><br>'
-      +'本机进度：<b>'+localProgress()+'</b> 分<br>'
+      +'本机：玩了 '+esc(playText(playMs()))+'<br>'
       +'自动同步：<b style="color:'+(off?'#ffd76a':'#8fe0a8')+'">'+(off?'已关闭':'开启中')+'</b>'
       +'</div>'
       /* 云端那一行（4.0.19）：两台设备不一致时，这几行就能指出是哪一类问题 */
@@ -536,7 +556,7 @@ function acctBodyHtml(){
           +'border-radius:12px;padding:9px 12px;font-size:var(--fs-xs);color:#cfe6ff;margin:8px 0;line-height:1.7">'
           +'云端存档：<b>'+fmtAt(ci.at)+'</b>'
           +(ci.dev?'（来自「'+esc(ci.dev)+'」）':'')+'<br>'
-          +'云端进度：<b>'+ci.prog+'</b> 分'
+          +'云端：玩了 '+esc(ci.text||'—')
           +(ci.scoped?'':' <span style="color:#ffd76a">· 按账号定位失败，可能读到别人的行</span>')
           +'</div>';
       })()

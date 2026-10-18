@@ -402,6 +402,35 @@ function afterPaint(fn){
   }else setTimeout(run,0);
 }
 
+/* ---------------- 累计游戏时长（4.0.28） ----------------
+   云存档面板要显示"玩了多久"，原来那里印的是内部加权分（没人看得懂）。
+   三条规矩：
+   1. 只算**页面可见**的时间 —— 切后台、锁屏、合上盖子都不算"玩"；
+   2. 每 30 秒落一次盘，单次增量封顶 90 秒（笔记本睡眠后 delta 会是几小时，别一口气灌进去）；
+   3. 键名用 genji_ 开头 → 跟着云存档同步，换设备能接上。 */
+const PLAY_KEY='genji_playtime';
+let playLastAt=Date.now();
+function playMs(){try{return Math.max(0,parseInt(localStorage.getItem(PLAY_KEY),10)||0);}catch(e){return 0;}}
+function playAdd(ms){
+  if(!(ms>0))return;
+  try{localStorage.setItem(PLAY_KEY,String(playMs()+Math.min(ms,90000)));}catch(e){}
+}
+function playTick(){
+  const now=Date.now();
+  if(document.visibilityState==='visible')playAdd(now-playLastAt);
+  playLastAt=now;
+}
+/* 人话：不到 1 分钟 / 12 分钟 / 3 小时 12 分 */
+function playText(ms){
+  const min=Math.floor(Math.max(0,ms||0)/60000);
+  if(min<1)return '不到 1 分钟';
+  const h=Math.floor(min/60), m=min%60;
+  return h?(h+' 小时'+(m?' '+m+' 分':'')):(m+' 分钟');
+}
+setInterval(playTick,30000);
+document.addEventListener('visibilitychange',playTick);
+window.addEventListener('pagehide',playTick);
+
 /* ---------------- 地图预渲染 ---------------- */
 const cv=document.getElementById('game'),ctx=cv.getContext('2d');
 /* 静态地形层：一块**离屏**画布（4.0.17 起）。

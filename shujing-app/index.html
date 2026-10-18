@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>格物纪元 · 四国远征</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.0.26 · 2026-10-18 10:22 · 源码摘要 d1078052 · 74 个模块 -->
+<!-- build: v4.0.28 · 2026-10-18 10:35 · 源码摘要 14a7d69f · 74 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -1764,16 +1764,16 @@ margin-top:8px;padding:5px 0}
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新 · v4.0.26</span>
-        <div class="news-title">修：烽火里答错的题进不了错题本</div>
-        <div class="news-sub">顺带补了后台标签页的一个坑</div>
+        <span class="news-badge">📣 版本更新 · v4.0.28</span>
+        <div class="news-title">云存档改显示「玩了多久」</div>
+        <div class="news-sub">只算看得见的时候 · 从这一版开始记</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
           <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">📕</span><span>烽火答错的题现在会进错题本了 —— 以前那个分支只加了统计，<b>一条都没记</b>，所以「每天先复习」永远复习不到战场上的错题</span></div>
-          <div class="news-li"><span class="e">🌙</span><span>顺带：切到后台 / 省电模式时，音效、错题入本、存档这些「画完再做」的活可能<b>整个不执行</b>（浏览器不派下一帧）。现在补了兜底</span></div>
+          <div class="news-li"><span class="e">⏱️</span><span>云存档面板上那行改成<b>玩了多久</b>：切后台、锁屏、合盖子都不算，只有页面在眼前才计时</span></div>
+          <div class="news-li"><span class="e">🌱</span><span>时长<b>从这一版开始累计</b>，以前玩的时间没有记录，所以刚更新完会显示「不到 1 分钟」</span></div>
         </div>
 
         <div class="news-sec">
@@ -12598,6 +12598,35 @@ function afterPaint(fn){
   }else setTimeout(run,0);
 }
 
+/* ---------------- 累计游戏时长（4.0.28） ----------------
+   云存档面板要显示"玩了多久"，原来那里印的是内部加权分（没人看得懂）。
+   三条规矩：
+   1. 只算**页面可见**的时间 —— 切后台、锁屏、合上盖子都不算"玩"；
+   2. 每 30 秒落一次盘，单次增量封顶 90 秒（笔记本睡眠后 delta 会是几小时，别一口气灌进去）；
+   3. 键名用 genji_ 开头 → 跟着云存档同步，换设备能接上。 */
+const PLAY_KEY='genji_playtime';
+let playLastAt=Date.now();
+function playMs(){try{return Math.max(0,parseInt(localStorage.getItem(PLAY_KEY),10)||0);}catch(e){return 0;}}
+function playAdd(ms){
+  if(!(ms>0))return;
+  try{localStorage.setItem(PLAY_KEY,String(playMs()+Math.min(ms,90000)));}catch(e){}
+}
+function playTick(){
+  const now=Date.now();
+  if(document.visibilityState==='visible')playAdd(now-playLastAt);
+  playLastAt=now;
+}
+/* 人话：不到 1 分钟 / 12 分钟 / 3 小时 12 分 */
+function playText(ms){
+  const min=Math.floor(Math.max(0,ms||0)/60000);
+  if(min<1)return '不到 1 分钟';
+  const h=Math.floor(min/60), m=min%60;
+  return h?(h+' 小时'+(m?' '+m+' 分':'')):(m+' 分钟');
+}
+setInterval(playTick,30000);
+document.addEventListener('visibilitychange',playTick);
+window.addEventListener('pagehide',playTick);
+
 /* ---------------- 地图预渲染 ---------------- */
 const cv=document.getElementById('game'),ctx=cv.getContext('2d');
 /* 静态地形层：一块**离屏**画布（4.0.17 起）。
@@ -21424,7 +21453,7 @@ startGame();
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.0.26-d314ba53';
+const NEWS_KEY='genji_news', NEWS_VER='v4.0.28-653a052c';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
@@ -26654,7 +26683,7 @@ function showMenu(){
   const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'格物纪元 · 四国远征'));
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
-     没经过构建（4.0.26 占位）时不显示，免得把占位符贴到界面上。 */
+     没经过构建（4.0.28 占位）时不显示，免得把占位符贴到界面上。 */
   const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
     ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
@@ -27269,6 +27298,22 @@ function collectLocal(){
   }catch(e){}
   return keys;
 }
+/* 【4.0.28】给玩家看的"进度"= 玩了多久。
+   ---------------------------------------------------------------
+   上面那个 localProgress() 是**内部加权分**（解碑×3 + 徽章×20 + 精灵×5 +
+   结晶/10 + 错题×1 + 答对/2 …），唯一用途是判断"该不该让云端盖掉本机" ——
+   它不该出现在界面上（4.0.27 曾改成"解碑/徽章/精灵/错题"，
+   玩家还是更想要一句话：**玩了多久**）。
+   云端的时长从存档包里那份原始键值读（pack.keys[PLAY_KEY]），
+   本机的直接读 localStorage。计时规则见 34_engine_core.js 的 playTick。 */
+function packPlayText(pack){
+  let ms=0;
+  try{
+    const raw=(pack&&pack.keys&&pack.keys[PLAY_KEY])||'';
+    if(raw)ms=parseInt(raw,10)||0;
+  }catch(e){}
+  return playText(ms);
+}
 /* 本机这份练到什么程度了 —— 用来判断「要不要让云端盖掉它」。
    刚装好的空档不该拦住云端存档；真练过的档也不能被一份旧云端覆盖。 */
 function localProgress(){
@@ -27416,7 +27461,8 @@ async function acctFetchCloud(){
   ACCT.cloudBusy=true;
   try{
     const p=await cloudPull();
-    ACCT.cloudInfo=p?{at:p.savedAt,dev:p.dev,prog:Number(p.prog)||0,scoped:!!p.scoped}
+    ACCT.cloudInfo=p?{at:p.savedAt,dev:p.dev,prog:Number(p.prog)||0,scoped:!!p.scoped,
+                     text:packPlayText(p)}          /* 4.0.28：面板上显示"玩了多久" */
                     :{empty:true};
   }catch(e){ACCT.cloudInfo={fail:true};}
   ACCT.cloudBusy=false;
@@ -27513,11 +27559,14 @@ function askWhich(pack,n){
   /* 已经有面板开着（公告 / 复习闸 / 商店）就别抢屏幕 */
   if(modal.classList.contains('show')){setTimeout(()=>askWhich(pack,n+1),800);return;}
   const at=Number(pack.savedAt)||0;
-  const mine=localProgress(), cp=Number(pack.prog)||0;
+  /* 4.0.28：两边各报"玩了多久 + 最后存档时间"——够用来判断该用哪份，且不用解释任何数字。 */
   openPanel('<h2>☁️ 两份进度不一样</h2>'
-    +'<div class="sub">云端 '+fmtAt(at)+(pack.dev?'（'+esc(pack.dev)+'）':'')+'</div>'
-    +'<div class="row"><button class="btn primary" id="wkCloud">用云端的 · '+cp+' 分</button></div>'
-    +'<div class="row"><button class="btn" id="wkLocal">用本机的 · '+mine+' 分</button></div>');
+    +'<div class="sub">云端 · 玩了 '+esc(packPlayText(pack))
+      +'<br><span style="color:#9cc0e0">'+fmtAt(at)+(pack.dev?' · 来自「'+esc(pack.dev)+'」':'')+'</span></div>'
+    +'<div class="sub">本机 · 玩了 '+esc(playText(playMs()))
+      +'<br><span style="color:#9cc0e0">'+fmtAt(localAt())+'</span></div>'
+    +'<div class="row"><button class="btn primary" id="wkCloud">用云端的</button></div>'
+    +'<div class="row"><button class="btn" id="wkLocal">用本机的</button></div>');
   const c=$('wkCloud'), l=$('wkLocal');
   if(c)c.onclick=()=>{markApplied(at);applyCloud(pack);};
   if(l)l.onclick=()=>{markApplied(at);closePanel();cloudPush(false);};
@@ -27664,7 +27713,7 @@ function acctBodyHtml(){
       +'padding:11px 13px;font-size:var(--fs-sm);line-height:1.75;color:#cfe6ff">'
       +'账号：'+esc(u.name||u.phone||u.email||'已登录')+'<br>'
       +'本机最后存档：<b>'+fmtAt(localAt())+'</b><br>'
-      +'本机进度：<b>'+localProgress()+'</b> 分<br>'
+      +'本机：玩了 '+esc(playText(playMs()))+'<br>'
       +'自动同步：<b style="color:'+(off?'#ffd76a':'#8fe0a8')+'">'+(off?'已关闭':'开启中')+'</b>'
       +'</div>'
       /* 云端那一行（4.0.19）：两台设备不一致时，这几行就能指出是哪一类问题 */
@@ -27680,7 +27729,7 @@ function acctBodyHtml(){
           +'border-radius:12px;padding:9px 12px;font-size:var(--fs-xs);color:#cfe6ff;margin:8px 0;line-height:1.7">'
           +'云端存档：<b>'+fmtAt(ci.at)+'</b>'
           +(ci.dev?'（来自「'+esc(ci.dev)+'」）':'')+'<br>'
-          +'云端进度：<b>'+ci.prog+'</b> 分'
+          +'云端：玩了 '+esc(ci.text||'—')
           +(ci.scoped?'':' <span style="color:#ffd76a">· 按账号定位失败，可能读到别人的行</span>')
           +'</div>';
       })()
@@ -27809,7 +27858,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.0.26';
+const BUILD_VER='4.0.28';
 const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
 function upbarSkipped(v){
   try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}
