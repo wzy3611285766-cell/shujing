@@ -20,7 +20,7 @@ const DRILL_SPOTS=[
 
 const DRILL={
   id:'drill',W:1500,H:1060,
-  title:'格物纪元 · 练枪场',
+  title:'数境 · 练枪场',
   sub:'高考压轴 · 思路详解 · 四科无限题',
   regions:DRILL_REGIONS,bridges:[],spots:DRILL_SPOTS,loose:[],spirits:[],
   st:DRILL_STATE,save:SAVE_KEY_DRILL,actR:78,
@@ -120,7 +120,7 @@ function questTextDrill(){
 function drillIntroHtml(){
   return `
     <h2>🎯 练枪场</h2>
-    <div class="sub">格物纪元 · 第四模式</div>
+    <div class="sub">数境 · 第四模式</div>
     <div class="it-list">
       <div class="il">🎯 <b>四科无限题</b>：数 / 理 / 化 / 生，走近场上的训练台随时开练</div>
       <div class="il">🧭 <b>思路详解</b>：先选「从哪儿入手」，选完给为什么 + 第一步落点 —— 这是练枪独有的环节</div>

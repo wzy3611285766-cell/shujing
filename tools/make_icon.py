@@ -1,129 +1,153 @@
 # -*- coding: utf-8 -*-
-"""生成「同步到 GitHub」快捷方式用的图标（不依赖任何第三方库）。
+"""生成「数境 · 四国远征」的游戏图标（简约版）。
 
-画的是游戏主色（深蓝底）+ 一对上下箭头（同步），输出标准的 32 位 .ico。
-想换颜色 / 换图案，改下面的 COL_* 和 draw() 就行，然后重新运行：
-    python tools/make_icon.py
+方案 A：单晶四点 —— 一枚金色结晶 + 四方四个小菱形
+方案 B：远征路径 —— 一条折线穿过四个节点，终点是结晶
+两个方案都只用「深蓝 + 金色」两色，保证小尺寸下依然清晰。
 """
 import os
-import struct
-import sys
+import shutil
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "tools", "assets", "sync.ico")
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
-COL_BG_TOP = (18, 42, 84)        # 深蓝（和游戏 theme-color 同色系）
-COL_BG_BOT = (9, 18, 34)
-COL_UP = (255, 215, 106)         # 游戏里的「结晶金」
-COL_DOWN = (126, 200, 255)       # 冷蓝
-COL_GO = (127, 227, 160)         # 上线绿
-COL_WHITE = (240, 248, 255)
-SIZES = [16, 32, 48, 64]
-SS = 4                           # 超采样倍数，用来做抗锯齿
-SIZE = 48                        # 绘图坐标系边长
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(BASE, "抖音上传准备材料", "assets", "images")
+ALT = os.path.join(OUT, "_alt")
+
+DEEP = (7, 15, 27)
+MID = (18, 34, 54)
+GOLD_HI = (255, 231, 168)
+GOLD = (255, 207, 96)
+GOLD_LO = (238, 152, 32)
 
 
-def in_round_rect(x, y, x0, y0, x1, y1, r):
-    """圆角矩形判定：把点夹到「内矩形」上，再比距离。"""
-    if x < x0 or x > x1 or y < y0 or y > y1:
-        return False
-    cx = min(max(x, x0 + r), x1 - r)
-    cy = min(max(y, y0 + r), y1 - r)
-    return (x - cx) ** 2 + (y - cy) ** 2 <= r * r
+def bg(size, scale):
+    w = h = size * scale
+    grad = Image.radial_gradient("L").resize((w, h), Image.LANCZOS)
+    img = ImageOps.colorize(grad, black=MID, white=DEEP)
+    # 顶部一层极淡的冷光，避免整块死黑
+    glow = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(glow).ellipse(
+        [w * 0.18, h * 0.10, w * 0.82, h * 0.66], fill=48)
+    glow = glow.filter(ImageFilter.GaussianBlur(w * 0.16))
+    img.paste(Image.new("RGB", (w, h), (34, 62, 96)), (0, 0), glow)
+    return img.convert("RGBA")
 
 
-def in_tri(px, py, ax, ay, bx, by, cx, cy):
-    d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by)
-    d2 = (px - cx) * (by - cy) - (bx - cx) * (py - cy)
-    d3 = (px - ax) * (cy - ay) - (cx - ax) * (py - ay)
-    neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
-    pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
-    return not (neg and pos)
+def crystal(im, cx, cy, half_h, half_w, scale):
+    ov = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+
+    halo = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    ImageDraw.Draw(halo).ellipse(
+        [cx - half_w * 2.6, cy - half_h * 1.25,
+         cx + half_w * 2.6, cy + half_h * 1.25],
+        fill=(255, 196, 104, 46))
+    halo = halo.filter(ImageFilter.GaussianBlur(half_h * 0.30))
+    im.alpha_composite(halo)
+
+    left = [(cx, cy - half_h), (cx - half_w, cy), (cx, cy + half_h), (cx, cy)]
+    right = [(cx, cy - half_h), (cx + half_w, cy), (cx, cy + half_h), (cx, cy)]
+    d.polygon(left, fill=GOLD_HI + (255,))
+    d.polygon(right, fill=GOLD_LO + (255,))
+    # 中缝高光
+    d.line([(cx, cy - half_h), (cx, cy + half_h)],
+           fill=(255, 248, 220, 200), width=max(1, int(1.8 * scale)))
+    im.alpha_composite(ov)
 
 
-def sample(x, y, size, kind):
-    """在 48×48 的坐标系里判断这个点属于什么颜色，返回 (r,g,b,a) 或 None。"""
-    u = x * SIZE / size
-    v = y * SIZE / size
-    # 底：圆角方
-    if not in_round_rect(u, v, 2, 2, 46, 46, 11):
-        return None
-    bg = v / 48.0
-    bg = 0.0 if bg < 0 else (1.0 if bg > 1 else bg)
-
-    if kind == "publish":
-        # 「上线」图标：向上箭头 + 底托（= 上传/发布）
-        if 12 <= u <= 36 and 34 <= v <= 38.5:
-            return COL_GO + (255,)
-        if 21 <= u <= 27 and 15 <= v <= 34:
-            return COL_WHITE + (255,)
-        if in_tri(u, v, 15.5, 16, 32.5, 16, 24, 6):
-            return COL_WHITE + (255,)
-    else:
-        # 「同步」图标：一上一下两支箭头
-        if 17 <= u <= 22 and 22 <= v <= 38:
-            return COL_UP + (255,)
-        if in_tri(u, v, 12, 22, 27, 22, 19.5, 9):
-            return COL_UP + (255,)
-        if 26 <= u <= 31 and 10 <= v <= 26:
-            return COL_DOWN + (255,)
-        if in_tri(u, v, 21, 26, 36, 26, 28.5, 39):
-            return COL_DOWN + (255,)
-
-    return tuple(int(COL_BG_TOP[i] + (COL_BG_BOT[i] - COL_BG_TOP[i]) * bg) for i in range(3)) + (255,)
+def diamond(d, cx, cy, r, fill):
+    d.polygon([(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)], fill=fill)
 
 
-def render(size, kind):
-    """返回自下而上的 BGRA 行（BMP 用）。"""
-    big = size * SS
-    rows = []
-    for y in range(size - 1, -1, -1):          # BMP 自下而上
-        row = bytearray()
-        for x in range(size):
-            r = g = b = a = 0
-            for sy in range(SS):
-                for sx in range(SS):
-                    c = sample(x * SS + sx + 0.5, y * SS + sy + 0.5, big, kind)
-                    if c:
-                        r += c[0]; g += c[1]; b += c[2]; a += c[3]
-            n = SS * SS
-            row += bytes((b // n, g // n, r // n, a // n))
-        rows.append(bytes(row))
-    return rows
+def icon_a(size=512, scale=4):
+    """方案 A：四切面结晶。一枚菱形切成四片，四面即四国。"""
+    S = size * scale
+    im = bg(size, scale)
+    cx = cy = S / 2
+    h, w = S * 0.325, S * 0.188
+
+    halo = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(halo).ellipse(
+        [cx - w * 2.2, cy - h * 1.18, cx + w * 2.2, cy + h * 1.18],
+        fill=(255, 198, 106, 58))
+    halo = halo.filter(ImageFilter.GaussianBlur(h * 0.34))
+    im.alpha_composite(halo)
+
+    ov = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    faces = [
+        ([(cx, cy - h), (cx - w, cy), (cx, cy)], (255, 240, 192)),
+        ([(cx, cy - h), (cx + w, cy), (cx, cy)], (255, 205, 92)),
+        ([(cx, cy + h), (cx - w, cy), (cx, cy)], (247, 164, 42)),
+        ([(cx, cy + h), (cx + w, cy), (cx, cy)], (198, 103, 16)),
+    ]
+    for poly, col in faces:
+        d.polygon(poly, fill=col + (255,))
+
+    d.line([(cx, cy - h), (cx, cy + h)],
+           fill=(255, 250, 228, 120), width=max(1, int(1.2 * scale)))
+    d.line([(cx - w, cy), (cx + w, cy)],
+           fill=(255, 250, 228, 70), width=max(1, int(1.2 * scale)))
+    d.polygon([(cx, cy - h), (cx + w, cy), (cx, cy + h), (cx - w, cy)],
+              outline=(255, 246, 214, 130), width=max(1, int(1.4 * scale)))
+    im.alpha_composite(ov)
+
+    return im.convert("RGB").resize((size, size), Image.LANCZOS)
 
 
-def ico_image(size, kind):
-    rows = render(size, kind)
-    xor = b"".join(rows)
-    mask_row = ((size + 31) // 32) * 4
-    and_mask = b"\x00" * (mask_row * size)
-    header = struct.pack("<IiiHHIIiiII", 40, size, size * 2, 1, 32, 0,
-                         len(xor) + len(and_mask), 0, 0, 0, 0)
-    return header + xor + and_mask
+def icon_b(size=512, scale=4):
+    """方案 B：远征路径。一格一格推进，终点是结晶。"""
+    S = size * scale
+    im = bg(size, scale)
 
+    pts = [(S * 0.180, S * 0.780), (S * 0.370, S * 0.620),
+           (S * 0.585, S * 0.655), (S * 0.760, S * 0.300)]
+    ov = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
 
-def write_ico(path, kind):
-    images = [(s, ico_image(s, kind)) for s in SIZES]
-    out = bytearray(struct.pack("<HHH", 0, 1, len(images)))
-    offset = 6 + 16 * len(images)
-    for s, data in images:
-        out += struct.pack("<BBBBHHII", s if s < 256 else 0, s if s < 256 else 0,
-                           0, 0, 1, 32, len(data), offset)
-        offset += len(data)
-    for _s, data in images:
-        out += data
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    open(path, "wb").write(bytes(out))
-    print("图标已生成：%s（%s · %d 个尺寸 · %d 字节）"
-          % (os.path.relpath(path, ROOT), kind, len(images), len(out)))
+    # 路径外发光
+    glow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(glow).line(pts, fill=(255, 200, 110, 90),
+                              width=int(9 * scale), joint="curve")
+    glow = glow.filter(ImageFilter.GaussianBlur(7 * scale))
+    ov.alpha_composite(glow)
+
+    d.line(pts, fill=(255, 214, 120, 235), width=int(4.2 * scale), joint="curve")
+
+    # 起点与中途节点
+    for px, py in pts[:-1]:
+        d.ellipse([px - 7.5 * scale, py - 7.5 * scale,
+                   px + 7.5 * scale, py + 7.5 * scale],
+                  fill=(9, 20, 34, 255), outline=(255, 214, 120, 255),
+                  width=int(3 * scale))
+
+    im.alpha_composite(ov)
+    # 终点结晶
+    crystal(im, pts[-1][0], pts[-1][1], S * 0.105, S * 0.048, scale)
+
+    return im.convert("RGB").resize((size, size), Image.LANCZOS)
 
 
 def main():
-    want = sys.argv[1] if len(sys.argv) > 1 else "all"
-    if want in ("all", "sync"):
-        write_ico(os.path.join(ROOT, "tools", "assets", "sync.ico"), "sync")
-    if want in ("all", "publish"):
-        write_ico(os.path.join(ROOT, "tools", "assets", "publish.ico"), "publish")
+    os.makedirs(ALT, exist_ok=True)
+    cur = os.path.join(OUT, "icon_512x512.png")
+    v1 = os.path.join(ALT, "icon_v1_rosette.png")
+    if os.path.exists(cur) and not os.path.exists(v1):
+        shutil.copy2(cur, v1)
+
+    a = icon_a()
+    a.save(cur, "PNG", optimize=True)
+
+    b = icon_b()
+    b.save(os.path.join(ALT, "icon_alt_path.png"), "PNG", optimize=True)
+
+    # 小尺寸预览，检查 48px 下是否还认得出
+    a.resize((48, 48), Image.LANCZOS).save(os.path.join(ALT, "preview_a_48.png"))
+    b.resize((48, 48), Image.LANCZOS).save(os.path.join(ALT, "preview_b_48.png"))
+
+    for p in (cur, os.path.join(ALT, "icon_alt_path.png")):
+        print(p, os.path.getsize(p) // 1024, "KB")
 
 
 if __name__ == "__main__":

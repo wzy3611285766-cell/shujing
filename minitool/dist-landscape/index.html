@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1b2a">
+<title>数境</title>
+<!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
+<!-- build: minitool v4.0.28 · 2026-10-22 21:36 · 小工具离线包 -->
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+
+/* ============ 响应式基准 ============
+   全部尺寸以「屏幕短边」为尺子：短边 390px（iPhone 14）时取到设计值，
+   更窄的屏幕等比缩小，更宽的屏幕放到上限后不再变（免得平板上按钮大得离谱）。
+   短边而不是宽度：横屏手机宽度很大但高度很小，按宽度算会把控件撑爆。 */
+:root{
+  --vmin:100vw;
+  --vmax:100vw;
+  --safeT:0px;
+  --safeB:0px;
+  --safeL:0px;
+  --safeR:0px;
+
+  /* 字号档位（括号内 = 短边 390px 时的值）
+     等比阶梯：相邻两档固定放大 15%，11.5 → 26.6 正好七级。
+     以前是 11 / 12.5 / 14 / 15 / 18 / 22 / 26，台阶忽大忽小
+     （14→15 只差 7%，几乎看不出分档），同一层级里大屏小屏还各涨各的。
+     现在每档的下限≈中值×0.88、上限≈中值×1.28，全档统一，
+     小屏不会糊、大屏也不会让正文涨到和标题一样大。 */
+  --fs-2xs:calc(var(--vmin) * .0256);  /* 10.0  刻度 / 角标（微文字） */
+  --fs-xs:calc(var(--vmin) * .0295);  /* 11.5  角标 / 标签 / 辅助说明 */
+  --fs-sm:calc(var(--vmin) * .0338);  /* 13.2  次要文字 / 步骤 / 数据 */
+  --fs-md:calc(var(--vmin) * .0390);  /* 15.2  正文基准 / 按钮 */
+  --fs-lg:calc(var(--vmin) * .0449);  /* 17.5  强调 / 名称 / 卡片标题 */
+  --fs-xl:calc(var(--vmin) * .0515);    /* 20.1  小标题 / 选项 / 奖励名 */
+  --fs-2xl:calc(var(--vmin) * .0592);     /* 23.1  标题 / 题干 */
+  --fs-3xl:calc(var(--vmin) * .0682);   /* 26.6  横幅大标题 */
+
+  /* 行高档位：原本散着 1.6 / 1.65 / 1.7 / 1.75 / 1.8 五种"正文行距"、
+     1.85 / 1.9 / 1.95 / 2 四种"长文行距"，同一层级里差出 10% 以上。
+     收敛成两档：正文章节 1.7、长段落 1.9，读起来节奏就齐了。 */
+  --lh-tight:1.3;    /* 单行 / 按钮 / 名称 */
+  --lh-snug:1.45;    /* 选项 / 短文本 */
+  --lh-base:1.7;     /* 正文 / 列表 / 说明 */
+  --lh-loose:1.9;    /* 长段落 / 解析 / 帮助 */
+
+  /* 间距 / 圆角 */
+  --gap:calc(var(--vmin) * .0154);       /* 6    */
+  --pad:calc(var(--vmin) * .0205);      /* 8    */
+  --r:calc(var(--vmin) * .0359);       /* 14   */
+
+  /* 底部控件：矮屏（横屏手机）必须缩小，否则会顶到屏幕中间 */
+  --stick:calc(var(--vmin) * .3385);  /* 132  */
+  --act:calc(var(--vmin) * .2718);    /* 106  */
+
+  /* 顶栏实测高度，由 JS 写入；任务条据此下移，避免和换行后的按钮叠在一起 */
+  --topH:52px;
+  /* 新版本通知栏的高度，平时 0；顶上那条通知栏出来后由 JS 实测写入，
+     顶栏 / 任务条 / toast 都按它整体下移（4.0.6） */
+  --upH:0px;
+
+  /* ============ iOS 玻璃按键系统（3.4.0）============
+     照搬「学习目标管理台」的三层玻璃结构，游戏是夜航主题，全天候取深色档：
+       1. 底面 —— 半透明玻璃 + backdrop 模糊（把身后的地图 / 面板揉进来）
+       2. 边缘 —— 0.5px 发丝线：上亮下暗，模拟玻璃厚度
+       3. 高光 —— 顶部 inset 高光 + 一道自上而下衰减的镜面渐变
+     金色 = 游戏主色，对应工作台的 iOS 橙；绿 / 红 = 对错反馈色。 */
+  --gb-blur:blur(24px) saturate(190%);
+  --gb-blur-sm:blur(16px) saturate(180%);
+  /* 面板里的按钮：白色玻璃（深底上的浅玻璃，同工作台深色档） */
+  --gb-face:linear-gradient(180deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,.08) 100%);
+  --gb-face-2:linear-gradient(180deg,rgba(255,255,255,.11) 0%,rgba(255,255,255,.05) 100%);
+  /* 压在地图上的按钮 / chip：深蓝玻璃，浅色字才立得住 */
+  --gb-face-deep:linear-gradient(180deg,rgba(24,46,74,.82) 0%,rgba(10,24,40,.72) 100%);
+  --gb-edge-hi:inset 0 .5px 0 rgba(255,255,255,.18);
+  --gb-edge-lo:inset 0 -.5px 0 rgba(0,0,0,.34);
+  --gb-hair:0 0 0 .5px rgba(255,255,255,.10);
+  --gb-drop:0 1px 2px rgba(0,0,0,.34),0 8px 20px -10px rgba(0,0,0,.55);
+  --gb-sheen:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.04) 42%,rgba(255,255,255,0) 62%);
+  --gb-press-lift:inset 0 2px 6px rgba(0,0,0,.40);
+  /* 有色玻璃（Tinted Glass）：金色主键 / 对错反馈 */
+  --gb-tint-gold:linear-gradient(180deg,rgba(255,215,106,.94) 0%,rgba(245,159,43,.92) 100%);
+  --gb-tint-gold-hi:inset 0 .5px 0 rgba(255,255,255,.42);
+  --gb-tint-gold-edge:0 0 0 .5px rgba(255,214,110,.42);
+  --gb-tint-gold-drop:0 8px 22px -8px rgba(245,159,43,.55);
+  --gb-tint-green:linear-gradient(180deg,rgba(52,199,123,.36) 0%,rgba(52,199,123,.22) 100%);
+  --gb-tint-green-edge:0 0 0 .5px rgba(110,231,183,.42);
+  --gb-tint-red:linear-gradient(180deg,rgba(255,107,107,.32) 0%,rgba(255,107,107,.20) 100%);
+  --gb-tint-red-edge:0 0 0 .5px rgba(255,138,128,.42);
+}
+@media (orientation:portrait){:root{--vmin:100vw;--vmax:100vh}}
+@media (orientation:landscape){:root{--vmin:100vh;--vmax:100vw}}
+@supports (font-size:clamp(1px,1px,1px)){:root{
+  --vmin:100vw;
+  --vmin:min(100vw,100vh);
+  --vmax:100vw;
+  --vmax:max(100vw,100vh);
+  --safeT:env(safe-area-inset-top,0px);
+  --safeB:env(safe-area-inset-bottom,0px);
+  --safeL:env(safe-area-inset-left,0px);
+  --safeR:env(safe-area-inset-right,0px);
+
+  /* 字号档位（括号内 = 短边 390px 时的值）
+     等比阶梯：相邻两档固定放大 15%，11.5 → 26.6 正好七级。
+     以前是 11 / 12.5 / 14 / 15 / 18 / 22 / 26，台阶忽大忽小
+     （14→15 只差 7%，几乎看不出分档），同一层级里大屏小屏还各涨各的。
+     现在每档的下限≈中值×0.88、上限≈中值×1.28，全档统一，
+     小屏不会糊、大屏也不会让正文涨到和标题一样大。 */
+  --fs-2xs:clamp(9px,  calc(var(--vmin) * .0256), 12.5px);  /* 10.0  刻度 / 角标（微文字） */
+  --fs-xs:clamp(10.2px, calc(var(--vmin) * .0295), 14.5px);  /* 11.5  角标 / 标签 / 辅助说明 */
+  --fs-sm:clamp(11.6px, calc(var(--vmin) * .0338), 16.8px);  /* 13.2  次要文字 / 步骤 / 数据 */
+  --fs-md:clamp(13.2px, calc(var(--vmin) * .0390), 19.5px);  /* 15.2  正文基准 / 按钮 */
+  --fs-lg:clamp(14.8px, calc(var(--vmin) * .0449), 22.5px);  /* 17.5  强调 / 名称 / 卡片标题 */
+  --fs-xl:clamp(16.6px, calc(var(--vmin) * .0515), 26px);    /* 20.1  小标题 / 选项 / 奖励名 */
+  --fs-2xl:clamp(19px, calc(var(--vmin) * .0592), 30px);     /* 23.1  标题 / 题干 */
+  --fs-3xl:clamp(21.5px, calc(var(--vmin) * .0682), 34px);   /* 26.6  横幅大标题 */
+
+  /* 行高档位：原本散着 1.6 / 1.65 / 1.7 / 1.75 / 1.8 五种"正文行距"、
+     1.85 / 1.9 / 1.95 / 2 四种"长文行距"，同一层级里差出 10% 以上。
+     收敛成两档：正文章节 1.7、长段落 1.9，读起来节奏就齐了。 */
+  --lh-tight:1.3;    /* 单行 / 按钮 / 名称 */
+  --lh-snug:1.45;    /* 选项 / 短文本 */
+  --lh-base:1.7;     /* 正文 / 列表 / 说明 */
+  --lh-loose:1.9;    /* 长段落 / 解析 / 帮助 */
+
+  /* 间距 / 圆角 */
+  --gap:clamp(5px, calc(var(--vmin) * .0154), 9px);       /* 6    */
+  --pad:clamp(6px, calc(var(--vmin) * .0205), 11px);      /* 8    */
+  --r:clamp(11px, calc(var(--vmin) * .0359), 18px);       /* 14   */
+
+  /* 底部控件：矮屏（横屏手机）必须缩小，否则会顶到屏幕中间 */
+  --stick:clamp(84px, calc(var(--vmin) * .3385), 148px);  /* 132  */
+  --act:clamp(70px, calc(var(--vmin) * .2718), 118px);    /* 106  */
+
+  /* 顶栏实测高度，由 JS 写入；任务条据此下移，避免和换行后的按钮叠在一起 */
+  --topH:52px;
+  /* 新版本通知栏的高度，平时 0；顶上那条通知栏出来后由 JS 实测写入，
+     顶栏 / 任务条 / toast 都按它整体下移（4.0.6） */
+  --upH:0px;
+
+  /* ============ iOS 玻璃按键系统（3.4.0）============
+     照搬「学习目标管理台」的三层玻璃结构，游戏是夜航主题，全天候取深色档：
+       1. 底面 —— 半透明玻璃 + backdrop 模糊（把身后的地图 / 面板揉进来）
+       2. 边缘 —— 0.5px 发丝线：上亮下暗，模拟玻璃厚度
+       3. 高光 —— 顶部 inset 高光 + 一道自上而下衰减的镜面渐变
+     金色 = 游戏主色，对应工作台的 iOS 橙；绿 / 红 = 对错反馈色。 */
+  --gb-blur:blur(24px) saturate(190%);
+  --gb-blur-sm:blur(16px) saturate(180%);
+  /* 面板里的按钮：白色玻璃（深底上的浅玻璃，同工作台深色档） */
+  --gb-face:linear-gradient(180deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,.08) 100%);
+  --gb-face-2:linear-gradient(180deg,rgba(255,255,255,.11) 0%,rgba(255,255,255,.05) 100%);
+  /* 压在地图上的按钮 / chip：深蓝玻璃，浅色字才立得住 */
+  --gb-face-deep:linear-gradient(180deg,rgba(24,46,74,.82) 0%,rgba(10,24,40,.72) 100%);
+  --gb-edge-hi:inset 0 .5px 0 rgba(255,255,255,.18);
+  --gb-edge-lo:inset 0 -.5px 0 rgba(0,0,0,.34);
+  --gb-hair:0 0 0 .5px rgba(255,255,255,.10);
+  --gb-drop:0 1px 2px rgba(0,0,0,.34),0 8px 20px -10px rgba(0,0,0,.55);
+  --gb-sheen:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.04) 42%,rgba(255,255,255,0) 62%);
+  --gb-press-lift:inset 0 2px 6px rgba(0,0,0,.40);
+  /* 有色玻璃（Tinted Glass）：金色主键 / 对错反馈 */
+  --gb-tint-gold:linear-gradient(180deg,rgba(255,215,106,.94) 0%,rgba(245,159,43,.92) 100%);
+  --gb-tint-gold-hi:inset 0 .5px 0 rgba(255,255,255,.42);
+  --gb-tint-gold-edge:0 0 0 .5px rgba(255,214,110,.42);
+  --gb-tint-gold-drop:0 8px 22px -8px rgba(245,159,43,.55);
+  --gb-tint-green:linear-gradient(180deg,rgba(52,199,123,.36) 0%,rgba(52,199,123,.22) 100%);
+  --gb-tint-green-edge:0 0 0 .5px rgba(110,231,183,.42);
+  --gb-tint-red:linear-gradient(180deg,rgba(255,107,107,.32) 0%,rgba(255,107,107,.20) 100%);
+  --gb-tint-red-edge:0 0 0 .5px rgba(255,138,128,.42);
+}}
+/* 支持 dvh 的浏览器（iOS 15.4+ / Chrome 108+）改用动态视口，
+   地址栏收起时不会把底部控件顶出可视区 */
+@supports (height:100dvh){
+  :root{--vmin:100vw;--vmin:min(100vw,100dvh);--vmax:100vw;--vmax:max(100vw,100dvh)}
+}
+
+/* ============ 压在地图上的毛玻璃：一律不用（4.0.17） ============
+   为什么：这层模糊的底是**每帧都在变**的地图 canvas，所以合成器每帧都得
+   把它重算一遍 —— 平板上实测（tools/perf.py 消融）单这一条就把帧间隔
+   从 16.7ms 顶到 33.3ms，也就是 60fps 直接变 30fps。
+   收掉之后换成"稍不透明的同色底"：颜色还是原来那套深蓝，
+   在深色地图上观感差别极小（可对照汇报页里的截图），成本归零。
+
+   ⚠️ 为什么只收"HUD"，不收面板：#modal / #news 一打开，地图就停画了
+   （paceDraw 的规矩：面板开着不重画地图），背景于是变成静止画面，
+   模糊只算一次 —— **一分钱不花**，却保住了"点开面板"那一下的玻璃质感。
+   所以模糊保留在面板与公告里（body.perf-lite 才会连它们一起收掉）。
+
+   实现方式：**就地改下面那几条组件规则**（#upbar / .chip / #quest / #pcHint /
+   #topbar .btn），不在这里加覆盖 —— 同选择器出现两条时后者全盖前者，
+   体检的静态分析会把它当成"零贡献规则"报出来（4.0.18 就报过一次）。 */
+
+/* ============ 面板内部的毛玻璃：一律不用（4.0.19） ============
+   实测（tools/scrollperf.py，40 行列表每帧滚 6px）：
+     带毛玻璃  帧间隔 p50 266.7ms（3.7fps）
+     去掉之后  帧间隔 p50  33.3ms（30fps）        ← 8 倍
+   原因很直白：每个按钮 / 选项 / 菜单项各挂一层 blur(16px) saturate(180%)，
+   滚动时它们的"底"一直在动，合成器就得每帧把几十层模糊全部重算一遍。
+   而它们底下是**面板自己的深色底**，本来就是平的 —— 模糊几乎不产生任何可见效果，
+   只是在滚动时白白烧掉一帧的预算。去掉之后观感靠渐变 + 描边 + 高光撑着，看不出差别。
+   ⚠️ #modal / #news 自己那层全屏模糊也一起去掉了（在各自规则里改的）：
+      我一度以为"面板开着地图就停画，那层模糊只算一次、不花钱"，
+      但实测反过来 —— 面板一滚动就要重新合成整屏模糊，40 行列表 p50 100ms。
+      现在整站**零 backdrop-filter**，玻璃感靠不透明度 + 描边 + 高光撑着。
+   ⚠️ **背景**用 :not() 让开 .primary / .on（那两种有金色状态底，不能刷成白玻璃），
+      但**模糊要连它们一起关** —— 之前一起排除了，结果整页还剩三颗金色主键挂着
+      blur(16px)（开机那颗「开始」、公告那颗、面板那颗「确认」），
+      是"整页零毛玻璃"这条检查把它们揪出来的。 */
+#modal .btn,#modal .opt,#modal .menu-li,#modal .fitbtn,
+#news .btn,#news .news-x{
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+/* 没了模糊，白玻璃面会显"薄"：面板内这两类控件把底色补厚一档 */
+#modal .btn:not(.primary){
+  background:linear-gradient(180deg,rgba(255,255,255,.20) 0%,rgba(255,255,255,.11) 100%)}
+#modal .menu-li:not(.on){
+  background:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.07) 100%)}
+
+/* ============ 省电档（body.perf-lite）· 4.0.19 起改做别的事 ============
+   4.0.16~4.0.18 这一档是"关毛玻璃"。可到了 4.0.19，毛玻璃已经**默认全站关掉**
+   （HUD、面板、公告三类都改在各自的规则里了），这一档再关就没东西可关了。
+   所以它现在改管**画布分辨率**：像素预算 180 万 → 100 万（JS 里 PIX_BUDGET_LITE），
+   这是真能省光栅化开销的那一档 —— 代价是画面略软。
+   进这一档的方式没变：节拍器连着几次"降了档还迟到"自动进，☰ 菜单也能手动切。 */
+
+/* ⚠️ 这里和 #app 以前都是 touch-action:none —— 面板因此完全划不动。
+   touch-action 的实际取值是「命中元素到根这条路径上所有值的交集」：
+   祖先写了 none，.panel 自己的 pan-y 就被吃掉了，纵向滚动手势根本不产生
+   （桌面滚轮不受影响，所以只在手机上暴露）。
+   改成 pan-y：配合 body / #app 的 overflow:hidden 与 overscroll-behavior:none，
+   页面本身不会真的滚动，但内部的滚动容器（面板）能正常响应手指。 */
+html,body{width:100%;height:100%;overflow:hidden;background:#0d1b2a;
+  font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",
+    "Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji",sans-serif;
+  font-size:var(--fs-md);
+  touch-action:pan-y;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
+/* 世界地图的手势由 canvas 自己的 touch-action:none 挡住，不必再罩一层 */
+#app{position:fixed;inset:0;height:100vh;height:100dvh;overflow:hidden;
+  touch-action:pan-y;overscroll-behavior:none}
+/* 世界层那两块画布自己吃手势（摇杆要靠它拖）。
+   ⚠️ 这条以前是 `canvas{...}` 按元素名写的 —— 面板里的画布（战术地图 #tacCv）
+   被一起吃掉：touch-action 取「命中元素到根这条路径上所有值的交集」，
+   画布写了 none，身后 .panel 的 pan-y 就白写了。表现就是
+   「摊开战术地图后只有面板两侧那条窄边能拖，图中间怎么划都不动」，
+   玩家会以为卡死了、也滚不到底下的关闭键（4.0.13 修）。
+   和 3.1.1 那次 touch-action 交集坑是同一类问题：按元素名写，迟早误伤。 */
+/* 4.0.17：页面上只剩 #game 这一块画布了 —— 地形层 #bg 已删
+   （它原来由合成器挪动，每帧要重光栅化 1850 万像素，见 36_loop.js 的 draw）。
+   touch-action:none 是给这块世界画布自己吃手势用的（摇杆要在上面拖）；
+   面板里的画布另给 pan-y，别被这条按元素名写的规则误伤（3.1.1 / 4.0.13 两次教训）。 */
+#game{display:block;width:100%;height:100%;touch-action:none;position:relative;z-index:1}
+/* 面板里的画布：跟着面板一起能被手指拖（宽 100%，高度由 JS 写成 px） */
+#panel canvas{display:block;width:100%;touch-action:pan-y}
+
+/* ============ 新版本通知栏（4.0.6）============
+   玩家手里那份是缓存里的旧版时，光弹一句"刷新一下"等于没说。
+   这条把 version.json 带回来的「本次更新要点」直接铺开：
+   先看清新版改了什么，再决定刷不刷新。
+   它是通知，不是面板：不遮地图、点 ✕ 就收（本标签页内不再顶）。
+   高度实测写进 --upH，顶栏 / 任务条 / toast 整体下移，谁也不压谁。 */
+#upbar[hidden]{display:none!important}
+#upbar{position:absolute;top:0;left:0;right:0;z-index:60;
+  padding:calc(var(--safeT) + 7px) calc(var(--safeR) + 10px) 8px calc(var(--safeL) + 10px);
+  display:flex;gap:9px;align-items:flex-start;
+  background:linear-gradient(180deg,rgba(41,92,158,.97),rgba(22,52,96,.95));
+  /* 4.0.17：去掉了 blur(10px)。底子本来就有 97% 不透明度，模糊几乎看不见，
+     但它是压在地图上的 —— 合成器每帧都得为它重算一次，60fps 变 30fps。 */
+  border-bottom:1px solid rgba(143,196,255,.30);
+  box-shadow:0 10px 26px -12px rgba(0,0,0,.72);
+  color:#eaf4ff;font-size:var(--fs-xs);line-height:var(--lh-snug)}
+#upbar .up-ico{flex:none;font-size:var(--fs-lg);line-height:1.15}
+#upbar .up-tx{flex:1;min-width:0}
+#upbar .up-tx>b{display:block;color:#fff;font-size:var(--fs-sm);font-weight:700;margin-bottom:3px}
+/* 要点列表限高：条目多也不会把通知栏撑到半个屏幕，里面自己滚 */
+#upbar .up-list{max-height:31vh;overflow:auto;overscroll-behavior:contain}
+#upbar .up-li{position:relative;padding-left:1.15em;margin:2px 0;
+  color:#cfe4ff;font-size:var(--fs-2xs);line-height:1.5;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical}
+#upbar .up-li::before{content:'·';position:absolute;left:.35em;color:#7ee0ff;font-weight:700}
+#upbar .up-go{flex:none;border:none;border-radius:999px;cursor:pointer;
+  padding:7px 14px;font-size:var(--fs-xs);font-weight:700;color:#22313d;
+  background:linear-gradient(180deg,#ffe7a8,#f5b23c);
+  box-shadow:0 6px 16px -7px rgba(245,159,43,.85),var(--gb-hair);
+  white-space:nowrap}
+#upbar .up-go:active{transform:scale(.97);filter:brightness(.96)}
+#upbar .up-x{flex:none;width:1.9em;height:1.9em;border:none;border-radius:999px;cursor:pointer;
+  background:rgba(255,255,255,.14);color:#eaf4ff;font-size:var(--fs-xs);line-height:1;
+  display:flex;align-items:center;justify-content:center}
+#upbar .up-x:active{transform:scale(.94)}
+/* 通知栏里的全屏键（4.0.10）：全屏是必需功能，只藏在 ☰ 菜单里不少人一直没发现，
+   于是在"打开游戏就会看到"的地方也放一颗 —— 次要按钮样式，别和「立即刷新」抢眼 */
+#upbar .up-fs{flex:none;border:1px solid rgba(255,255,255,.2);border-radius:999px;cursor:pointer;
+  padding:7px 12px;font-size:var(--fs-xs);font-weight:700;color:#eaf4ff;
+  background:rgba(255,255,255,.13);white-space:nowrap}
+#upbar .up-fs:active{transform:scale(.96);filter:brightness(1.08)}
+/* 通知栏在的时候，面板整体下移一块 —— 顶栏能靠 --upH 让位，
+   面板（进说明 / 答题 / 菜单）也该让，不然它的顶部会被通知栏压住。 */
+body.upbar-on #modal{top:var(--upH)}
+
+/* ============ 顶部 HUD ============
+   窄屏一行放不下 7 个入口，以前会挤成 3~4 行压住地图。
+   现在：位置 / 难度 / 结晶 / ☰ 常驻，其余功能收进 ☰ 菜单；宽屏才全部平铺。 */
+#topbar{position:absolute;top:var(--upH);left:0;right:0;
+  padding:calc(var(--safeT) + var(--pad)) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
+  display:flex;gap:var(--gap);align-items:center;pointer-events:none;z-index:20}
+/* 4.0.17：chip 浮在活地图上，不能带 backdrop-filter（每帧重算 → 60fps 变 30fps）。
+   没了模糊就得补不透明度，否则半透明底"糊在图上"、字立不住。 */
+.chip{pointer-events:auto;
+  background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%);
+  border:none;border-radius:999px;position:relative;isolation:isolate;
+  padding:calc(var(--pad) * .8) calc(var(--pad) * 1.6);
+  color:#eaf4ff;font-size:var(--fs-sm);font-weight:600;display:flex;align-items:center;gap:5px;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  line-height:var(--lh-tight);
+  max-width:44vw;min-width:0;overflow:hidden;white-space:nowrap}
+.chip::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.chip .txt{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.chip.small{padding:calc(var(--pad) * .8) calc(var(--pad) * 1.3);font-size:var(--fs-xs)}
+#topRight{margin-left:auto;display:flex;gap:var(--gap);align-items:center;flex-wrap:nowrap;
+  min-width:0;justify-content:flex-end}
+#crystalChip{color:#ffd76a;font-variant-numeric:tabular-nums;flex:none}
+/* ---- iOS 玻璃胶囊按钮（.btn 族，照搬工作台）----
+   结构 = 半透明玻璃底面 + backdrop 模糊 + 发丝描边 + 顶部高光 + 镜面渐变层
+   按下 = 轻微缩小 + 下沉内阴影 + 高光收敛（iOS 的「压下去」） */
+.btn{pointer-events:auto;
+  border:none;border-radius:999px;padding:calc(var(--pad) * .9) calc(var(--pad) * 1.6);
+  color:#eaf4ff;font-size:var(--fs-md);font-weight:600;line-height:var(--lh-tight);
+  cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex:none;
+  position:relative;isolation:isolate;
+  background:var(--gb-face);
+  -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,filter .15s,box-shadow .15s}
+/* 镜面层：压在文字之下、玻璃底面之上的那道自上而下衰减的高光 */
+.btn::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.btn:active{transform:scale(.96);filter:brightness(.96);
+  box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.btn:disabled{opacity:.4}
+/* 图标按钮：只有 emoji/符号，没有文字 */
+/* aspect-ratio 需 Chrome 88：老内核退回一个近似正方形 */
+.btn.ico{padding:calc(var(--pad) * .9);justify-content:center;min-height:calc(var(--pad) * 1.8 + 1.2em)}
+.btn.ico{padding:calc(var(--pad) * .9);justify-content:center;aspect-ratio:1}
+/* 顶栏的按钮压在地图上：换深蓝玻璃，浅色字才立得住。
+   4.0.17：顺手去掉 backdrop-filter —— 它们背后是每帧都在变的地图，
+   每一层模糊都要跟着重算一遍（60fps 变 30fps），而这层模糊在深色地图上几乎看不出来。
+   面板里的 .btn（同一套样式）**保留**模糊：面板一开地图就停画，模糊只算一次，不花钱。
+   所以按 #topbar 限定，不动 .btn 本身。语法上是**接着这条写**的，
+   不是另起一条同名规则（同名两条会互相盖，静态分析会报"零贡献规则"）。 */
+#topbar .btn{background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%);
+  backdrop-filter:none;-webkit-backdrop-filter:none}
+
+/* ============ 任务条 ============ */
+#quest{position:absolute;left:50%;transform:translateX(-50%);
+  top:calc(var(--safeT) + var(--upH) + var(--topH) + 6px);
+  max-width:calc(100% - 32px);text-align:center;
+  /* 4.0.17：任务条也压在地图上 —— 去掉 blur(8px)，用不透明度补回来 */
+  background:rgba(10,24,40,.88);
+  border:1px solid rgba(255,255,255,.12);border-radius:var(--r);
+  padding:calc(var(--pad) * .8) calc(var(--pad) * 2);
+  color:#cfe6ff;font-size:var(--fs-sm);font-weight:600;line-height:1.5;z-index:18;
+  box-shadow:0 4px 14px rgba(0,0,0,.3);opacity:0;
+  pointer-events:none;transition:opacity .45s}
+#quest b{color:#ffd76a}
+
+/* ============ 区域横幅 ============
+   旧版字号写死 38px，13 个字的标题在 320px 屏上会顶出屏幕外。 */
+#banner{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%);
+  width:92vw;
+  width:min(92vw,560px);text-align:center;z-index:19;pointer-events:none;opacity:0;
+  transition:opacity .5s}
+#banner .t{font-size:var(--fs-3xl);font-weight:800;color:#fff;
+  text-shadow:0 4px 18px rgba(0,0,0,.65);letter-spacing:1px;line-height:var(--lh-tight);
+  overflow-wrap:anywhere}
+#banner .s{font-size:var(--fs-md);color:#bcd9f5;margin-top:4px;line-height:var(--lh-snug);
+  text-shadow:0 2px 8px rgba(0,0,0,.65);overflow-wrap:anywhere}
+
+/* ============ 摇杆（浮动：按下时移动到手指位置） ============ */
+#stick{position:absolute;left:calc(var(--safeL) + 14px);bottom:calc(var(--safeB) + 16px);
+  width:var(--stick);height:var(--stick);border-radius:50%;
+  background:rgba(10,24,40,.34);border:2px solid rgba(255,255,255,.16);
+  z-index:22;touch-action:none;pointer-events:none;opacity:.55;transition:opacity .18s}
+#stick.active{opacity:1;border-color:rgba(255,215,106,.6);background:rgba(10,24,40,.5)}
+/* 旋钮靠 left/top:50% + translate(-50%,-50%) 居中。
+   JS 推旋钮时只改 --kx / --ky 两个变量，不碰 transform ——
+   以前直接写 transform:translate(dx,dy)，把居中的 -50% 覆盖掉了，
+   旋钮会整体偏到中心右下方，静止时看得最明显。 */
+#knob{position:absolute;left:50%;top:50%;width:42%;height:42%;
+  --kx:0px;--ky:0px;
+  transform:translate(calc(-50% + var(--kx)),calc(-50% + var(--ky)));
+  border-radius:50%;background:radial-gradient(circle at 35% 30%,#9fd8ff,#3b82c4);
+  box-shadow:0 4px 14px rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.6)}
+
+/* 移动提示：抬到摇杆上方，免得和摇杆叠在一起 */
+#moveHint{position:absolute;left:50%;bottom:calc(var(--safeB) + var(--stick) + 20px);
+  transform:translateX(-50%);max-width:calc(100% - 28px);
+  background:rgba(10,24,40,.82);color:#ffe9a8;
+  border:1px solid rgba(255,215,106,.35);border-radius:999px;
+  padding:calc(var(--pad) * .9) calc(var(--pad) * 2.2);
+  font-size:var(--fs-md);font-weight:700;z-index:23;pointer-events:none;text-align:center;
+  transition:opacity .4s;animation:float 2.4s ease-in-out infinite}
+#moveHint.hide{opacity:0}
+/* 电脑端常驻键位小抄：贴在摇杆右边，点一下打开完整键位表 */
+#pcHint{position:absolute;left:calc(var(--safeL) + var(--stick) + 22px);
+bottom:calc(var(--safeB) + 18px);display:none;align-items:center;gap:6px;
+/* 4.0.17：同理，键位小抄也浮在活地图上，去掉模糊、补不透明度 */
+background:linear-gradient(180deg,rgba(26,50,80,.94) 0%,rgba(12,26,44,.92) 100%);border:none;
+border-radius:999px;padding:calc(var(--pad) * .7) calc(var(--pad) * 1.5);
+color:#9cc0e0;font-size:var(--fs-xs);font-weight:600;z-index:21;
+cursor:pointer;white-space:nowrap;max-width:44vw;overflow:hidden;
+text-overflow:ellipsis;
+box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop)}
+#pcHint:active{transform:scale(.97);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+#pcHint b{color:#ffd76a}
+body.pc #pcHint{display:flex}
+/* 电脑端摇杆常驻时淡一点，鼠标按住拖动才亮起来 */
+body.pc #stick{opacity:.3}
+body.pc #stick.active{opacity:1}
+@keyframes float{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-8px)}}
+
+/* ============ 互动键 ============ */
+/* 互动大键：全站唯一发光体（对应工作台的大 +1 键）
+   结构 = 径向渐变球体 + 多层内阴影高光 + 常驻斜向镜面 + 呼吸光晕 */
+#actBtn{position:absolute;right:calc(var(--safeR) + 16px);bottom:calc(var(--safeB) + 24px);
+  width:var(--act);height:var(--act);border-radius:50%;border:none;
+  color:#fff;font-size:var(--fs-lg);font-weight:800;line-height:var(--lh-tight);
+  z-index:24;display:none;white-space:nowrap;overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 116%,rgba(255,255,255,.30),transparent 60%),
+    radial-gradient(122% 122% at 30% 16%,#FFE39A 0%,#FFD76A 30%,#F5A623 62%,#B3651A 100%);
+  text-shadow:0 2px 10px rgba(120,54,0,.50);
+  box-shadow:
+    0 10px 30px -6px rgba(245,159,43,.55),
+    0 2px 6px rgba(20,21,43,.10),
+    0 0 0 1px rgba(255,255,255,.14),
+    inset 0 2px 1px rgba(255,255,255,.45),
+    inset 0 -10px 20px -12px rgba(255,255,255,.28),
+    inset 0 -14px 26px -14px rgba(110,50,0,.60);
+  transition:transform 90ms cubic-bezier(.2,0,.2,1),box-shadow 200ms ease-out,filter 200ms ease-out;
+  align-items:center;justify-content:center;isolation:isolate;will-change:transform}
+/* 常驻斜向高光：静止时也有「光泽」，这正是「贵」的关键 */
+#actBtn::before{content:"";position:absolute;inset:-30% -55%;border-radius:50%;pointer-events:none;z-index:-1;
+  background:linear-gradient(112deg,rgba(255,255,255,0) 34%,rgba(255,255,255,.30) 46%,rgba(255,255,255,.05) 54%,rgba(255,255,255,0) 66%);
+  opacity:.30;transform:translateX(-38%)}
+/* 呼吸光晕：2.8s 一次，几乎察觉不到但按键「活着」 */
+#actBtn::after{content:"";position:absolute;inset:-14px;border-radius:50%;pointer-events:none;z-index:-1;
+  background:radial-gradient(circle,rgba(255,215,106,.45),rgba(255,215,106,0) 68%);
+  filter:blur(8px);opacity:.55;
+  animation:p1Breathe 2.8s cubic-bezier(.45,0,.55,1) infinite}
+#actBtn.show{display:flex}
+#actBtn:active{transform:scale(.92);filter:brightness(.94)}
+@keyframes p1Breathe{0%,100%{opacity:.42;transform:scale(.96)}50%{opacity:.72;transform:scale(1.04)}}
+/* 按下回弹（JS 依赖 p1-pop）：+1 键同款弹跳 */
+#actBtn.p1-pop{animation:p1Pop .42s cubic-bezier(.34,1.56,.64,1)}
+@keyframes p1Pop{
+  0%{transform:scale(.92)}
+  55%{transform:scale(1.06)}
+  78%{transform:scale(.99)}
+  100%{transform:scale(1)}
+}
+#actHint{position:absolute;right:calc(var(--safeR) + 16px);
+  bottom:calc(var(--safeB) + var(--act) + 34px);
+  background:rgba(10,24,40,.85);color:#eaf4ff;padding:calc(var(--pad) * .8) calc(var(--pad) * 1.6);
+  border-radius:var(--r);font-size:var(--fs-sm);font-weight:600;z-index:23;display:none;
+  max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  border:1px solid rgba(255,255,255,.14)}
+#actHint.show{display:block}
+
+/* ============ 浮动提示（toast） ============
+   拾取、升档降档、传送、清档反馈都走这里。
+   挂在顶栏下方居中：底部被摇杆 + 互动键 + 移动提示占满了，
+   放那儿不是被挡住就是压住按键。 */
+#toast{position:absolute;left:50%;top:calc(var(--safeT) + var(--upH) + var(--topH) + 58px);
+  transform:translateX(-50%);z-index:70;display:flex;flex-direction:column;
+  align-items:center;gap:6px;pointer-events:none;width:max-content;
+  max-width:calc(100% - 28px)}
+.tst{background:rgba(10,24,40,.92);color:#eaf4ff;border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;padding:calc(var(--pad) * .85) calc(var(--pad) * 1.8);
+  font-size:var(--fs-md);font-weight:700;line-height:1.35;
+  box-shadow:0 6px 18px rgba(0,0,0,.42);max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  animation:tstIn .2s ease-out}
+@keyframes tstIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+
+/* ============ 弹窗 ============ */
+/* 4.0.19：去掉全屏 blur(4px)。实测（tools/scrollperf.py）：
+   40 行列表滚动时，带这层模糊 p50 = 100ms，去掉后 16.7ms（-83%）；
+   而"只关行阴影 / 只关高光层 / 关掉所有阴影"都是 0% —— 钱全在这一层。
+   原因：这层覆盖整屏，面板一滚动就要重新合成整屏模糊。
+   （我上一轮判断"面板开着地图就停画、模糊只算一次"是错的，实测推翻了。）
+   观感：模糊背后是一张被压到 68% 的深色地图，本来就看不出来 ——
+   改成更厚的不透明度之后，视觉差别几乎为零。 */
+#modal{position:absolute;inset:0;background:rgba(4,12,24,.93);
+  z-index:40;display:none;align-items:center;justify-content:center;
+  padding:10px 10px 10px 10px;
+  padding:max(10px,var(--safeT)) max(10px,var(--safeR)) max(10px,var(--safeB)) max(10px,var(--safeL));
+  touch-action:pan-y;overscroll-behavior:contain}
+#modal.show{display:flex}
+/* 面板内容比面板高时才出现的「还能往下滑」提示。
+   图鉴几十个精灵、错题本能装两百题，首屏一定装不下 ——
+   没有任何提示的话，人只会以为内容就这么点，压根不会去试着划。
+   放在 #modal 里而不是 .panel 里：跟着 panel 一起滚就失去意义了。 */
+#scrollTip{position:absolute;left:50%;transform:translateX(-50%);
+  bottom:12px;
+  bottom:max(12px,var(--safeB));z-index:41;
+  background:rgba(10,24,40,.82);border:1px solid rgba(255,215,106,.34);
+  color:#ffd76a;border-radius:999px;padding:4px 13px;
+  font-size:var(--fs-xs);font-weight:700;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:opacity .22s}
+#modal.can-scroll #scrollTip{opacity:1}
+#modal.scrolled #scrollTip{opacity:0}
+.panel{background:linear-gradient(165deg,#16283f,#0e1c2e);position:relative;
+  border:1px solid rgba(255,255,255,.16);border-radius:22px;width:560px;width:min(560px,100%);
+  max-height:88%;overflow:auto;padding:calc(var(--vmin) * .0564);padding:clamp(14px,calc(var(--vmin) * .0564),22px);
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  animation:pop .25s cubic-bezier(.2,1.4,.4,1);-webkit-overflow-scrolling:touch;
+  touch-action:pan-y;overscroll-behavior:contain;
+  /* 桌面端给一条细滚动条：一眼看出这里能滚 */
+  scrollbar-width:thin;scrollbar-color:rgba(255,215,106,.34) transparent}
+.panel::-webkit-scrollbar{width:5px}
+.panel::-webkit-scrollbar-thumb{background:rgba(255,215,106,.34);border-radius:99px}
+.panel::-webkit-scrollbar-track{background:transparent}
+
+/* ================================================================
+   活动公告（173.2）
+   ----------------------------------------------------------------
+   大型游戏进场那张活动弹窗：全屏压暗 + 中央卡片 + 右上角 ✕。
+   层级刻意排在 #imgView(60) 之上、#toast(70) 之下 ——
+   它要盖住所有面板和图鉴，但系统提示万一要冒头也别被闷死。
+   卡片自带三段：hero（金带标题）/ body（更新点 + 全屏教学）/ foot（主按钮）。
+   不绑遮罩点击关闭：公告的功能就是"让你看见"，点掉它得是个明确动作。
+   ================================================================ */
+/* 4.0.19：公告这层同样去掉 blur(12px)（理由见 00_base.css 里 #modal 那段：
+   全屏模糊在内容滚动/变化时每帧重算，实测滚动 100ms → 16.7ms）。
+   背景从 84% 提到 95%，观感几乎一致。 */
+#news{position:fixed;inset:0;z-index:66;display:none;
+  align-items:center;justify-content:center;
+  padding:12px 12px 12px 12px;
+  padding:max(12px,var(--safeT)) max(12px,var(--safeR)) max(12px,var(--safeB)) max(12px,var(--safeL));
+  background:rgba(3,9,18,.95);
+  overscroll-behavior:contain}
+#news.show{display:flex}
+/* 顶部一道暖光、底部一道冷光：让"压暗"不等于"变黑"，中间还是亮的 */
+#news::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 72% 46% at 50% 0%,rgba(255,215,106,.15),transparent 70%),
+             radial-gradient(ellipse 62% 42% at 50% 102%,rgba(94,214,255,.11),transparent 70%)}
+.news-card{position:relative;width:520px;width:min(520px,100%);max-height:100%;
+  display:flex;flex-direction:column;
+  border-radius:24px;overflow:hidden;
+  background:linear-gradient(168deg,#1b314e 0%,#122338 55%,#0c1a2b 100%);
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 30px 80px -20px rgba(0,0,0,.82),
+             0 0 0 .5px rgba(255,215,106,.18),
+             inset 0 .5px 0 rgba(255,255,255,.20);
+  animation:newsPop .36s cubic-bezier(.2,1.35,.4,1)}
+@keyframes newsPop{from{opacity:0;transform:translateY(20px) scale(.94)}
+  to{opacity:1;transform:none}}
+/* 关闭键：玻璃圆钮，44px 以上命中区（移动端手指够得准） */
+.news-x{position:absolute;top:11px;right:11px;z-index:3;
+  width:38px;height:38px;border:none;border-radius:999px;
+  background:rgba(255,255,255,.10);color:#dbeafe;
+  font-size:var(--fs-md);font-weight:800;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;padding:0;isolation:isolate;
+  -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
+  box-shadow:inset 0 .5px 0 rgba(255,255,255,.22),inset 0 -.5px 0 rgba(0,0,0,.3),
+             0 0 0 .5px rgba(255,255,255,.12),0 4px 12px -4px rgba(0,0,0,.5);
+  transition:transform .12s ease-out,background .18s}
+.news-x:hover{background:rgba(255,138,128,.22);color:#ffd8d4}
+.news-x:active{transform:scale(.9)}
+
+/* --- hero：金色光带 + 标题 --- */
+.news-hero{position:relative;padding:22px 52px 17px;text-align:center;
+  background:linear-gradient(180deg,rgba(255,215,106,.20),rgba(255,215,106,.02) 72%,transparent);
+  border-bottom:1px solid rgba(255,215,106,.15)}
+.news-hero::after{content:'';position:absolute;left:0;right:0;top:0;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(255,215,106,.95),transparent)}
+.news-badge{display:inline-block;border-radius:999px;padding:3px 11px;
+  font-size:var(--fs-2xs);font-weight:800;letter-spacing:.7px;
+  background:rgba(255,215,106,.16);color:#ffd76a;
+  border:1px solid rgba(255,215,106,.45);margin-bottom:9px}
+.news-title{font-size:var(--fs-2xl);font-weight:800;color:#fff;
+  line-height:1.26;letter-spacing:.5px;
+  text-shadow:0 2px 26px rgba(255,215,106,.34)}
+.news-sub{font-size:var(--fs-sm);color:#9cc0e0;margin-top:6px;line-height:1.5}
+
+/* --- body：更新点 + 全屏教学 --- */
+.news-body{padding:15px 18px 4px;overflow:auto;flex:1 1 auto;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:rgba(255,215,106,.3) transparent}
+.news-body::-webkit-scrollbar{width:4px}
+.news-body::-webkit-scrollbar-thumb{background:rgba(255,215,106,.3);border-radius:99px}
+.news-sec{margin-bottom:15px}
+.news-sec-h{display:flex;align-items:center;gap:8px;
+  font-size:var(--fs-2xs);font-weight:800;color:#8fb4d6;
+  letter-spacing:1.1px;margin-bottom:8px}
+.news-sec-h::after{content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,rgba(143,180,214,.34),transparent)}
+.news-li{display:flex;gap:9px;align-items:flex-start;
+  padding:9px 11px;margin-bottom:6px;border-radius:13px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+  font-size:var(--fs-sm);color:#cfe0f2;line-height:1.55}
+.news-li .e{flex:none;font-size:var(--fs-lg);line-height:1.25}
+.news-li b{color:#fff;font-weight:700}
+
+/* 全屏：4.0.6 把按钮搬进 ☰ 菜单、公告里只留"各平台怎么开"的说明；
+   4.0.10 又把按钮**请回公告**（用户反馈：全屏是必需功能，藏在菜单里很多人
+   一辈子发现不了）。所以这里是"按钮 + 怎么开"整块，两处入口并存 ——
+   菜单那份是给老手的，公告这份是给还没发现它的人的。 */
+.fs-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;
+  border:none;border-radius:14px;cursor:pointer;isolation:isolate;
+  padding:calc(var(--vmin) * .0385) 16px;
+  padding:clamp(10px,calc(var(--vmin) * .0385),14px) 16px;
+  font-family:inherit;font-size:var(--fs-md);font-weight:800;color:#20180a;
+  background:linear-gradient(180deg,rgba(255,215,106,.97) 0%,rgba(245,159,43,.95) 100%);
+  box-shadow:inset 0 .5px 0 rgba(255,255,255,.6),inset 0 -.5px 0 rgba(0,0,0,.18),
+             0 8px 22px -8px rgba(245,159,43,.75);
+  transition:transform .12s ease-out,filter .15s;margin-bottom:9px}
+.fs-btn:active{transform:scale(.975);filter:brightness(.96)}
+.fs-tips{display:block}
+.fs-tip{display:flex;gap:9px;align-items:baseline;
+  padding:6px 2px;font-size:var(--fs-xs);color:#9cc0e0;line-height:1.6;
+  border-bottom:1px dashed rgba(255,255,255,.075)}
+.fs-tip:last-child{border-bottom:none}
+/* 左侧平台标签：宽度要够放「📱 iPhone」（emoji 比汉字占得宽），
+   用 min-width 而不是 width —— 短标签（电脑）不会浪费，
+   长标签也能自己撑开，不会把右边的说明挤到第二行去。 */
+.fs-tip .k{flex:none;min-width:5.4em;color:#cfe6ff;font-weight:700;white-space:nowrap}
+.fs-tip b{color:#fff}
+
+/* --- foot：主按钮 --- */
+.news-foot{padding:12px 18px 15px;
+  border-top:1px solid rgba(255,255,255,.075);
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.22))}
+.news-foot .btn{width:100%}
+
+/* 横屏（手机横过来 / 扁窗口）：卡片改横向双栏，把宽度用起来，
+   否则 300px 高的屏幕上卡片会变成一根要滚动的长条。
+   竖屏 hero 是"徽章一行 + 标题一行 + 副标题一行"共 82px，
+   横屏只剩 294px 高，光 hero 就吃掉 30% —— 这里把徽章和标题并成一行、
+   副标题收掉，hero 压到 ~41px，省下的全给内容（实测正好一屏放得下）。 */
+@media (orientation:landscape){
+  .news-card{width:880px;width:min(880px,100%);border-radius:20px}
+  .news-hero{display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:9px 50px 8px;text-align:left}
+  .news-badge{margin-bottom:0;padding:2px 9px;order:-1}
+  .news-title{font-size:var(--fs-md);letter-spacing:.2px}
+  /* 副标题在横屏收掉：「横屏模式已上线」+ 下面的双栏布局，
+     看一眼就明白了，不需要再解释一遍 */
+  .news-sub{display:none}
+  .news-body{display:grid;grid-template-columns:1fr 1fr;
+    gap:0 20px;align-content:start;padding:11px 16px 2px}
+  .news-sec{margin-bottom:8px}
+  .news-li{padding:5px 9px;margin-bottom:4px;font-size:var(--fs-2xs);
+    line-height:1.5;border-radius:10px}
+  .news-li .e{font-size:var(--fs-md)}
+  .fs-btn{padding:8px 14px;font-size:var(--fs-sm);margin-bottom:6px;border-radius:11px}
+  .fs-tip{padding:3px 2px;font-size:var(--fs-2xs);line-height:1.5}
+  .news-foot{padding:8px 16px 9px}
+  .news-foot .btn{padding-top:7px;padding-bottom:7px;font-size:var(--fs-sm)}
+}
+@keyframes pop{from{transform:scale(.86);opacity:0}to{transform:scale(1);opacity:1}}
+.panel h2{color:#fff;font-size:var(--fs-2xl);margin-bottom:4px;text-align:center;line-height:1.35}
+.panel .sub{color:#9cc0e0;font-size:var(--fs-sm);text-align:center;margin-bottom:14px;line-height:1.5}
+/* 版本小标签：挂在 ☰ 菜单标题那一行的副标题后面。
+   以前只有"有新版本"那条通知栏才会提到版本号，平时玩家根本不知道自己跑的是哪一版 ——
+   报 bug 时第一句就是"你是哪一版"，没处可查。 */
+.ver-tag{display:inline-block;margin-left:7px;padding:1px 8px;border-radius:999px;
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);
+  color:#9cc0e0;font-size:var(--fs-2xs);font-weight:700;letter-spacing:.4px;
+  vertical-align:middle;white-space:nowrap}
+.qtag{display:inline-block;background:rgba(255,215,106,.16);color:#ffd76a;
+  border:1px solid rgba(255,215,106,.35);border-radius:999px;padding:3px 11px;
+  font-size:var(--fs-xs);font-weight:700;margin-bottom:12px}
+.qsrc{display:inline-block;border-radius:999px;padding:3px 11px;font-size:var(--fs-xs);
+  font-weight:700;margin-bottom:12px;margin-left:6px;white-space:nowrap;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.qsrc.zhen{background:rgba(255,215,106,.14);color:#ffd76a;border:1px solid rgba(255,215,106,.4)}
+.qsrc.gaib{background:rgba(168,120,255,.14);color:#d9c6ff;border:1px solid rgba(168,120,255,.38)}
+.qsrc.moni{background:rgba(52,199,123,.12);color:#b9f2d3;border:1px solid rgba(52,199,123,.34)}
+/* 思路题：青色，和普通练习/真题区分开 */
+.qsrc.think{background:rgba(94,214,255,.14);color:#9fe4ff;border:1px solid rgba(94,214,255,.42)}
+/* 玩家自己导入的题：琥珀色，和真题 / 改编 / 模拟 / 思路四类区分开 */
+.qsrc.imp{background:rgba(255,159,43,.14);color:#ffd0a0;border:1px solid rgba(255,159,43,.4)}
+/* 八种思路题型各占一个颜色：一看徽章就知道这题在练哪个思维动作 */
+.qsrc.qt-conv{background:rgba(94,214,255,.15);color:#9fe4ff;border:1px solid rgba(94,214,255,.44)}
+.qsrc.qt-loc {background:rgba(255,159,43,.15);color:#ffd0a0;border:1px solid rgba(255,159,43,.44)}
+.qsrc.qt-nc  {background:rgba(255,107,200,.14);color:#ffc4e8;border:1px solid rgba(255,107,200,.42)}
+.qsrc.qt-path{background:rgba(168,120,255,.15);color:#d9c6ff;border:1px solid rgba(168,120,255,.42)}
+.qsrc.qt-pit {background:rgba(255,90,90,.14); color:#ffc2c2;border:1px solid rgba(255,90,90,.42)}
+.qsrc.qt-cond{background:rgba(52,199,123,.14); color:#b9f2d3;border:1px solid rgba(52,199,123,.4)}
+.qsrc.qt-str {background:rgba(255,215,106,.15);color:#ffd76a;border:1px solid rgba(255,215,106,.44)}
+.qsrc.qt-mig {background:rgba(120,220,190,.14);color:#b6f0e0;border:1px solid rgba(120,220,190,.42)}
+/* 导入 / 导出面板的说明框 */
+.imp-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:10px 12px;margin-bottom:10px;
+  font-size:var(--fs-sm);color:#9cc0e0;line-height:var(--lh-base);text-align:left;overflow-wrap:anywhere}
+.imp-box b{color:#cfe6ff}
+.imp-ok{color:#8ef0b8;font-weight:700}
+.imp-no{color:#ffb0b0;font-weight:700}
+.imp-code{display:block;background:rgba(0,0,0,.28);border-radius:8px;padding:8px 10px;margin:6px 0;
+  color:#cfe6ff;font-size:var(--fs-xs);line-height:var(--lh-base);word-break:break-all;white-space:pre-wrap}
+.wb-item.imp{border-color:rgba(255,159,43,.36)}
+.qtext{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:16px;padding:calc(var(--vmin) * .0513) calc(var(--vmin) * .0359);padding:clamp(13px,calc(var(--vmin) * .0513),20px) clamp(11px,calc(var(--vmin) * .0359),14px);
+  text-align:center;color:#fff;font-size:calc(var(--fs-2xl) * var(--qs,1));
+  font-weight:700;line-height:var(--lh-snug);margin-bottom:6px;overflow-wrap:anywhere}
+
+/* ============ 题干自适应排版 ============
+   以前不管多长，题干一律 --fs-2xl 居中加粗、选项一律 --fs-xl 居中 ——
+   12 个字的口算题看着挺痛快，可练枪场的大题动辄两三百字，
+   23px 粗体居中一铺就是一整屏，这就是所谓的"一大坨字"。
+   排版的基本规律是「字越长，字号越小、行距越大、越该左对齐」：
+     · 20px 以上的大字，一行只放得下 12~16 字，只有短句配得上
+     · 长文要降到 15~17px，一行才放得下 22~26 字，才是中文最好读的行宽
+     · 居中只适合两三行的短句；超过三行还居中，每行起点都不一样，眼睛没法扫读
+   所以这里按「视觉宽度」自动分五档，由 fitStem() 在面板渲染后打类名：
+     f-xs 极短（口诀级）→ 最大号居中      f-sm 短题 → 大号居中
+     f-md 中等 → 中号居中                 f-lg 长题 → 小号左对齐 + 拆条
+     f-xl 超长（大题）→ 正文号左对齐 + 拆条，行距最松 */
+/* text-wrap 是浏览器原生的一段排版智慧，不支持的浏览器直接忽略：
+   · balance —— 居中短句各行的长度会尽量拉平，不再出现"第一行满、第二行两三个字"的
+     倒三角；中文居中题面最常见这个毛病
+   · pretty  —— 长段落避开"尾行只剩两三个字"的孤儿行 */
+.qtext.f-xs,.qtext.f-sm,.qtext.f-md{text-wrap:balance}
+.qtext.f-lg,.qtext.f-xl{text-wrap:pretty}
+.qtext.f-xs{font-size:calc(var(--fs-3xl) * var(--qs,1));line-height:1.34;font-weight:800;
+  letter-spacing:.6px;text-align:center;padding-top:calc(var(--vmin) * .0590);padding-top:clamp(15px,calc(var(--vmin) * .0590),23px);
+  padding-bottom:calc(var(--vmin) * .0590);
+  padding-bottom:clamp(15px,calc(var(--vmin) * .0590),23px)}
+.qtext.f-sm{font-size:calc(var(--fs-2xl) * var(--qs,1));line-height:1.44;font-weight:700;text-align:center}
+.qtext.f-md{font-size:calc(var(--fs-xl) * var(--qs,1));line-height:1.58;font-weight:700;text-align:center}
+/* 居中是给"一两行的短句"用的：行一多，每行起点都不同，眼睛没法顺着扫。
+   实际折到三行以上的题（大字 + 中等长度最容易撞上）自动改左对齐 */
+.qtext.fl{text-align:left;padding-left:calc(var(--vmin) * .0513);padding-left:clamp(15px,calc(var(--vmin) * .0513),22px);
+  padding-right:calc(var(--vmin) * .0513);
+  padding-right:clamp(15px,calc(var(--vmin) * .0513),22px)}
+.qtext.f-lg{font-size:calc((var(--fs-md) + var(--fs-lg)) / 2 * var(--qs,1));line-height:1.76;font-weight:600;text-align:left;
+  padding:calc(var(--vmin) * .0462) calc(var(--vmin) * .0436);
+  padding:clamp(12px,calc(var(--vmin) * .0462),18px) clamp(13px,calc(var(--vmin) * .0436),17px)}
+.qtext.f-xl{font-size:calc(var(--fs-md) * var(--qs,1));line-height:1.86;font-weight:600;text-align:left;
+  letter-spacing:.2px;
+  padding:calc(var(--vmin) * .0462) calc(var(--vmin) * .0436);
+  padding:clamp(12px,calc(var(--vmin) * .0462),18px) clamp(13px,calc(var(--vmin) * .0436),17px)}
+/* 长题干拆成「条件清单」：一句一条，左侧一条细竖线当锚点。
+   两百字的题不拆就是一坨；拆开以后一眼能数清有几个条件、漏了哪个 */
+.qtext.seg{text-align:left}
+.qtext .qs{display:block;position:relative;padding-left:.85em;margin:.5em 0}
+.qtext .qs::before{content:'';position:absolute;left:0;top:.3em;bottom:.3em;width:3px;
+  border-radius:2px;background:linear-gradient(180deg,rgba(255,215,106,.9),rgba(255,215,106,.22))}
+.qtext.f-lg .qs{margin:.42em 0}
+.qtext.seg .qs:first-child{margin-top:0}
+.qtext.seg .qs:last-child{margin-bottom:0}
+/* 超长题干：块内自己滚，别把选项顶到屏幕外去。
+   三百字的大题整块铺开要占 560px，手机上选项直接掉出首屏 ——
+   题干读完才知道选什么，可选项看不见就没法点。
+   给它限高 38vh + 内部滚动，题干、选项同屏，两边各自滚；
+   overscroll-behavior:contain 挡住滚动链，题干滚到底不会带着整个面板继续跑。
+   底部那道淡出（未滚到底时才有）提示"下面还有"，滚到底自动消失 */
+.qtext.scrollable{max-height:150px;max-height:max(150px,42vh);overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;scrollbar-width:thin;
+  scrollbar-color:rgba(255,215,106,.4) transparent}
+.qtext.scrollable::-webkit-scrollbar{width:4px}
+.qtext.scrollable::-webkit-scrollbar-thumb{background:rgba(255,215,106,.4);border-radius:99px}
+.qmeta{text-align:center;color:#8fb4d6;font-size:var(--fs-xs);margin-bottom:14px}
+/* 长题干时把标题、统计行、徽章压一压：省下的高度全给题干本身 */
+.panel.long-q h2{font-size:var(--fs-xl);margin-bottom:2px}
+.panel.long-q .sub{font-size:var(--fs-xs);margin-bottom:8px;line-height:1.4}
+.panel.long-q .qtag,.panel.long-q .qsrc{margin-bottom:7px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--vmin) * .0308);gap:clamp(8px,calc(var(--vmin) * .0308),12px)}
+.opt{background:var(--gb-face);border:2px solid rgba(255,255,255,.16);border-radius:16px;
+  padding:calc(var(--vmin) * .0513) calc(var(--vmin) * .0256);
+  padding:clamp(13px,calc(var(--vmin) * .0513),20px) clamp(6px,calc(var(--vmin) * .0256),10px);
+  color:#fff;font-size:calc(var(--fs-xl) * var(--qs,1));font-weight:700;text-align:center;
+  cursor:pointer;overflow-wrap:anywhere;line-height:var(--lh-snug);
+  display:flex;align-items:center;justify-content:center;min-height:2.6em;
+  position:relative;isolation:isolate;
+  -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .2s,filter .15s,background .2s,border-color .2s}
+.opt::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.opt:active{transform:scale(.96);box-shadow:var(--gb-press-lift)}
+.opt.right{background:var(--gb-tint-green);border-color:rgba(110,231,183,.8)}
+.opt.wrong{background:var(--gb-tint-red);border-color:rgba(255,138,128,.75)}
+.opt.locked{pointer-events:none}
+/* 思路选项：虚线边框 + 小一号字，和答案选项在视觉上一眼分开。
+   思路文本比答案长（常见 15~24 字），字号降一档、行高放宽，才不会挤成两行半 */
+.opt.appr{border-style:dashed;font-size:calc(var(--fs-md) * var(--qs,1));line-height:var(--lh-snug);
+  min-height:2.9em;padding:calc(var(--vmin) * .0436) calc(var(--vmin) * .0282);padding:clamp(11px,calc(var(--vmin) * .0436),17px) clamp(7px,calc(var(--vmin) * .0282),11px)}
+/* 选项也按长度分档：短的继续大字双列（扫码式作答才快），
+   长的自动单列 + 降字号 + 左对齐 —— 半屏宽里塞 40 个字，谁看都是一坨。
+   由 fitOpts() 按最长选项的视觉宽度自动打类名，不用每题手改 */
+.opts.one{grid-template-columns:1fr}
+.opts.one .opt{text-align:left;justify-content:flex-start;padding-left:16px;padding-right:14px}
+.opt.t-lg{font-size:calc(var(--fs-lg) * var(--qs,1));min-height:2.4em}
+.opt.t-md{font-size:calc(var(--fs-md) * var(--qs,1));min-height:2.3em;line-height:1.55;
+  text-align:left;justify-content:flex-start;padding-left:14px;padding-right:12px}
+.opt.t-sm{font-size:calc((var(--fs-md) + var(--fs-sm)) / 2 * var(--qs,1));min-height:2.2em;line-height:1.62;
+  font-weight:600;text-align:left;justify-content:flex-start;padding-left:14px;padding-right:12px}
+/* 思路选项是整句（常见 15~24 字），一律单列左对齐：它要读，不是要扫 */
+.opts.apprs.one .opt.appr{line-height:1.6}
+/* 第一步的结果小卡片，跟着第二步一起显示，方便和最终解析对照 */
+.appr-recap{border-radius:12px;padding:8px 12px;margin-bottom:6px;
+  font-size:var(--fs-sm);font-weight:700;line-height:1.5;overflow-wrap:anywhere}
+.appr-recap.ok{background:rgba(52,199,123,.14);border:1px solid rgba(52,199,123,.35);color:#b9f2d3}
+.appr-recap.no{background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.32);color:#ffd0d0}
+.appr-recap.skip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#9cc0e0}
+.appr-recap .rk{color:#dbeafe;font-weight:600;margin-top:3px;font-size:var(--fs-xs)}
+#feedback{margin-top:14px;border-radius:14px;padding:12px 14px;
+  font-size:var(--fs-md);line-height:var(--lh-base);display:none}
+#feedback.ok{display:block;background:rgba(52,199,123,.16);border:1px solid rgba(52,199,123,.4);color:#b9f2d3}
+#feedback.no{display:block;background:rgba(255,107,107,.14);border:1px solid rgba(255,107,107,.4);color:#ffd0d0}
+#feedback .exp{color:#dbeafe;margin-top:6px;font-size:var(--fs-sm)}
+
+/* ================================================================
+   题目排版 v2（173 设计版）
+   ----------------------------------------------------------------
+   上面那套五档字号解决的是"字该多大"，这一层解决的是"信息怎么站队"。
+   旧版把所有东西塞进同一个圆角灰框里 —— 徽章、题干、提示、选项长得一样平，
+   眼睛没有落点，看不出哪个是条件、哪个是问题、哪个能点。
+
+   这一版给每一类信息一个固定的"形状身份"：
+     · 题干 → 左锚竖线的通栏卡片（线的颜色 = 题目难度，一眼认出这题的分量）
+     · 条件 → 缩进 + 更细的副线，和题干主句拉开主从关系
+     · 选项 → 圆形字母徽标 A/B/C/D（counter 自动生成，零 JS），
+              常态描边细、悬停亮、选中实心 —— 三态分明
+     · 思路选项 → 实线 + 青色顶边，和答案选项在"形状"上就分开，不靠颜色分辨
+   全部用 CSS 完成，不动任何 JS 结构 —— 七处渲染点同时生效。
+   ================================================================ */
+
+/* ---------- 1. 题头：徽章 + 进度合成一条状态栏 ---------- */
+.panel > h2{letter-spacing:.3px}
+/* 徽章行：现在渲染出来的是 <div style="text-align:center"> 包着两个 badge，
+   这里把容器改造成一条左对齐的状态栏 —— 考点在左、出处紧随，不再居中漂浮 */
+.panel .qtag{background:rgba(255,215,106,.12);border-color:rgba(255,215,106,.28);
+  padding:2px 9px;margin-bottom:8px;letter-spacing:.2px}
+.panel .qsrc{padding:2px 9px;margin-bottom:8px;letter-spacing:.2px}
+
+/* ---------- 2. 题干卡：左锚竖线 + 左对齐 + 行宽约束 ---------- */
+/* 卡片本体：加一条左侧色条。用 ::after 而不是 border-left，
+   这样只影响视觉、不改变内容盒宽度，自适应分档的量算不会被带偏。
+   色条不贴死边缘、上下各留一点，圆角收端 —— 否则看着像"卡片被切了个口"。 */
+.qtext{position:relative;overflow:hidden;
+  padding-left:calc(var(--vmin) * .0590)!important;
+  padding-left:clamp(17px,calc(var(--vmin) * .0590),25px)!important;
+  padding-right:calc(var(--vmin) * .0487)!important;
+  padding-right:clamp(14px,calc(var(--vmin) * .0487),20px)!important}
+.qtext::after{content:'';position:absolute;left:5px;top:7px;bottom:7px;width:3px;
+  border-radius:99px;
+  background:linear-gradient(180deg,rgba(94,214,255,.90),rgba(94,214,255,.30));
+  transition:background .3s}
+/* 难度越高，锚线越"热" —— 不问也知道这题值多少分量 */
+.panel.long-q .qtext::after{background:linear-gradient(180deg,rgba(255,159,43,.95),rgba(255,159,43,.32))}
+
+/* 短题仍居中，但去掉"通栏大灰框"的笨重感：底色更淡、更贴文字 */
+.qtext.f-xs,.qtext.f-sm,.qtext.f-md{background:rgba(255,255,255,.048);
+  border-color:rgba(255,255,255,.085)}
+/* 锚线是给"多行题干"做扫读起点的：短题一行就看完，挂着锚线只会让居中的
+   文字看着偏右。所以短档（居中）不画锚线，中长档（左对齐）才画。 */
+.qtext.f-xs::after,.qtext.f-sm::after{display:none}
+.qtext.f-xs,.qtext.f-sm{padding-left:calc(var(--vmin) * .0359)!important;padding-left:clamp(11px,calc(var(--vmin) * .0359),14px)!important;
+  padding-right:calc(var(--vmin) * .0359)!important;
+  padding-right:clamp(11px,calc(var(--vmin) * .0359),14px)!important}
+/* 中长题一律左对齐 —— 这是可读性的底线，多于三行居中等于让眼睛每行重新找起点 */
+.qtext.f-md{text-align:left}
+
+/* ---------- 3. 条件清单：主句 / 子条的主从关系 ---------- */
+/* 主句（第一条）用亮色 + 主锚线，后续条件用暗一档的副线缩进进去，
+   一眼能分出"这是题干在问什么"和"这些是给的条件"。
+   副锚线要压得比主锚线明显弱：否则和卡片自己的左锚线凑成"三条竖线打架"。
+   做法是缩到更细、长短收在文字高度内、透明度压低。 */
+.qtext.seg .qs::before{width:2px;top:.42em;bottom:.42em;left:.16em;opacity:.42;
+  background:linear-gradient(180deg,rgba(94,214,255,.9),rgba(94,214,255,.35))}
+.qtext.seg .qs:first-child{color:#fff;font-weight:700}
+.qtext.seg .qs:first-child::before{width:3px;left:0;top:.3em;bottom:.3em;opacity:1;
+  background:linear-gradient(180deg,rgba(255,215,106,.95),rgba(255,215,106,.30))}
+.qtext.seg .qs+.qs{color:#d8e8f8}
+/* 条件多于三条时，把清单的节奏收紧一点，长题才不至于一屏装不下 */
+.qtext.f-xl .qs{margin:.42em 0}
+
+/* 长题滚动：底部渐隐更明显一点，并把右内边距留给滚动条 */
+.qtext.scrollable{padding-right:calc(var(--vmin) * .0641)!important;padding-right:clamp(18px,calc(var(--vmin) * .0641),26px)!important}
+.qtext.scrollable:not(.at-end){
+  -webkit-mask-image:linear-gradient(to bottom,#000 76%,rgba(0,0,0,.10));
+  mask-image:linear-gradient(to bottom,#000 76%,rgba(0,0,0,.10))}
+
+/* ---------- 4. 提示行：变成一条轻量的引导文字，不再是正文 ---------- */
+/* 旧做法是在文字两侧各挂一条 18px 横线，可文字一长就换行、
+   两条线跟着折到第二行去，"断线"看着很脏。现在改成一个句首小锚点：
+   一个 4px 的菱形，只在行首出现，不参与换行。 */
+.qmeta{position:relative;display:block;color:#7ea6c8;font-size:var(--fs-xs);
+  letter-spacing:.3px;margin:0 0 10px;padding:0 2px 0 14px;
+  text-align:left;line-height:1.45}
+.qmeta::before{content:'';position:absolute;left:4px;top:.52em;
+  width:5px;height:5px;border-radius:1px;
+  background:#5ed6ff;box-shadow:0 0 7px rgba(94,214,255,.6);
+  transform:rotate(45deg)}
+/* 攻坚 / 练枪那种带 🔥 的强调提示：锚点跟着变暖色 */
+.qmeta[style*="#ffb99a"]{color:#ffb99a}
+.qmeta[style*="#ffb99a"]::before{background:#ff9f2b;box-shadow:0 0 7px rgba(255,159,43,.6)}
+/* 第二步的说明（无 emoji 前缀）也保持同一节奏 */
+.qmeta{text-align:left}
+
+/* ================================================================
+   烽火大厅 · 网格化（173.4）
+   ----------------------------------------------------------------
+   旧版大厅把「地点 / 难度 / 携带物资」三组全铺成竖排长条：
+   实测总高 **2972px**，而手机上面板可视高度只有 **716px** ——
+   玩家要把「选地点 → 选难度 → 勾装备 → 按部署」这套动作做完，
+   得往下滚四屏，而最关键的「🚀 部署行动」还压在最后一屏的最底下。
+   摸金游戏的大厅从来是一屏搞定的：地图、难度、装备各自成网格，
+   部署键永远在手指底下。
+
+   改法（纯布局，所有 id 与事件绑定原样保留）：
+     · 地点 4 张 → 2×2 网格，每张只留名字 + 一行副标题
+     · 难度 3 档 → 三列并排，压成"图标 / 名称 / 倍率"三行小卡
+     · 携带物资 11 件 → 三列网格，"图标 / 名称 / 状态"三行小卡
+       （装备效果不写在卡片里 —— 下方汇总区已经逐条列了"携带加成"，
+         卡片重复一遍只会把网格撑回长条）
+     · 底部「战备采购 / 部署行动」吸底，滚到哪儿都能按
+   ================================================================ */
+.bz-grid2,.bz-grid3{display:grid;gap:7px;margin-bottom:12px}
+.bz-grid2{grid-template-columns:1fr 1fr}
+.bz-grid3{grid-template-columns:repeat(3,1fr)}
+/* 网格里的小卡改成竖排：图标 / 名称 / 备注三行，比横排长条矮一半 */
+.bz-grid2 .menu-li,.bz-grid3 .menu-li{
+  width:100%;flex-direction:column;align-items:flex-start;gap:2px;
+  padding:9px 10px;text-align:left;min-width:0}
+.bz-grid2 .menu-li .e,.bz-grid3 .menu-li .e{
+  font-size:var(--fs-lg);width:auto;text-align:left;line-height:1.1;margin-bottom:1px}
+.bz-grid2 .menu-li .tx,.bz-grid3 .menu-li .tx{
+  width:100%;font-size:var(--fs-sm);font-weight:700;line-height:1.28;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bz-grid2 .menu-li .d,.bz-grid3 .menu-li .d{
+  font-size:var(--fs-2xs);line-height:1.35;margin-top:1px;width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 携带中的装备：整张卡片点亮，扫一眼就知道带了哪几件 */
+.bz-grid3 .menu-li.on{
+  background:linear-gradient(180deg,rgba(52,199,123,.20),rgba(52,199,123,.08));
+  box-shadow:var(--gb-edge-hi),0 0 0 .5px rgba(52,199,123,.6),var(--gb-drop)}
+/* 跑刀：单独一行，比装备卡显眼（它是一整套替代玩法，不是一件装备） */
+.bz-naked{width:100%;margin-bottom:12px}
+/* 吸底操作栏：面板滚动条拉到哪儿，「部署行动」都在手指底下 */
+.bz-foot{position:sticky;bottom:0;z-index:6;margin-top:6px;padding-top:12px;
+  background:linear-gradient(180deg,rgba(14,28,46,0) 0%,rgba(14,28,46,.94) 34%,#0e1c2e 100%)}
+
+/* ---------- 5. 选项：A/B/C/D 徽标 + 三态 ---------- */
+.opts{counter-reset:opt}
+.opt{display:flex;align-items:center;
+  justify-content:flex-start;text-align:left;
+  padding:calc(var(--vmin) * .0462) calc(var(--vmin) * .0436);
+  padding:clamp(12px,calc(var(--vmin) * .0462),18px) clamp(11px,calc(var(--vmin) * .0436),17px);
+  border-width:1.5px;border-color:rgba(255,255,255,.13);
+  font-weight:700;gap:10px}
+/* 字母徽标：CSS 计数器自动生成，不需要 JS 往 DOM 里塞东西。
+   ::after 天生排在正文之后 —— 用 order:-1 把它视觉上提到最左，
+   order 只改视觉顺序、不碰文字方向，比 row-reverse 稳。 */
+.opt::after{counter-increment:opt;content:counter(opt,upper-alpha);
+  order:-1;flex:0 0 auto;width:1.62em;height:1.62em;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.74em;font-weight:800;line-height:1;letter-spacing:0;
+  background:rgba(255,255,255,.09);color:#9fc4e4;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);
+  transition:background .2s,color .2s,box-shadow .2s,transform .2s}
+/* 分档类（t-md / t-sm）自带 text-align:left，短选项也不再被它拉走 —— 见下方第 7 节 */
+/* 短选项（仍双列时）让「徽标 + 答案」成一组居中，视觉更整、扫码式作答更快 */
+.opts:not(.one) .opt{justify-content:center;text-align:center}
+.opts.one .opt{justify-content:flex-start}
+
+/* 悬停 / 聚焦：桌面端给出"这个能点"的预告 */
+@media (hover:hover){
+  .opt:hover{border-color:rgba(94,214,255,.42);background:rgba(255,255,255,.10)}
+  .opt:hover::after{background:rgba(94,214,255,.20);color:#cdefff;
+    box-shadow:inset 0 0 0 1px rgba(94,214,255,.5)}
+}
+.opt:active{transform:scale(.975)}
+
+/* 选中 / 判定的三种结果：徽标同步变色，状态不止靠底色 */
+.opt.right{border-color:rgba(110,231,183,.85)}
+.opt.right::after{background:rgba(110,231,183,.94);color:#062016;
+  box-shadow:inset 0 0 0 1px rgba(110,231,183,1),0 0 12px rgba(110,231,183,.35)}
+.opt.wrong{border-color:rgba(255,138,128,.8)}
+.opt.wrong::after{background:rgba(255,138,128,.92);color:#2a0a08;
+  box-shadow:inset 0 0 0 1px rgba(255,138,128,1),0 0 12px rgba(255,138,128,.32)}
+.opt.dim{opacity:.34}
+.opt.dim::after{background:rgba(255,255,255,.06);color:#7d98b4;box-shadow:none}
+.opt.locked{cursor:default}
+
+/* ---------- 6. 思路选项：形状上就和答案分开 ---------- */
+/* 旧版只靠"虚线"区分，投影一模糊就看不出来。现在改成：
+   实线 + 左侧青色顶边的实心条，一眼是"思考题"，不是"答案" */
+.opt.appr{border-style:solid;border-color:rgba(94,214,255,.20);
+  background:linear-gradient(90deg,rgba(94,214,255,.10) 0%,rgba(255,255,255,.055) 22%,rgba(255,255,255,.045) 100%)}
+.opt.appr::before{background:var(--gb-sheen)}
+.opt.appr::after{background:rgba(94,214,255,.16);color:#bfeaff;
+  box-shadow:inset 0 0 0 1px rgba(94,214,255,.38)}
+/* 思路选项一律单列，文字与徽标左对齐、行距放宽 */
+.opts.apprs .opt{padding-left:calc(var(--vmin) * .0462);padding-left:clamp(12px,calc(var(--vmin) * .0462),18px);
+  padding-right:calc(var(--vmin) * .0462);
+  padding-right:clamp(12px,calc(var(--vmin) * .0462),18px)}
+.opts.apprs.one .opt{align-items:flex-start}
+.opts.apprs.one .opt::after{margin-top:.18em}
+
+/* ---------- 7. 分档微调：长选项的徽标不要被顶端对齐扯开 ---------- */
+.opt.t-md,.opt.t-sm{padding-left:calc(var(--vmin) * .0436);padding-left:clamp(11px,calc(var(--vmin) * .0436),17px);font-weight:650}
+.opts.one .opt.t-md,.opts.one .opt.t-sm{align-items:flex-start}
+.opts.one .opt.t-md::after,.opts.one .opt.t-sm::after{margin-top:.22em}
+
+/* 长解析（完整讲解 / 多步求解）同样降一档字号并拉松行距：
+   解析比题干还长，用正文号 + 1.9 行距才读得下去 */
+#feedback.long{line-height:var(--lh-loose);text-align:left}
+#feedback.long .exp{line-height:var(--lh-loose)}
+#feedback.long .qexp{line-height:var(--lh-loose);margin-bottom:9px}
+#feedback.long .qexp:last-child{margin-bottom:0}
+/* 「A」按钮：题面密度三档（紧凑 / 标准 / 宽松），点一下换一档，记住选择。
+   字号阶梯是按屏幕短边算的，但同一块屏幕上有人嫌大有人嫌小 —— 留个手动微调 */
+.fitbtn{position:absolute;top:calc(var(--pad) * .7);right:calc(var(--pad) * .9);z-index:8;
+  background:var(--gb-face-2);border:none;color:#cfe6ff;
+  border-radius:999px;width:calc(var(--vmin) * .115);width:clamp(40px,calc(var(--vmin) * .115),50px);
+  height:calc(var(--vmin) * .115);
+  height:clamp(40px,calc(var(--vmin) * .115),50px);
+  font-size:var(--fs-sm);font-weight:800;
+  font-family:inherit;line-height:1;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;padding:0;isolation:isolate;
+  touch-action:manipulation;   /* 移动端去掉双击缩放等待，手指落下立即响应 */
+  -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.fitbtn::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.fitbtn:active{transform:scale(.92);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+/* 点一下弹一跳：字号确实变档了，先让按钮自己动给你看（原先只改 ±8% 的字号，不盯着看不出来） */
+.fitbtn.fp-pop{animation:fpPop .32s cubic-bezier(.34,1.56,.64,1)}
+@keyframes fpPop{0%{transform:scale(.86)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
+.row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.row .btn{flex:1;min-width:92px;justify-content:center}
+/* 主键（金色玻璃）：全站统一的确定 / 主操作，白字 + 微暗投影守住对比 */
+.btn.primary{background:var(--gb-tint-gold);color:#fff;
+  text-shadow:0 1px 4px rgba(90,45,0,.45);
+  box-shadow:var(--gb-tint-gold-hi),inset 0 -.5px 0 rgba(0,0,0,.16),var(--gb-tint-gold-edge),var(--gb-tint-gold-drop)}
+
+/* ☰ 菜单（窄屏的功能入口） */
+.menu-list{display:grid;gap:9px;margin-top:4px}
+.menu-li{width:100%;display:flex;align-items:center;gap:12px;text-align:left;
+  background:var(--gb-face-2);border:none;border-radius:14px;
+  padding:calc(var(--pad) * 1.45) calc(var(--pad) * 1.6);
+  color:#eaf4ff;font-size:var(--fs-lg);font-weight:700;font-family:inherit;
+  cursor:pointer;position:relative;isolation:isolate;
+  -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.menu-li::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.menu-li:active{transform:scale(.98);filter:brightness(.97);
+  box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.menu-li .e{font-size:var(--fs-2xl);width:1.3em;text-align:center;flex:none;line-height:1}
+.menu-li .tx{min-width:0;flex:1}
+.menu-li .d{color:#9cc0e0;font-size:var(--fs-xs);font-weight:600;margin-top:2px;line-height:1.4}
+
+/* 稀有度徽标（烽火物资） */
+.rar{display:inline-block;border-radius:999px;padding:2px 9px;font-size:var(--fs-xs);
+font-weight:800;border:1px solid;line-height:1.45;white-space:nowrap;vertical-align:middle}
+/* 开箱结果：大图 + 稀有度描边 */
+.lootbox{border-radius:18px;padding:calc(var(--vmin) * .0513) 12px;padding:clamp(14px,calc(var(--vmin) * .0513),20px) 12px;
+text-align:center;border:2px solid;margin:6px 0 10px}
+.lootbox .le{font-size:calc(var(--vmin) * .128);font-size:clamp(38px,calc(var(--vmin) * .128),62px);line-height:1.15;
+filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+.lootbox .ln{font-size:var(--fs-xl);font-weight:800;color:#fff;margin-top:4px;
+overflow-wrap:anywhere;line-height:1.35}
+.lootbox .lv{font-size:var(--fs-md);color:#ffd76a;font-weight:700;margin-top:3px}
+/* 本局背包：物资格子 */
+.lootgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}
+.lootcell{background:rgba(255,255,255,.06);border:1.5px solid;border-radius:12px;
+padding:8px 4px;text-align:center}
+.lootcell .e{font-size:var(--fs-2xl);line-height:1.15}
+.lootcell .n{font-size:var(--fs-xs);color:#cfe6ff;margin-top:2px;line-height:1.3;
+overflow-wrap:anywhere}
+.lootcell .v{font-size:var(--fs-xs);color:#ffd76a;font-weight:700}
+/* 格子底部那行小字：占几格 · 什么分类（摸金时先看格数再看钱） */
+.lootcell .s{font-size:var(--fs-xs);color:#8fb4d6;margin-top:1px;line-height:1.3;
+overflow-wrap:anywhere}
+/* 特勤处 · 五个部门 */
+.deptlist{display:grid;gap:10px}
+.dept{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
+border-radius:14px;padding:11px 12px}
+.dept .dhd{display:flex;align-items:center;gap:7px}
+.dept .de{font-size:var(--fs-xl);line-height:1;flex:none}
+.dept .dn{font-size:var(--fs-lg);font-weight:800;flex:none}
+.dept .dbar{flex:1;display:flex;gap:4px;min-width:0}
+.dept .dbar i{flex:1;height:7px;border-radius:99px;background:rgba(255,255,255,.12)}
+.dept .dbar i.on{background:linear-gradient(90deg,#ffd76a,#f59f2b)}
+.dept .dlv{font-size:var(--fs-xs);color:#9cc0e0;font-weight:700;flex:none}
+.dept .dds{font-size:var(--fs-xs);color:#7d94ab;margin-top:4px;line-height:1.5}
+.dept .dcur{font-size:var(--fs-sm);color:#cfe6ff;margin-top:6px;line-height:var(--lh-base)}
+.dept .dnx{margin-top:7px;border-radius:11px;padding:8px 10px;
+background:rgba(255,215,106,.08);border:1px solid rgba(255,215,106,.24);
+font-size:var(--fs-sm);line-height:var(--lh-base)}
+.dept .dcost{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;
+font-size:var(--fs-xs);font-weight:700}
+.dept .dmax{text-align:center;color:#ffd76a;font-weight:800;font-size:var(--fs-sm);
+margin-top:8px;padding:5px 0}
+/* 房卡那一排 4.0.12 起直接用 .item 渲染（见 blazeShopRow 的 accent 参数）：
+   以前是另一套 .kcard 标记，购买按钮没落到 .item .buy 的金色样式上，
+   同一页里房卡是灰按钮、物资是金按钮 —— 那套规则已删。 */
+
+/* =========================================================
+   游戏内确认弹窗（4.0.14）
+   ---------------------------------------------------------
+   替代 window.confirm()。原生框在手机上会把**全屏踢掉**：
+   卖一次东西 → 弹一次 → 全屏没了 → 回来还得再点一次「⛶ 全屏」。
+   换成面板里的一张卡，全屏状态原地不动。
+   卡片顺序就是玩家看东西的顺序：明细 → **到手金额** → 说明 → 警告。
+   ========================================================= */
+.cf-list{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.10);
+  border-radius:13px;padding:7px 11px;margin:0 0 11px}
+.cf-line{display:flex;align-items:center;gap:8px;padding:5px 0;
+  font-size:var(--fs-sm);border-bottom:1px solid rgba(255,255,255,.06)}
+.cf-line:last-child{border-bottom:none}
+.cf-line .e{flex:none;font-size:var(--fs-lg);line-height:1}
+.cf-line .n{flex:1;min-width:0;color:#eaf4ff;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-line .n b{color:#9fe4ff}
+.cf-line .v{flex:none;color:#ffd76a;font-weight:700;font-variant-numeric:tabular-nums}
+.cf-line.cf-more{justify-content:center;color:#7d94ab;font-size:var(--fs-xs)}
+/* 到手金额：整张卡上唯一"大"的数字 —— 玩家点进来看的就是它 */
+.cf-total{text-align:center;margin:0 0 11px;padding:9px 12px;border-radius:14px;
+  background:linear-gradient(180deg,rgba(255,215,106,.14),rgba(255,215,106,.05));
+  border:1px solid rgba(255,215,106,.30)}
+.cf-total .lb{font-size:var(--fs-xs);color:#9cc0e0}
+.cf-total .big{font-size:var(--fs-3xl);font-weight:800;color:#ffd76a;
+  line-height:1.15;font-variant-numeric:tabular-nums}
+.cf-total .big .u{font-size:var(--fs-sm);font-weight:700;color:#e8c274;margin-left:3px}
+.cf-total .sm{font-size:var(--fs-2xs);color:#9cc0e0;margin-top:3px;line-height:1.5}
+.cf-note{font-size:var(--fs-xs);color:#9cc0e0;line-height:var(--lh-base);margin:0 0 9px}
+.cf-warn{font-size:var(--fs-xs);line-height:var(--lh-base);margin:0 0 11px;
+  padding:7px 10px;border-radius:11px;color:#ffd6cb;
+  background:rgba(255,120,90,.10);border:1px solid rgba(255,120,90,.28)}
+
+
+.item{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;margin-bottom:10px}
+.item .ic{font-size:var(--fs-2xl);width:1.5em;text-align:center;flex:none}
+.item .nm{color:#fff;font-weight:700;font-size:var(--fs-lg)}
+.item .ds{color:#9cc0e0;font-size:var(--fs-xs);margin-top:2px;line-height:1.45}
+.item .buy{margin-left:auto;background:var(--gb-tint-gold);color:#fff;
+  text-shadow:0 1px 4px rgba(90,45,0,.45);
+  border:none;border-radius:999px;padding:calc(var(--pad) * .9) var(--pad);font-weight:800;
+  font-size:var(--fs-sm);white-space:nowrap;flex:none;
+  box-shadow:var(--gb-tint-gold-hi),var(--gb-tint-gold-edge),var(--gb-tint-gold-drop);
+  transition:transform .12s ease-out,filter .15s}
+.item .buy:active{transform:scale(.95);filter:brightness(.96)}
+.item .buy:disabled{background:var(--gb-face-2);color:#7d94ab;text-shadow:none;
+  box-shadow:var(--gb-edge-lo),var(--gb-hair)}
+.grid6{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:9px}
+.sp{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;padding:10px 6px;text-align:center}
+.sp .e{font-size:calc(var(--vmin) * .0769);font-size:clamp(22px,calc(var(--vmin) * .0769),30px);filter:grayscale(1) brightness(.5)}
+.sp.got .e{filter:none}
+.sp .n{color:#cfe6ff;font-size:var(--fs-xs);margin-top:4px;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp .k{color:#7d94ab;font-size:var(--fs-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp.got .n{color:#ffd76a}
+.badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
+.bd{width:calc(var(--vmin) * .1795);width:clamp(56px,calc(var(--vmin) * .1795),70px);text-align:center;opacity:.35}
+.bd.on{opacity:1}
+.bd .e{font-size:calc(var(--vmin) * .0872);font-size:clamp(26px,calc(var(--vmin) * .0872),34px)}
+.bd .n{color:#cfe6ff;font-size:var(--fs-xs);font-weight:600}
+.pbar{height:12px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden;margin:10px 0 4px}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,#ffd76a,#f59f2b);
+  border-radius:999px;transition:width .4s}
+.center{text-align:center;color:#cfe6ff;font-size:var(--fs-md);line-height:var(--lh-loose)}
+/* 开场说明 / 键位帮助这类「一条一行」的清单：
+   原来靠 <br> 分行，一条超过一行时折行会顶到行首，和上一行文字对不齐 ——
+   一眼看过去就是参差的一坨。现在每条一个 .il，用悬挂缩进
+   （padding-left 把整块右推、text-indent 负值把首行拉回），
+   折行永远对齐首行文字的起点，emoji 后面那条竖线才立得起来 */
+.it-list{text-align:left;color:#cfe6ff;font-size:var(--fs-md);line-height:var(--lh-loose)}
+.it-list .il{padding-left:1.55em;text-indent:-1.55em}
+.it-list .il+.il{margin-top:.14em}
+/* 键位面板：条目是「键 + 说明」两栏，键名长短不一（W A S D / 鼠标左键），
+   悬挂缩进对不齐，反而更乱 —— 这里退回整块缩进 */
+.it-list.keys .il{padding-left:0;text-indent:0;margin-top:.3em}
+.mono{font-variant-numeric:tabular-nums}
+.wb-item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:11px 13px;margin-bottom:9px}
+.wb-t{color:#fff;font-size:var(--fs-md);font-weight:600;line-height:var(--lh-base);margin-bottom:5px;
+  overflow-wrap:anywhere}
+.wb-a{color:#ffd76a;font-size:var(--fs-md)}
+.wb-e{color:#9cc0e0;font-size:var(--fs-sm);line-height:var(--lh-base);margin-top:4px;overflow-wrap:anywhere}
+/* ============ 练枪专题（1.9.0）============
+   专题 chip 比科目 chip 小一号，一行能挤下三四个 */
+.tp-wrap{max-height:38vh;overflow:auto;-webkit-overflow-scrolling:touch;
+  border-radius:14px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);padding:9px 10px;margin-top:6px;text-align:left}
+.tp-grp{margin-bottom:9px}
+.tp-grp:last-child{margin-bottom:0}
+.tp-hd{color:#8fb4d6;font-size:var(--fs-xs);font-weight:800;margin-bottom:5px}
+.tp-chips{display:flex;gap:5px;flex-wrap:wrap}
+.tp{background:var(--gb-face-2);border:none;
+  border-radius:999px;padding:4px 10px;color:#cfe6ff;font-size:var(--fs-sm);font-weight:700;
+  cursor:pointer;white-space:nowrap;line-height:1.5;display:inline-flex;align-items:center;gap:4px;
+  position:relative;isolation:isolate;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.tp::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.tp:active{transform:scale(.93);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.tp.on{background:var(--gb-tint-gold);color:#fff;text-shadow:0 1px 4px rgba(90,45,0,.45);
+  box-shadow:var(--gb-tint-gold-hi),var(--gb-tint-gold-edge),var(--gb-drop)}
+.tp b{font-weight:800;font-variant-numeric:tabular-nums;opacity:.85}
+.tp.on b{opacity:1}
+/* 这个难度档没有该专题的题：置灰但仍可点（点了会自动切档）。
+   虚线改用 outline（不占布局尺寸，边框已换成玻璃结构的发丝线） */
+.tp.off{opacity:.55;outline:1px dashed rgba(255,255,255,.30);outline-offset:-1.5px}
+.tp-all{margin-bottom:8px}
+
+/* ============ AI 深度解析（1.8.0）============
+   导入卡片里的解析 / 步骤 / 思路层，以及重练时的思路展开 */
+.ai-sec{border-radius:12px;background:rgba(94,214,255,.07);
+  border:1px solid rgba(94,214,255,.24);padding:8px 10px;margin-top:6px}
+.ai-sec .ai-hd{color:#9fe4ff;font-size:var(--fs-xs);font-weight:800;margin-bottom:5px;
+  display:flex;align-items:center;gap:5px}
+.ai-sec .shot-inp{background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.12)}
+.ai-sec[open] summary{color:#9fe4ff}
+.ai-sec summary{color:#8fb4d6;font-size:var(--fs-xs);font-weight:700;cursor:pointer;
+  list-style:none;padding:1px 0}
+.ai-sec summary::-webkit-details-marker{display:none}
+.ai-sec summary::before{content:'▸ ';color:#5ed6ff}
+.ai-sec[open] summary::before{content:'▾ '}
+/* 重练反馈里的解题步骤：一步一行，编号用青色圆点 */
+.ai-steps{text-align:left;margin:8px 0 2px;padding:8px 10px;border-radius:12px;
+  background:rgba(94,214,255,.08);border:1px solid rgba(94,214,255,.22)}
+.ai-steps .hd{color:#9fe4ff;font-size:var(--fs-xs);font-weight:800;margin-bottom:5px}
+.ai-steps ol{margin:0;padding-left:1.25em}
+.ai-steps li{color:#dbeafe;font-size:var(--fs-sm);line-height:var(--lh-base);margin:2px 0;
+  overflow-wrap:anywhere}
+.ai-steps li::marker{color:#5ed6ff;font-weight:800}
+/* 错题中心列表里折叠的思路 */
+.wb-ai{margin-top:7px}
+/* 自评题（没有选项的导入题）：第二步的对答案区 */
+.sr-ans{border-radius:14px;padding:12px 14px;margin-top:10px;text-align:left;
+  font-size:var(--fs-md);line-height:var(--lh-base);overflow-wrap:anywhere;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#eaf4ff}
+.sr-ans b{color:#ffd76a}
+/* ============ 错题中心（1.7.0）============
+   页签 / 角标 / 单题操作 / 分布条：错题本升级成复习系统后新增的样式 */
+.wb-tabs{display:flex;gap:6px;margin:0 0 10px;justify-content:center;flex-wrap:wrap}
+.wb-tab{background:var(--gb-face-2);border:none;
+  border-radius:999px;padding:5px 11px;color:#cfe6ff;font-size:var(--fs-sm);font-weight:700;
+  cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;
+  line-height:1.4;position:relative;isolation:isolate;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.wb-tab::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.wb-tab:active{transform:scale(.94);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.wb-tab.on{background:var(--gb-tint-gold);color:#fff;text-shadow:0 1px 4px rgba(90,45,0,.45);
+  box-shadow:var(--gb-tint-gold-hi),var(--gb-tint-gold-edge),var(--gb-drop)}
+/* 顶栏 📕 上的待复习角标：有到期题时红点 + 呼吸光 */
+.wb-dot{display:inline-flex;align-items:center;justify-content:center;
+  min-width:1.3em;height:1.3em;padding:0 .3em;margin-left:4px;border-radius:999px;
+  background:#ff5a5a;color:#fff;font-size:.76em;font-weight:800;
+  font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px rgba(10,24,40,.55)}
+.wb-dot[hidden]{display:none}
+/* 窄屏顶栏放不下 📕，待复习数改挂在 ☰ 的右上角 */
+#btnMenu{position:relative}
+.wb-dot.pin{position:absolute;top:-5px;right:-5px;margin:0;min-width:15px;height:15px;
+  font-size:var(--fs-2xs);border:1px solid rgba(10,24,40,.7)}
+/* 菜单里「📕 错题中心」那一项：有到期题就描一圈红边 + 挂同款角标。
+   顶栏 ☰ 上的数字必须有个落点 —— 否则玩家点开菜单，
+   满屏找不到哪一项在提醒他（这正是"红点 4 却不知道是谁"的来源）。 */
+.menu-li.pend-item{box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),
+  0 0 0 .5px rgba(255,90,90,.60),var(--gb-drop)}
+.menu-li.pend-item .d{color:#ffc0c0}
+#btnWb.pend{box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),0 0 0 .5px rgba(255,90,90,.65),var(--gb-drop);
+  animation:wbPulse 2s ease-in-out infinite}
+@keyframes wbPulse{
+  0%,100%{box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),0 0 0 .5px rgba(255,90,90,.65),var(--gb-drop)}
+  50%{box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),0 0 0 4px rgba(255,90,90,.22),var(--gb-drop)}}
+/* 单题下面的熟炼度 / 复习日小标签 */
+.wb-meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.wb-tag{border-radius:999px;padding:2px 8px;font-size:var(--fs-xs);font-weight:700;
+  border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);
+  color:#9cc0e0;white-space:nowrap;line-height:var(--lh-base)}
+.wb-tag.box{background:rgba(94,214,255,.12);border-color:rgba(94,214,255,.34);color:#9fe4ff;
+  letter-spacing:1px}
+.wb-tag.due{background:rgba(255,90,90,.16);border-color:rgba(255,90,90,.42);color:#ffb0b0}
+.wb-tag.ok{background:rgba(52,199,123,.14);border-color:rgba(52,199,123,.36);color:#8ef0b8}
+/* 单题操作：收藏 / 改 / 提前复习 / 会了 / 删 */
+.wb-ops{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.wb-op{background:var(--gb-face-2);border:none;
+  border-radius:999px;padding:3px 9px;color:#cfe6ff;font-size:var(--fs-xs);font-weight:700;
+  cursor:pointer;white-space:nowrap;line-height:var(--lh-base);
+  position:relative;isolation:isolate;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.wb-op::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.wb-op:active{transform:scale(.93);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.wb-op.on{background:var(--gb-tint-gold);color:#fff;text-shadow:0 1px 3px rgba(90,45,0,.45);
+  box-shadow:var(--gb-tint-gold-hi),var(--gb-tint-gold-edge),var(--gb-drop)}
+/* 搜索框：全局禁了 user-select，这里要单独放开才选得中文字 */
+.wb-sr{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;padding:7px 13px;color:#eaf4ff;font-size:var(--fs-sm);
+  margin-bottom:8px;-webkit-user-select:text;user-select:text;outline:none}
+.wb-sr::placeholder{color:#7f9cba}
+/* 分析页的分布条 */
+.wb-bar{display:flex;align-items:center;gap:8px;margin:5px 0}
+.wb-bar .nm{flex:none;min-width:56px;color:#9cc0e0;font-size:var(--fs-xs);font-weight:700}
+.wb-bar .tr{flex:1;height:9px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden}
+.wb-bar .tr i{display:block;height:100%;border-radius:999px;
+  background:linear-gradient(90deg,#ff9f2b,#ff5a5a)}
+.wb-bar .vl{flex:none;color:#fff;font-size:var(--fs-xs);font-weight:700;
+  font-variant-numeric:tabular-nums;min-width:24px;text-align:right}
+.wb-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:11px 13px;margin-bottom:9px}
+.wb-kv{display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-sm);
+  color:#9cc0e0;line-height:var(--lh-loose)}
+.wb-kv b{color:#fff;font-variant-numeric:tabular-nums}
+/* 错题照片：列表里的小缩略图 */
+.wb-th{display:block;width:100%;max-height:150px;object-fit:contain;
+  border-radius:8px;background:#fff;margin-bottom:6px;cursor:zoom-in}
+/* 错题本里的折叠题图 */
+.wb-fig{margin-top:6px}
+.wb-fig>summary{color:#9fe4ff;font-size:var(--fs-sm);font-weight:600;cursor:pointer;
+  padding:3px 0}
+.wb-fig .fgbox{margin-top:5px}
+.wb-fig .qfig-svg{max-height:26vh}
+/* 攻坚题图：内联 SVG，白底深线，点一下放大看 */
+.qfig{margin:8px 0 10px;text-align:center}
+.qfig-svg{display:block;width:100%;height:auto;max-height:32vh;
+  border-radius:10px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.4);
+  cursor:zoom-in}
+/* 题图缩档：面板挤不下时由 JS 挂上 fig-sm / fig-xs，
+   width 改成 auto 让图等比缩小居中（只压 max-height 会把图压扁） */
+.qfig.fig-sm .qfig-svg{max-height:22vh;width:auto;margin:0 auto}
+.qfig.fig-xs .qfig-svg{max-height:15vh;width:auto;margin:0 auto}
+/* 长解析 / 完整解题步骤：答完之后才摊开 */
+.qexp{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:10px 13px;margin-top:9px;text-align:left;
+  font-size:var(--fs-sm);line-height:var(--lh-loose);color:#dbeafe;overflow-wrap:anywhere}
+.qexp .hd{color:#ffd76a;font-weight:800;margin-bottom:3px}
+.qexp ol{margin:4px 0 0 18px;padding:0}
+.qexp li{margin:4px 0}
+/* 多解层：一题的 2~3 条路，每条自带「什么时候想到它」 */
+.ang{background:rgba(168,120,255,.09);border-left:3px solid rgba(168,120,255,.5);
+  border-radius:0 10px 10px 0;padding:8px 11px;margin-top:7px}
+.ang-n{color:#e4d9ff;font-weight:800;font-size:var(--fs-md);margin-bottom:2px}
+.ang-d{color:#dbeafe}
+.ang-s{color:#c9b6f0;font-size:var(--fs-sm);margin-top:4px;line-height:var(--lh-base)}
+.ang-tip{color:#9cc0e0;font-size:var(--fs-xs);margin-top:8px;
+  padding-top:7px;border-top:1px dashed rgba(255,255,255,.14);line-height:var(--lh-base)}
+/* AI 讲解卡（拍题后生成） */
+.tc{border:1px solid rgba(94,214,255,.34);background:rgba(94,214,255,.08);
+  border-radius:16px;padding:12px 13px;margin-top:10px;text-align:left}
+.tc .hd{font-weight:800;color:#9fe4ff;font-size:var(--fs-md);margin-bottom:6px}
+.tc-step{background:rgba(255,255,255,.06);border-radius:10px;padding:8px 11px;
+  margin-top:7px;font-size:var(--fs-sm);line-height:var(--lh-base);color:#dbeafe;
+  overflow-wrap:anywhere}
+.tc-step b{color:#ffd76a}
+.tc-lv{display:inline-block;border-radius:999px;padding:2px 9px;font-size:var(--fs-xs);
+  font-weight:700;margin-left:6px;vertical-align:middle}
+/* 答题面板里的大图 */
+.qimg{margin:2px 0 10px;text-align:center}
+.qimg-i{display:block;max-width:100%;max-height:34vh;object-fit:contain;
+  border-radius:10px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:zoom-in}
+.qimg-s{display:block;max-width:100%;max-height:74vh;object-fit:contain;
+  border-radius:12px;background:#fff}
+/* 导入照片：一张图一张卡片 */
+.shot{display:flex;gap:10px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px;margin-bottom:9px}
+.shot .pic{width:66px;height:66px;flex:none;border-radius:8px;object-fit:cover;
+  background:#fff;cursor:zoom-in}
+.shot .fd{flex:1;min-width:0;display:grid;gap:5px}
+.shot .st{font-size:var(--fs-xs);font-weight:700;line-height:1.5;color:#9cc0e0}
+.shot .st.ok{color:#8ef0b8}
+.shot .st.no{color:#ffb0b0}
+.shot .st.run{color:#ffd76a}
+.shot .del{align-self:flex-start;background:var(--gb-tint-red);
+  border:none;color:#ffd0d0;border-radius:999px;
+  padding:3px 10px;font-size:var(--fs-xs);font-weight:700;cursor:pointer;
+  box-shadow:var(--gb-edge-hi),var(--gb-tint-red-edge),var(--gb-drop);
+  transition:transform .12s ease-out,filter .15s}
+.shot .del:active{transform:scale(.94);filter:brightness(.96)}
+.shot-inp{width:100%;background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.14);
+  border-radius:9px;padding:7px 9px;color:#eaf4ff;font-size:var(--fs-sm);
+  font-family:inherit;line-height:1.5;resize:vertical;user-select:text;
+  -webkit-user-select:text;touch-action:auto}
+.shot-inp::placeholder{color:#7f9cba}
+/* 全屏看图 */
+#imgView{position:fixed;inset:0;background:rgba(2,8,16,.94);z-index:60;
+  display:none;align-items:center;justify-content:center;padding:14px;
+  touch-action:pinch-zoom;overflow:auto}
+#imgView.show{display:flex}
+#imgView .bar{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:14px;
+  display:flex;gap:8px}
+
+/* ============ 实体层 ============
+   emoji 一律用 DOM 渲染 —— iOS Safari 在 canvas 里画彩色 emoji 会退化成纯色方块，
+   所以全部交给 HTML 元素画，canvas 只负责地面、阴影和光效。
+   字号带 --entk（由 JS 按世界缩放写入），世界缩得再小也不会糊成一团。 */
+#ents{position:absolute;inset:0;pointer-events:none;z-index:14;overflow:hidden}
+.ent{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;
+  white-space:nowrap;will-change:transform;--entk:1;
+  font-family:"Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji","Twemoji Mozilla",sans-serif}
+.ent .ico{line-height:1;display:block;
+  -webkit-text-fill-color:initial;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+.ent .lbl{background:rgba(10,22,38,.86);color:#ffe9a8;font-weight:700;
+  font-size:calc(var(--fs-sm) * var(--entk));
+  line-height:1.3;border-radius:11px;padding:3px 9px;margin-bottom:5px;max-width:44vw;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  border:1px solid rgba(255,215,106,.28);box-shadow:0 3px 10px rgba(0,0,0,.45)}
+.ent .nm{color:#fff;font-weight:800;line-height:1.35;
+  text-shadow:0 2px 10px rgba(0,0,0,.8),0 0 4px rgba(0,0,0,.6)}
+.ent .yr{color:rgba(226,240,255,.82);font-weight:600;line-height:1.35;
+  text-shadow:0 2px 10px rgba(0,0,0,.8),0 0 4px rgba(0,0,0,.6)}
+.ent.glow .ico{filter:drop-shadow(0 0 10px rgba(255,215,106,.95))}
+.ent.dim{opacity:.34}
+
+/* ============ 拾取特效层 ============
+   结晶被捡起的一瞬间：地面冲击环 + 光屑迸射 + 「+3」飘字 + 本体飞向顶栏结晶数。
+   全部由 Web Animations 驱动，播完节点自己删掉，不往 DOM 里堆垃圾。 */
+#fx{position:absolute;inset:0;pointer-events:none;z-index:26;overflow:hidden}
+#fx>div{position:absolute;left:0;top:0;will-change:transform,opacity}
+.fx-ring{border-radius:50%;border:2px solid rgba(255,215,106,.9);
+  box-shadow:0 0 16px rgba(255,215,106,.55),inset 0 0 14px rgba(255,215,106,.3)}
+.fx-ring.ice{border-color:rgba(170,230,255,.95);
+  box-shadow:0 0 16px rgba(120,210,255,.6),inset 0 0 14px rgba(150,225,255,.35)}
+.fx-shard{border-radius:50%;
+  background:radial-gradient(circle at 32% 30%,#fff8dc,#ffd76a 55%,rgba(245,159,43,.12) 100%);
+  box-shadow:0 0 9px rgba(255,215,106,.85)}
+.fx-shard.ice{background:radial-gradient(circle at 32% 30%,#ffffff,#a8e6ff 55%,rgba(80,180,255,.12) 100%);
+  box-shadow:0 0 9px rgba(150,220,255,.9)}
+.fx-fly{font-family:"Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji",
+  "Twemoji Mozilla",sans-serif;line-height:1;
+  filter:drop-shadow(0 0 14px rgba(255,215,106,.95)) drop-shadow(0 2px 5px rgba(0,0,0,.5))}
+.fx-fly.ice{filter:drop-shadow(0 0 14px rgba(140,215,255,.95)) drop-shadow(0 2px 5px rgba(0,0,0,.5))}
+.fx-pop{font-weight:800;color:#ffd76a;white-space:nowrap;font-variant-numeric:tabular-nums;
+  text-shadow:0 2px 8px rgba(0,0,0,.75),0 0 14px rgba(255,215,106,.75)}
+.fx-pop.ice{color:#cbeeff;text-shadow:0 2px 8px rgba(0,0,0,.75),0 0 14px rgba(140,215,255,.8)}
+/* 顶栏结晶数被飞行体"砸中"时弹一下 + 一圈光晕 */
+@keyframes chipPop{0%{transform:scale(1)}32%{transform:scale(1.24)}62%{transform:scale(.96)}100%{transform:scale(1)}}
+@keyframes chipGlow{0%{opacity:.85;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.55)}}
+#crystalChip{position:relative}
+#crystalChip.pop{animation:chipPop .46s cubic-bezier(.3,1.4,.5,1)}
+#crystalChip.pop::after{content:'';position:absolute;left:50%;top:50%;width:100%;height:100%;
+  border-radius:999px;pointer-events:none;border:2px solid rgba(255,215,106,.85);
+  animation:chipGlow .5s ease-out forwards}
+
+/* ============ 史诗模式 · 卷轴 ============ */
+.epic-meta{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.epic-meta span{background:rgba(255,215,106,.12);border:1px solid rgba(255,215,106,.32);
+  color:#ffd76a;border-radius:999px;padding:4px 12px;font-size:var(--fs-sm);font-weight:700}
+.epic-body{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:16px;padding:calc(var(--vmin) * .0410)
+    calc(var(--vmin) * .0385);padding:clamp(11px,calc(var(--vmin) * .0410),16px)
+    clamp(11px,calc(var(--vmin) * .0385),15px);
+  color:#e6f2ff;font-size:var(--fs-md);line-height:var(--lh-loose);text-align:left;overflow-wrap:anywhere}
+.epic-body p{margin:0 0 11px}
+.epic-body p:last-child{margin-bottom:0}
+.epic-body b{color:#ffd76a}
+.epic-body .fm{color:#a8e6ff;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace}
+.epic-quote{border-left:3px solid rgba(255,215,106,.55);padding:8px 0 8px 12px;margin:12px 0;
+  color:#ffe9b8;font-style:italic;font-size:var(--fs-md);line-height:var(--lh-loose);
+  background:rgba(255,215,106,.06)}
+.epic-sec{margin-top:12px;border-radius:14px;padding:12px 14px;
+  font-size:var(--fs-md);line-height:var(--lh-loose);text-align:left;overflow-wrap:anywhere}
+.epic-sec.why{background:rgba(168,120,255,.14);border:1px solid rgba(168,120,255,.35);color:#e8dcff}
+.epic-sec.link{background:rgba(52,199,123,.12);border:1px solid rgba(52,199,123,.32);color:#d3f5e3}
+.epic-sec b{color:#fff}
+.era-head{display:flex;align-items:center;gap:8px;margin:14px 0 8px;padding:9px 12px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px}
+.era-head .e{font-size:var(--fs-2xl);flex:none}
+.era-head .nm{color:#fff;font-weight:800;font-size:var(--fs-lg)}
+.era-head .yr{color:#9cc0e0;font-size:var(--fs-xs);margin-top:1px}
+.era-head .pg{margin-left:auto;color:#ffd76a;font-weight:800;font-size:var(--fs-sm);white-space:nowrap}
+.era-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.era-li{background:var(--gb-face-2);border:none;
+  border-radius:12px;padding:9px 10px;color:#dbeafe;font-size:var(--fs-sm);font-weight:600;
+  text-align:left;line-height:1.5;font-family:inherit;cursor:pointer;overflow-wrap:anywhere;
+  position:relative;isolation:isolate;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.era-li::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.era-li:active{transform:scale(.97);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.era-li .t{font-size:var(--fs-md)}
+.era-li.done{background:var(--gb-tint-green);
+  box-shadow:var(--gb-edge-hi),0 0 0 .5px rgba(110,231,183,.40),var(--gb-drop)}
+.era-li.done .t{color:#b9f2d3}
+.era-li .s{color:#8fb4d6;font-size:var(--fs-xs);font-weight:600;margin-top:2px}
+
+/* ============ 国度分区 ============ */
+.nat-sec{margin-top:14px}
+.nat-hd{font-size:var(--fs-md);font-weight:800;text-align:left;margin-bottom:7px;
+  padding-left:2px;letter-spacing:.5px;line-height:1.35;
+  display:flex;align-items:center;gap:6px}
+.nat-hd::after{content:'';flex:1;height:1px;background:currentColor;opacity:.25;margin-left:4px}
+
+/* ============ 断点 ============ */
+
+/* 窄屏：功能按钮收进 ☰，顶栏只留位置 / 难度 / 结晶 / 菜单 */
+@media (max-width:719px){
+  #topRight .fn{display:none}
+  #btnMenu{display:flex}
+}
+/* 宽屏（平板 / 电脑）以前会把 ☰ 藏起来，可顶栏那排按钮里根本没有
+   练枪场、错题本、传送阵 —— 想用只能绕「图鉴 → 学习报告 → 练枪场」三层。
+   现在 ☰ 一律保留，高频功能再单独提到顶栏。 */
+@media (min-width:720px){
+  /* 顶栏放不下全部：低频的国度 / 存档 / 音效收进 ☰ */
+  #btnNation,#btnSave,#btnSound{display:none}
+}
+
+/* 小屏：顶栏两枚 chip 会顶到结晶数，缩一档并允许标题省略 */
+@media (max-width:400px){
+  .chip{max-width:38vw}
+  .chip.small{max-width:30vw}
+}
+
+/* 极窄屏（320px 及以下）：选项和编年史列表改单列，避免文字被压成两行 */
+@media (max-width:339px){
+  .opts{grid-template-columns:1fr}
+  .era-list{grid-template-columns:1fr}
+  .row .btn{min-width:76px}
+  .grid6{grid-template-columns:repeat(auto-fill,minmax(70px,1fr))}
+}
+
+/* 矮屏（横屏手机）：控件整体压扁，给地图留出高度 */
+@media (max-height:520px){
+  :root{--stick:calc(var(--vmin) * .30);
+        --act:calc(var(--vmin) * .25)}
+@media (orientation:portrait){:root{--vmin:100vw;--vmax:100vh}}
+@media (orientation:landscape){:root{--vmin:100vh;--vmax:100vw}}
+@supports (font-size:clamp(1px,1px,1px)){:root{--stick:calc(var(--vmin) * .30);--stick:clamp(64px,calc(var(--vmin) * .30),104px);
+        --act:calc(var(--vmin) * .25);
+        --act:clamp(54px,calc(var(--vmin) * .25),86px)}}
+  .panel{max-height:94%;padding:calc(var(--vmin) * .0410);padding:clamp(11px,calc(var(--vmin) * .0410),16px)}
+  .panel h2{margin-bottom:2px}
+  .panel .sub{margin-bottom:9px}
+  #banner{top:30%}
+  /* 矮屏时题干锚线的内推要收窄，横向空间比纵向更紧张 */
+  .qtext{padding:10px 11px!important;
+    padding-left:calc(var(--vmin) * .0436)!important;
+    padding-left:clamp(13px,calc(var(--vmin) * .0436),17px)!important}
+  .opts{gap:7px}
+  .opt{min-height:2.2em;padding-top:8px;padding-bottom:8px}
+  /* 徽标在矮屏里也收一圈，别把选项顶高 */
+  .opt::after{width:1.5em;height:1.5em}
+  .qmeta{margin-bottom:7px}
+  .row{margin-top:11px;gap:8px}
+  .center{line-height:var(--lh-base)}
+  .epic-body{line-height:var(--lh-base)}
+}
+
+/* 极矮（横屏 + 小高度）：隐藏摇杆底座的常驻显示，按下才出现 */
+@media (max-height:380px){
+  #moveHint{bottom:calc(var(--safeB) + var(--stick) + 8px);font-size:var(--fs-sm)}
+}
+
+/* ================================================================
+   手机横屏专用布局（173.1）
+   ----------------------------------------------------------------
+   竖屏时面板是 560px 宽的窄条 —— 一列往下排刚刚好。
+   可横屏手机是 830×330 这种"又宽又矮"的形状：宽度用不到七成
+   （两侧白空 260px），高度只有 260px 出头，题干和四个选项
+   一列排下来必然超屏，只能靠滚动 —— 这正是用户截图里看到的样子。
+
+   横屏要解决的是「高度不足」而不是「宽度不足」，所以对策是**把一列拆成两列**：
+     左栏 → 题面（题干 + 条件清单 + 题图）
+     右栏 → 作答（选项 + 思路台阶 + 解析反馈 + 按钮）
+   同样一块屏幕，纵向内容直接减半，一屏就能看全，不用滚。
+   标题、统计行、进度这类"全局信息"横跨两栏，维持原来的居中观感。
+
+   判定用 orientation + max-height 双条件：
+   只写 orientation 会把 iPad 横屏（1024 高）也当成手机横屏，
+   而平板横屏本来就够高，一列排下来很稳，不该被拆栏。
+   ================================================================ */
+@media (orientation:landscape){
+  /* 1. 面板放宽 + 取消高度压缩：横屏的瓶颈是高度，面板要尽量吃满 */
+  #modal{padding:6px 8px 6px 8px;padding:max(6px,var(--safeT)) max(8px,var(--safeR)) max(6px,var(--safeB)) max(8px,var(--safeL))}
+  /* 96% → calc(100% - 8px)：横屏的竖向空间要用尽。
+     解析常常三四行，差这几像素就从"能看到结论"变成"要滚一下"。
+     留 8px 上下各 4px，避免面板边框和屏幕边缘贴死。 */
+  .panel{width:940px;width:min(940px,100%);max-height:calc(100% - 8px);
+    padding:calc(var(--vmin) * .0338) calc(var(--vmin) * .0436);
+    padding:clamp(9px,calc(var(--vmin) * .0338),14px) clamp(12px,calc(var(--vmin) * .0436),17px)}
+
+  /* 2. 题面面板切成两栏 —— 只对"答题面板"生效（它才有 .qtext + .opts）。
+     用 :has() 判定：面板里同时存在题面和选项时才是答题面板，
+     菜单 / 图鉴 / 商行这些面板没有 .opts，保持单列不受影响。
+     浏览器不支持 :has() 时整条规则被忽略，自动退回竖屏单列，不会坏掉。 */
+  .panel:has(> .qtext):has(> .opts){
+    display:grid;
+    grid-template-columns:minmax(0,1.06fr) minmax(0,1fr);
+    /* 不能用 dense：它会把跨栏的标题行塞到题面之后的空位里，
+       屏幕上就变成"题干在上、标题跑到题干下面"。
+       按 DOM 顺序老实排 —— 标题 → 题面/选项 → 解析，本来就是这个次序。 */
+    grid-auto-flow:row;
+    column-gap:calc(var(--vmin) * .0436);
+    column-gap:clamp(12px,calc(var(--vmin) * .0436),18px);
+    row-gap:0;
+    align-content:start;
+  }
+  /* 跨栏元素：标题 / 统计 / 进度徽章 / 灵条 / 宽按钮行 / 解析反馈。
+     它们各占一整行、按 DOM 顺序自上而下排，不用 dense 也不会乱。
+     不给 grid-row —— 前端元素的行号取决于前面有几个，
+     写死一个行号会把标题行全叠在同一格里。让自动放置按顺序排即可。 */
+  .panel:has(> .qtext):has(> .opts) > h2,
+  .panel:has(> .qtext):has(> .opts) > .sub,
+  .panel:has(> .qtext):has(> .opts) > div[style*="text-align:center"],
+  .panel:has(> .qtext):has(> .opts) > .lstrip,
+  .panel:has(> .qtext):has(> .opts) > .row,
+  .panel:has(> .qtext):has(> .opts) > .imp-box{grid-column:1 / -1}
+  /* 题面固定在左栏；选项、思路回顾、解析反馈全部进右栏，
+     右栏自上而下就是"作答 → 对答案 → 看解析"这一条完整动线 */
+  .panel:has(> .qtext):has(> .opts) > .qtext,
+  .panel:has(> .qtext):has(> .opts) > .qfig{grid-column:1}
+  /* 左栏只有题面，短题会留下一大片空白 —— 让题面卡**撑满左栏**，
+     空白就变成了卡片自己的留白，左栏看着是"一张题面卡"而不是"半边空"；
+     题干文字在卡内垂直居中，短题不会孤零零飘在顶端。
+     span 2 是关键：右栏的选项与解析各占一行（共两行），
+     左栏只跨一行的话第 2 行是空的，卡就撑不满。 */
+  .panel:has(> .qtext):has(> .opts):not(:has(> .qfig)) > .qtext{
+    grid-row:span 2;align-self:stretch;
+    display:flex;align-items:center;justify-content:center;
+    flex-direction:column;min-height:0}
+  .panel:has(> .qtext):has(> .opts) > .qtext > .qs{width:100%}
+  /* 拆过条的题（seg）是左对齐的多行清单，不能居中 —— 居中了每行起点都不同 */
+  .panel:has(> .qtext):has(> .opts) > .qtext.seg{align-items:flex-start;justify-content:flex-start}
+  .panel:has(> .qtext):has(> .opts) > .qmeta,
+  .panel:has(> .qtext):has(> .opts) > .opts,
+  .panel:has(> .qtext):has(> .opts) > .appr-recap,
+  .panel:has(> .qtext):has(> .opts) > #feedback,
+  .panel:has(> .qtext):has(> .opts) > #hintBox,
+  .panel:has(> .qtext):has(> .opts) > .wb-op{grid-column:2}
+  /* 右栏的第一个元素顶上去，和左栏题干齐平 */
+  .panel:has(> .qtext):has(> .opts) > .qmeta,
+  .panel:has(> .qtext):has(> .opts) > .opts:first-child{margin-top:0}
+
+  /* 3. 横屏纵向空间的再分配：标题压扁、锚线内推收窄。
+     标题行和统计行横屏下合成紧凑的一条 —— 竖向每 1px 都是选项的地盘。 */
+  .panel h2{font-size:var(--fs-md);margin-bottom:0;line-height:1.28}
+  .panel .sub{font-size:var(--fs-2xs);margin-bottom:3px;line-height:1.3}
+  .panel .qtag,.panel .qsrc{margin-bottom:4px;padding:1px 8px;font-size:var(--fs-2xs)}
+  .qtext{padding:9px 10px!important;
+    padding-left:calc(var(--vmin) * .0390)!important;
+    padding-left:clamp(12px,calc(var(--vmin) * .0390),15px)!important}
+  .qtext::after{top:6px;bottom:6px}
+  /* 右栏元素之间的竖向间距：Grid 子项自己的 margin 会被 row-gap 叠加，
+     所以把 row-gap 设 0，靠元素自身 margin 控制节奏，避免双份间距 */
+  .panel:has(> .qtext):has(> .opts) > .opts{margin-bottom:0}
+  .panel:has(> .qtext):has(> .opts) > .appr-recap,
+  .panel:has(> .qtext):has(> .opts) > #hintBox{margin-bottom:6px}
+
+  /* 4. 右栏选项：横屏时半屏宽约 400px，足够两列排开 */
+  .opts{gap:8px}
+  .opt{min-height:2.15em;padding-top:7px;padding-bottom:7px;font-size:calc(var(--fs-md) * var(--qs,1))}
+  .opt::after{width:1.48em;height:1.48em}
+  .opts.one .opt{font-size:calc((var(--fs-md) + var(--fs-sm)) / 2 * var(--qs,1))}
+
+  /* 5. 横屏里的提示行、按钮行收紧 */
+  .qmeta{margin-bottom:6px}
+  /* toast 在横屏改挂底部：横屏只有 300px 高，面板又几乎占满全屏，
+     放顶部必然压住标题和第一行选项。底部在横屏反而是空的
+     （摇杆和互动键都在左右两侧），落到那儿谁也挡不着。 */
+  #toast{top:auto;bottom:calc(var(--safeB) + 6px);gap:4px}
+  .tst{font-size:var(--fs-xs);padding:calc(var(--pad) * .6) calc(var(--pad) * 1.35)}
+  .row{margin-top:8px;gap:8px}
+  .row .btn{padding-top:7px;padding-bottom:7px;font-size:var(--fs-sm)}
+  #feedback{margin-top:8px;padding:9px 11px;font-size:var(--fs-sm);line-height:1.62}
+
+  /* 6. 题干限高在横屏下要松绑：换两栏后纵向已经不紧张，
+     再限高会让本来就短的左栏更空 */
+  .qtext.scrollable{max-height:none!important}
+
+  /* 7. 菜单类面板（☰ 菜单、设置、模型选择）改双列。
+     它们本来就是 display:grid 的一列卡片，横屏宽度富余、高度吃紧，
+     排成两列一屏就能看全，不用滚。 */
+  .menu-list{grid-template-columns:1fr 1fr;gap:7px}
+  .menu-li{padding-top:8px;padding-bottom:8px}
+  .menu-li .e{font-size:var(--fs-xl)}
+  .menu-li .d{font-size:var(--fs-2xs);line-height:1.35;margin-top:1px}
+}
+
+/* 横屏 + 极矮（<340px）：字号与间距再收一档，保证一屏放得下 */
+@media (orientation:landscape) and (max-height:400px){
+  .panel{padding:8px 12px}
+  .panel h2{font-size:var(--fs-md)}
+  .panel .sub{display:none}
+  .opts{gap:6px}
+  .opt{min-height:2em;padding-top:6px;padding-bottom:6px}
+  .row .btn{padding-top:6px;padding-bottom:6px}
+}
+
+/* ============ 思路灵 · 心声条（3.3.0）============
+   墨蓝夜航上一道会说话的鎏金细缝：只占一行，挤在题干与选项之间，
+   给气质不给答案。✕ 永久静默；轻点条身展开。
+   用左边框 3px 吃灵的颜色，不另起色块 —— 八色徽章已经建立了颜色语言。 */
+.lstrip{position:relative;margin:0 0 8px;border-radius:12px;
+  background:rgba(9,20,34,.62);border:1px solid rgba(255,255,255,.08);
+  border-left:3px solid var(--lc,#ffd76a);
+  padding:7px 30px 7px 11px;overflow:hidden;cursor:pointer;
+  animation:lsIn .25s ease-out}
+@keyframes lsIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.ls-row{display:flex;gap:7px;align-items:baseline;
+  font-size:var(--fs-xs);line-height:1.5;min-width:0}
+.ls-row+.ls-row{margin-top:3px}
+.ls-who{flex:none;font-weight:800;white-space:nowrap;color:var(--lc,#ffd76a)}
+.ls-say{color:#d4e4f5;min-width:0;overflow-wrap:anywhere}
+.ls-say i{color:#8fa8c2;font-style:normal}
+.ls-tag{flex:none;margin-left:auto;align-self:center;color:#7d94ab;
+  font-size:var(--fs-2xs);white-space:nowrap}
+.ls-more{display:none;margin-top:5px;padding-top:5px;
+  border-top:1px dashed rgba(255,255,255,.12);
+  color:#9cc0e0;font-size:var(--fs-xs);line-height:var(--lh-base)}
+.lstrip[data-open="1"] .ls-more{display:block}
+.lstrip[data-open="1"] .ls-tag{display:none}
+.ls-x{position:absolute;top:5px;right:5px;width:21px;height:21px;border-radius:50%;
+  border:none;background:transparent;color:#7d94ab;font-size:var(--fs-xs);
+  line-height:1;cursor:pointer;flex:none}
+.ls-x:active{background:rgba(255,255,255,.12);color:#eaf4ff}
+
+/* ============ 思路灵 · 图鉴分区 ============ */
+.lgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.lcell{background:var(--gb-face-2);border:none;
+  border-radius:13px;padding:8px 4px 7px;text-align:center;cursor:pointer;
+  color:#eaf4ff;font-family:inherit;-webkit-tap-highlight-color:transparent;
+  position:relative;isolation:isolate;
+  box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
+  transition:transform .12s ease-out,box-shadow .15s,filter .15s}
+.lcell::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:var(--gb-sheen)}
+.lcell:active{transform:scale(.95);box-shadow:var(--gb-press-lift),var(--gb-hair)}
+.lcell .e{font-size:var(--fs-xl);line-height:1.2;filter:drop-shadow(0 2px 7px rgba(0,0,0,.4))}
+.lcell .n{font-size:var(--fs-xs);font-weight:700;margin-top:2px}
+.lcell .lv{font-size:var(--fs-2xs);color:#ffd76a;margin-top:1px;letter-spacing:-1px}
+.lcell.lock{opacity:.62}
+.lcell.lock .e{filter:grayscale(1)}
+.lcell.lock .n{color:#7d94ab;font-weight:600}
+.lcell.lock .lv{color:#5f748a}
+/* 图鉴里的灵详情卡 */
+.lcard{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:15px;padding:11px 13px;margin-top:9px;text-align:left}
+.lcard.lock{background:rgba(255,255,255,.03)}
+.lc-hd{display:flex;align-items:center;gap:9px}
+.lc-e{font-size:var(--fs-2xl);line-height:1;flex:none}
+.lc-tt{min-width:0}
+.lc-n{font-size:var(--fs-lg);font-weight:800;color:#fff;line-height:1.2}
+.lc-sub{font-size:var(--fs-xs);color:#9cc0e0}
+.lc-stars{margin-left:auto;flex:none;color:#ffd76a;font-size:var(--fs-sm);
+  letter-spacing:1px;white-space:nowrap}
+.lc-craft{margin-top:7px;font-size:var(--fs-sm);color:#cfe0f2;line-height:var(--lh-base)}
+.lc-quote{margin-top:6px;border-left:3px solid var(--lc,#ffd76a);
+  background:rgba(0,0,0,.22);border-radius:0 9px 9px 0;padding:6px 10px;
+  font-size:var(--fs-sm);color:#e8f1fb;line-height:var(--lh-base)}
+.lc-how{margin-top:7px;font-size:var(--fs-xs);color:#ffd0a0;line-height:var(--lh-base)}
+
+/* ============ 思路灵 · 觉醒仪式 ============
+   一屏金光：扩散环 + 灵浮现 + 名号，2.4s 自动散，全程 pointer-events:none，
+   不挡玩家紧接着点「继续」。 */
+#lingFx{position:absolute;inset:0;z-index:60;display:none;
+  align-items:center;justify-content:center;flex-direction:column;
+  pointer-events:none;text-align:center;padding:24px}
+#lingFx.go{display:flex}
+#lingFx .lf-veil{position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 46%,rgba(255,215,106,.22),rgba(7,16,28,.86) 68%);
+  animation:lfVeil 2.3s ease both}
+#lingFx .lf-ring{position:absolute;left:50%;top:46%;
+  width:76vw;
+  width:min(76vw,440px);height:76vw;height:min(76vw,440px);
+  border-radius:50%;border:3px solid rgba(255,215,106,.85);
+  animation:lfRing 1.15s ease-out both}
+#lingFx .lf-ring.r2{animation-delay:.18s;border-color:rgba(255,235,170,.6)}
+#lingFx .lf-e{position:relative;font-size:calc(var(--vmin)*.19);font-size:clamp(58px,calc(var(--vmin)*.19),96px);
+  line-height:1;filter:drop-shadow(0 0 26px rgba(255,215,106,.8));
+  animation:lfPop .5s cubic-bezier(.2,1.6,.4,1) both,lfFloat 2.4s ease-in-out .55s infinite}
+#lingFx .lf-t{position:relative;margin-top:16px;font-size:var(--fs-xl);
+  font-weight:800;letter-spacing:7px;color:#ffe9a8;
+  text-shadow:0 2px 14px rgba(0,0,0,.75);animation:lfIn .55s .18s both}
+#lingFx .lf-n{position:relative;margin-top:7px;font-size:var(--fs-2xl);
+  font-weight:800;text-shadow:0 2px 14px rgba(0,0,0,.75);
+  animation:lfIn .55s .3s both}
+#lingFx .lf-c{position:relative;margin-top:8px;font-size:var(--fs-sm);
+  color:#cfe6ff;text-shadow:0 1px 8px rgba(0,0,0,.8);
+  animation:lfIn .55s .42s both}
+@keyframes lfPop{from{transform:scale(.25);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes lfIn{from{opacity:0;transform:translateY(11px)}to{opacity:1;transform:none}}
+@keyframes lfFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes lfRing{0%{transform:translate(-50%,-50%) scale(.03);opacity:.95}
+  100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
+@keyframes lfVeil{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+</style>
+<style id="landscape-pack">
+/* ==== 横屏特供（构建时注入，不改源码）====
+   1. 所有横屏统一走横屏布局：题面与选项左右分栏、菜单双列
+   2. 宽屏容器（1280 及以上）把面板放宽，别让内容缩在中间一窄条 */
+@media (orientation:landscape){
+  .news-card{width:min(1180px,100%)}
+  .panel{max-width:min(1180px,100%)}
+  #modal{padding-left:max(12px,var(--safeL));padding-right:max(12px,var(--safeR))}
+  .menu-list{grid-template-columns:1fr 1fr}
+}
+/* 极扁的横屏（如 844×390）再收一档字号，保证一屏放得下 */
+@media (orientation:landscape) and (max-height:430px){
+  .panel{padding:7px 11px}
+  .panel h2{font-size:var(--fs-sm)}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 【帧率 7/1】世界上只剩一块画布（4.0.17）。
+       曾经这里还有一块 #bg：地形预渲染成一整层、交给合成器用 CSS transform 跟着镜头挪，
+       想法是"GPU 挪图层不要钱、主线程零绘制"。代价在另一头 ——
+       那是 2400x1900 的 DOM 画布，dpr2 平板上要按 4800x3800（1850 万像素）重光栅化，
+       而且它每帧都在动，合成器每帧都得重来一遍。tools/perf.py 消融实测：
+       光收掉这一层，帧间隔 33.3ms → 16.7ms（30fps → 60fps）。
+       现在地形是离屏画布，每帧由主线程贴进 #game（1.3ms，最近邻），
+       合成器完全不碰地形。见 36_loop.js 的 draw 与 34_engine_core.js 的 buildStatic。 -->
+  <canvas id="game"></canvas>
+  <div id="ents"></div>
+  <div id="fx"></div>
+
+  <!-- ============ 新版本通知栏（4.0.6）============
+       玩家手里那份是缓存里的旧版时，光弹一句"刷新一下"等于没说 ——
+       这里把 version.json 里带回来的「本次更新要点」直接铺开，
+       让他先看清新版改了什么，再决定刷不刷新。
+       平时 hidden，由 src/js/73_version.js 在真检测到新版时才挂出来。 -->
+  <div id="upbar" role="status" aria-live="polite" hidden>
+    <span class="up-ico">🛎️</span>
+    <div class="up-tx">
+      <b id="upTitle"></b>
+      <div class="up-list" id="upList"></div>
+    </div>
+    <button class="up-fs" id="upFs" aria-label="全屏 / 退出全屏">⛶ 全屏</button>
+    <button class="up-go" id="upGo">立即刷新</button>
+    <button class="up-x" id="upX" aria-label="这次不提醒">✕</button>
+  </div>
+
+  <div id="topbar">
+    <div class="chip" id="regionChip">📍 <span class="txt">——</span></div>
+    <div class="chip small" id="diffChip"><span class="txt">基础题</span></div>
+    <div id="topRight">
+      <div class="chip" id="crystalChip">🪙 <span class="mono">0</span></div>
+      <button class="btn fn" id="btnMode">📜 史诗</button>
+      <button class="btn fn" id="btnDex">📖 图鉴</button>
+      <button class="btn fn" id="btnNation">🌍 国度</button>
+      <button class="btn fn" id="btnShop">🏪 商行</button>
+      <button class="btn fn" id="btnDrill">🎯 练枪</button>
+      <button class="btn fn" id="btnWb">📕 错题<span class="wb-dot" id="wbDot" hidden>0</span></button>
+      <button class="btn fn ico" id="btnGoal" aria-label="当前目标">📍</button>
+      <button class="btn fn" id="btnSave">💾 存档</button>
+      <button class="btn fn ico" id="btnSound" aria-label="音效开关">🔊</button>
+      <button class="btn ico" id="btnMenu" aria-label="菜单">☰<span class="wb-dot pin" id="wbDot2" hidden>0</span></button>
+    </div>
+  </div>
+
+  <div id="quest">目标：<b id="questText">……</b></div>
+
+  <div id="banner"><div class="t"></div><div class="s"></div></div>
+
+  <div id="stick"><div id="knob"></div></div>
+  <div id="moveHint">👆 在屏幕上按住拖动即可移动</div>
+  <div id="pcHint"></div>
+  <button id="actBtn">互动</button>
+  <div id="actHint"></div>
+  <div id="toast"></div>
+
+  <div id="modal"><div class="panel" id="panel"></div><div id="scrollTip">↓ 上下滑动看更多</div></div>
+
+  <!-- ============ 活动公告（版本更新）============
+       大型游戏进场那张"活动弹窗"：全屏遮罩 + 中央卡片，点右上角 ✕ 才关。
+       刻意不绑遮罩点击 —— 公告就是要点掉它才算看过。
+       卡片内容不写死在这里：构建时由 tools/build.py 从 news.json 渲染，
+       连"已读位" NEWS_VER 也一起生成（内容改了必重弹，不会再漏）。
+       要改公告：改 news.json 顶上加一条，然后 python tools/build.py。 -->
+  <div id="news" role="dialog" aria-modal="true" aria-label="版本更新公告">
+<!-- NEWS-CARD-START · 标记区内由构建期生成，别手改（下次构建会被覆盖） -->
+<div class="news-card">
+      <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
+
+      <div class="news-hero">
+        <span class="news-badge">📣 版本更新 · v4.0.28</span>
+        <div class="news-title">云存档改显示「玩了多久」</div>
+        <div class="news-sub">只算看得见的时候 · 从这一版开始记</div>
+      </div>
+
+      <div class="news-body">
+        <div class="news-sec">
+          <div class="news-sec-h">本次更新</div>
+          <div class="news-li"><span class="e">⏱️</span><span>云存档面板上那行改成<b>玩了多久</b>：切后台、锁屏、合盖子都不算，只有页面在眼前才计时</span></div>
+          <div class="news-li"><span class="e">🌱</span><span>时长<b>从这一版开始累计</b>，以前玩的时间没有记录，所以刚更新完会显示「不到 1 分钟」</span></div>
+        </div>
+
+        <div class="news-sec">
+          <div class="news-sec-h">⛶ 全屏 · 一键开，怎么用</div>
+          <button class="fs-btn" id="newsFs">⛶ 一键全屏</button>
+          <div class="fs-tips">
+            <div class="fs-tip"><span class="k">⛶ 游戏里</span><b>右上角 ☰ 菜单 → ⛶ 全屏</b>，一键进 / 一键退；菜单里永远留着它</div>
+            <div class="fs-tip"><span class="k">💻 电脑</span>按 <b>F11</b>（Mac 是 <b>⌃⌘F</b>），再按一次退出</div>
+            <div class="fs-tip"><span class="k">📱 iPhone</span>Safari 底部「分享」→「<b>添加到主屏幕</b>」，从桌面图标打开即全屏、没有地址栏</div>
+            <div class="fs-tip"><span class="k">🤖 安卓</span>Chrome 右上角 <b>⋮</b> →「<b>添加到主屏幕</b>」，同样从图标进</div>
+            <div class="fs-tip"><span class="k">💬 微信</span>右上角 <b>⋯</b> →「<b>在浏览器打开</b>」，再照上面的做</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="news-foot">
+        <button class="btn primary" id="newsOk">知道了，开玩 →</button>
+      </div>
+    </div>
+<!-- NEWS-CARD-END -->
+  </div>
+</div>
+
+<script src="./assets/app.js"></script>
+
+</body>
+</html>

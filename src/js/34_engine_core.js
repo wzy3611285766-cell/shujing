@@ -112,7 +112,9 @@ function resetSave(scope){
   Object.keys(state).forEach(k=>delete state[k]);
   Object.assign(state,blankState());
   memSave=null;memSaveKey=null;
-  try{location.reload();}catch(e){location.href=location.href;}
+  /* 只 reload，不改 location.href：容器里对 location 赋值属于站外跳转风险，
+     且离线包重新导航会丢掉刚清空的内存态。reload 失败就接受当前状态。 */
+  try{location.reload();}catch(e){}
 }
 
 /* ---------------- 存档码：导出 / 导入 ----------------

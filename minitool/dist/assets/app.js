@@ -1113,7 +1113,7 @@ function approachFor(q){
 
 
 /* =========================================================
-   格物纪元 · 四国并立
+   数境 · 四国并立
    —— 数学 / 物理 / 化学 / 生物，各为一国，各有一张独立地图
    —— 国与国之间靠「传送塔」（⛩️，即七天神像）往来
    ========================================================= */
@@ -1121,7 +1121,7 @@ function approachFor(q){
 /* ---------------- 全局世界量（引擎会直接读写这些） ----------------
    地图尺寸随国度切换而改变，这里的初值只是数学国的默认 */
 let W=2400,H=1900;
-let WORLD_TITLE='格物纪元 · 四国远征';
+let WORLD_TITLE='数境 · 四国远征';
 let WORLD_SUB='走遍数理群岛、力理亚、嬗变利亚、生衍利亚';
 const SAVE_KEY='genji_v1';
 const SAVE_KEY_EPIC='genji_epic_v1';
@@ -10508,7 +10508,9 @@ function resetSave(scope){
   Object.keys(state).forEach(k=>delete state[k]);
   Object.assign(state,blankState());
   memSave=null;memSaveKey=null;
-  try{location.reload();}catch(e){location.href=location.href;}
+  /* 只 reload，不改 location.href：容器里对 location 赋值属于站外跳转风险，
+     且离线包重新导航会丢掉刚清空的内存态。reload 失败就接受当前状态。 */
+  try{location.reload();}catch(e){}
 }
 
 /* ---------------- 存档码：导出 / 导入 ----------------
@@ -15493,7 +15495,7 @@ function showExportWrong(){
   const json=JSON.stringify(list.map(w=>({text:w.text,ans:w.ans,exp:w.exp||'',
     topic:w.topic||'',subject:w.subject||subjOfRid(w.rid)||'',
     opts:(w.opts&&w.opts.length)?w.opts:null})),null,1);
-  const head='格物纪元 · 错题本导出 '+new Date().toISOString().slice(0,10)+'\n'
+  const head='数境 · 错题本导出 '+new Date().toISOString().slice(0,10)+'\n'
     +'（改完可以直接粘回「📥 导入错题」）\n\n';
   openPanel(`
     <h2>📤 导出错题</h2>
@@ -17993,10 +17995,10 @@ function showSavePanel(){
     toast('生成中…');
     const code=await exportCode();   // 每次都重新生成，避免存到旧进度
     saveCodeCache=code;
-    downloadFile('格物纪元存档_'+new Date().toISOString().slice(0,10)+'.txt',
-      '格物纪元 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code);
-    toast(downloadFile('格物纪元存档_'+new Date().toISOString().slice(0,10)+'.txt',
-      '格物纪元 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code)
+    downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',
+      '数境 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code);
+    toast(downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',
+      '数境 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code)
       ?'已存成文件 ✅':'容器里不能下载文件 —— 请复制下面的存档码存好');
   };
   $('sv5').onclick=()=>{
@@ -18041,7 +18043,7 @@ function showExportView(){
     if(!ok){ta.focus();ta.select();}
   };
   $('dl').onclick=()=>{
-    $('msg').textContent=downloadFile('格物纪元存档_'+new Date().toISOString().slice(0,10)+'.txt',saveCodeCache)
+    $('msg').textContent=downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',saveCodeCache)
       ?'已存成文件 ✅':'容器里不能下载文件 —— 请长按全选上面的文本复制走';
   };
   $('bk').onclick=showSavePanel;
@@ -18099,14 +18101,14 @@ EPIC_STATE.sound=ADV_STATE.sound;
 
 const ADV={
   id:'adv',W:2400,H:1900,
-  title:'格物纪元 · 四国远征',
+  title:'数境 · 四国远征',
   sub:'走遍数理群岛、力理亚、嬗变利亚、生衍利亚',
   regions:REGIONS,bridges:BRIDGES,spots:SPOTS,loose:LOOSE,spirits:SPIRITS,
   st:ADV_STATE,save:SAVE_KEY,actR:86
 };
 const EPIC={
   id:'epic',W:EPIC_W,H:EPIC_H,
-  title:'格物纪元 · 科学编年史',
+  title:'数境 · 科学编年史',
   sub:'从伊尚戈骨上的刻痕，到碱基的双螺旋',
   regions:EPIC_REGIONS,bridges:[],spots:EPIC_SPOTS,loose:EPIC_DUST,spirits:[],
   st:EPIC_STATE,save:SAVE_KEY_EPIC,actR:74,
@@ -18927,7 +18929,7 @@ const BLAZE_LOOSE=[];
 
 const BLAZE={
   id:'blaze',W:1600,H:1200,
-  title:'格物纪元 · 烽火地带',
+  title:'数境 · 烽火地带',
   sub:'搜刮 · 交火 · 活着撤离',
   regions:BLAZE_REGIONS,bridges:[],spots:BLAZE_SPOTS,loose:BLAZE_LOOSE,spirits:[],
   st:BLAZE_STATE,save:SAVE_KEY_BLAZE,actR:78,
@@ -18959,7 +18961,7 @@ const DRILL_SPOTS=[
 
 const DRILL={
   id:'drill',W:1500,H:1060,
-  title:'格物纪元 · 练枪场',
+  title:'数境 · 练枪场',
   sub:'高考压轴 · 思路详解 · 四科无限题',
   regions:DRILL_REGIONS,bridges:[],spots:DRILL_SPOTS,loose:[],spirits:[],
   st:DRILL_STATE,save:SAVE_KEY_DRILL,actR:78,
@@ -19059,7 +19061,7 @@ function questTextDrill(){
 function drillIntroHtml(){
   return `
     <h2>🎯 练枪场</h2>
-    <div class="sub">格物纪元 · 第四模式</div>
+    <div class="sub">数境 · 第四模式</div>
     <div class="it-list">
       <div class="il">🎯 <b>四科无限题</b>：数 / 理 / 化 / 生，走近场上的训练台随时开练</div>
       <div class="il">🧭 <b>思路详解</b>：先选「从哪儿入手」，选完给为什么 + 第一步落点 —— 这是练枪独有的环节</div>
@@ -19631,7 +19633,7 @@ startGame();
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.0.28-653a052c';
+const NEWS_KEY='genji_news', NEWS_VER='v4.0.28-3f17d760';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
@@ -24849,7 +24851,7 @@ function resetBlazeState(){
    ========================================================= */
 function showMenu(){
   const ep=CUR===EPIC, bz=CUR===BLAZE, dr=CUR===DRILL;
-  const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'格物纪元 · 四国远征'));
+  const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'数境 · 四国远征'));
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
      没经过构建（4.0.28 占位）时不显示，免得把占位符贴到界面上。 */
@@ -25436,7 +25438,7 @@ function cloudWhy(){
 /* ---------- SDK：按需加载；加载不出来就当没有这个功能 ---------- */
 function cloudLoadSdk(cb){
   /* 【小工具】容器不联网，CDN 上的云端组件必然加载不出来。
-     这里直接判定失败并给出可理解的提示，不再尝试挂 <script src="https://...">。 */
+     这里直接判定失败并给出可理解的提示，不再尝试挂外部 CDN 脚本。 */
   ACCT.sdk='fail';
   acctMsg('小工具运行在离线容器里，云存档与账号同步用不了。进度存在本机，换设备请用「存档码」。','bad');
   cb&&cb();return;

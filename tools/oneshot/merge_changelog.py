@@ -10,7 +10,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 PART = os.path.join(ROOT, "CHANGELOG.md.history.part")
 OUT = os.path.join(ROOT, "CHANGELOG.md")
 
-HEAD = """# 更新日志 · 格物纪元 · 四国远征
+HEAD = """# 更新日志 · 数境 · 四国远征
 
 单文件网页应用（`shujing-app/index.html`）。源码拆在 `src/` 下，构建时拼回一个文件。
 

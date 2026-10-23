@@ -324,7 +324,7 @@ function showExportWrong(){
   const json=JSON.stringify(list.map(w=>({text:w.text,ans:w.ans,exp:w.exp||'',
     topic:w.topic||'',subject:w.subject||subjOfRid(w.rid)||'',
     opts:(w.opts&&w.opts.length)?w.opts:null})),null,1);
-  const head='格物纪元 · 错题本导出 '+new Date().toISOString().slice(0,10)+'\n'
+  const head='数境 · 错题本导出 '+new Date().toISOString().slice(0,10)+'\n'
     +'（改完可以直接粘回「📥 导入错题」）\n\n';
   openPanel(`
     <h2>📤 导出错题</h2>

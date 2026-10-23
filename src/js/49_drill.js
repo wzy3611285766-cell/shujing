@@ -1141,8 +1141,8 @@ function showSavePanel(){
     toast('生成中…');
     const code=await exportCode();   // 每次都重新生成，避免存到旧进度
     saveCodeCache=code;
-    downloadFile('格物纪元存档_'+new Date().toISOString().slice(0,10)+'.txt',
-      '格物纪元 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code);
+    downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',
+      '数境 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code);
     toast('已存成文件 ✅');
   };
   $('sv5').onclick=()=>{
@@ -1185,7 +1185,7 @@ function showExportView(){
     if(!ok){ta.focus();ta.select();}
   };
   $('dl').onclick=()=>{
-    downloadFile('格物纪元存档_'+new Date().toISOString().slice(0,10)+'.txt',saveCodeCache);
+    downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',saveCodeCache);
     $('msg').textContent='已存成文件 ✅';
   };
   $('bk').onclick=showSavePanel;

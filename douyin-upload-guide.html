@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抖音互动空间游戏上传指南</title>
+    <style>
+        :root {
+            --primary-color: #ff2442;
+            --secondary-color: #ff9500;
+            --background-color: #f5f5f5;
+            --text-color: #333;
+            --light-gray: #e0e0e0;
+            --white: #ffffff;
+            --border-radius: 8px;
+            --box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 20px 0;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: var(--box-shadow);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .content-section {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: var(--box-shadow);
+        }
+
+        h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light-gray);
+        }
+
+        h3 {
+            color: var(--secondary-color);
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        .requirements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .requirement-card {
+            background-color: var(--background-color);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .requirement-card h4 {
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .checklist {
+            list-style-type: none;
+        }
+
+        .checklist li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .checklist li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+
+        .step-container {
+            counter-reset: step-counter;
+        }
+
+        .step {
+            counter-increment: step-counter;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: var(--background-color);
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .step h3 {
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+        }
+
+        .step-number {
+            display: inline-block;
+            background-color: var(--secondary-color);
+            color: var(--white);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        tr:hover {
+            background-color: var(--background-color);
+        }
+
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .important-note {
+            background-color: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: var(--border-radius);
+        }
+
+        .important-note h4 {
+            color: #ff9800;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 10px 20px;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #e61830;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 40px;
+            color: var(--text-color);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .content-section {
+                padding: 15px;
+            }
+
+            .requirements-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>抖音互动空间游戏上传指南</h1>
+            <p class="subtitle">完整的技术要求与操作流程说明</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="content-section">
+            <h2>一、抖音互动空间游戏发布概述</h2>
+            <p>抖音互动空间为开发者提供了丰富的游戏发布平台，通过本指南，您将了解如何准备和上传您的游戏内容，确保符合平台要求并顺利通过审核。</p>
+            
+            <div class="important-note">
+                <h4>重要提示</h4>
+                <p>请务必仔细阅读本指南中的所有要求，确保您的游戏内容符合抖音互动空间的技术规范。不符合规范的内容可能会被拒绝审核或下架。</p>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>二、技术要求与规范</h2>
+            
+            <h3>1. 支持的资源格式</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>资源类型</th>
+                            <th>支持格式</th>
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>图片资源</td>
+                            <td>PNG、JPG、JPEG</td>
+                            <td>建议使用PNG格式以保持透明背景</td>
+                        </tr>
+                        <tr>
+                            <td>音频资源</td>
+                            <td>MP3、WAV</td>
+                            <td>采样率44.1kHz，比特率128kbps</td>
+                        </tr>
+                        <tr>
+                            <td>视频资源</td>
+                            <td>MP4</td>
+                            <td>H.264编码，分辨率不超过1080p</td>
+                        </tr>
+                        <tr>
+                            <td>字体资源</td>
+                            <td>TTF、OTF</td>
+                            <td>确保包含中文字符集</td>
+                        </tr>
+                        <tr>
+                            <td>配置文件</td>
+                            <td>JSON</td>
+                            <td>UTF-8编码</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>2. 文件大小限制</h3>
+            <div class="requirements-grid">
+                <div class="requirement-card">
+                    <h4>单个资源文件</h4>
+                    <ul class="checklist">
+                        <li>图片文件：不超过5MB</li>
+                        <li>音频文件：不超过10MB</li>
+                        <li>视频文件：不超过50MB</li>
+                        <li>字体文件：不超过5MB</li>
+                    </ul>
+                </div>
+                <div class="requirement-card">
+                    <h4>游戏包总大小</h4>
+                    <ul class="checklist">
+                        <li>完整游戏包：不超过100MB</li>
+                        <li>可使用分包加载技术优化</li>
+                        <li>建议对资源进行压缩处理</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>3. 分辨率与适配要求</h3>
+            <div class="requirements-grid">
+                <div class="requirement-card">
+                    <h4>推荐分辨率</h4>
+                    <ul class="checklist">
+                        <li>设计分辨率：720x1280（竖屏）</li>
+                        <li>支持横屏：1280x720</li>
+                        <li>适配iPhone X及以上的刘海屏</li>
+                    </ul>
+                </div>
+                <div class="requirement-card">
+                    <h4>适配规范</h4>
+                    <ul class="checklist">
+                        <li>使用相对布局，避免绝对定位</li>
+                        <li>字体大小使用sp单位，图片使用dp单位</li>
+                        <li>提供不同分辨率的资源图</li>
+                        <li>测试主流设备上的显示效果</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>三、必要素材清单</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>素材类型</th>
+                            <th>必选/可选</th>
+                            <th>规格要求</th>
+                            <th>用途</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>游戏图标</td>
+                            <td>必选</td>
+                            <td>512x512px，PNG格式</td>
+                            <td>应用商店展示</td>
+                        </tr>
+                        <tr>
+                            <td>启动画面</td>
+                            <td>必选</td>
+                            <td>720x1280px，PNG/JPG</td>
+                            <td>游戏启动时显示</td>
+                        </tr>
+                        <tr>
+                            <td>宣传图</td>
+                            <td>必选</td>
+                            <td>1080x1920px，PNG/JPG</td>
+                            <td>抖音平台展示</td>
+                        </tr>
+                        <tr>
+                            <td>游戏截图</td>
+                            <td>必选（3-5张）</td>
+                            <td>720x1280px，PNG/JPG</td>
+                            <td>应用商店预览</td>
+                        </tr>
+                        <tr>
+                            <td>游戏介绍视频</td>
+                            <td>可选</td>
+                            <td>15-30秒，MP4格式</td>
+                            <td>增强用户吸引力</td>
+                        </tr>
+                        <tr>
+                            <td>隐私政策</td>
+                            <td>必选</td>
+                            <td>文本文件</td>
+                            <td>用户数据保护</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>四、上传前自检项目</h2>
+            <div class="step-container">
+                <div class="step">
+                    <h3><span class="step-number"></span>1. 技术规范检查</h3>
+                    <ul class="checklist">
+                        <li>确认所有资源格式符合要求</li>
+                        <li>检查文件大小是否在限制范围内</li>
+                        <li>验证分辨率和适配性</li>
+                        <li>测试游戏在不同设备上的运行效果</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number"></span>2. 内容合规性检查</h3>
+                    <ul class="checklist">
+                        <li>确保游戏内容符合国家法律法规</li>
+                        <li>检查是否包含敏感或违规内容</li>
+                        <li>验证用户隐私政策完整性</li>
+                        <li>确认没有侵犯第三方知识产权</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number"></span>3. 用户体验检查</h3>
+                    <ul class="checklist">
+                        <li>游戏流程是否顺畅</li>
+                        <li>操作是否简单直观</li>
+                        <li>加载速度是否合理</li>
+                        <li>是否有明显的bug或崩溃问题</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number"></span>4. 材料完整性检查</h3>
+                    <ul class="checklist">
+                        <li>确认所有必要素材已准备齐全</li>
+                        <li>检查素材质量是否符合要求</li>
+                        <li>验证素材命名是否符合规范</li>
+                        <li>确保素材文件路径正确</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>五、上传操作流程</h2>
+            <div class="step-container">
+                <div class="step">
+                    <h3><span class="step-number"></span>步骤1：创建开发者账号</h3>
+                    <ul class="checklist">
+                        <li>访问抖音开放平台官网</li>
+                        <li>注册并认证开发者账号</li>
+                        <li>完成企业/个人资质认证</li>
+                        <li>签署相关协议</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number"></span>步骤2：创建应用</h3>
+                    <ul class="checklist">
+                        <li>登录抖音开发者后台</li>
+                        <li>进入"应用管理"页面</li>
+                        <li>点击"创建应用"按钮</li>
+                        <li>填写应用基本信息（名称、分类、描述等）</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number"></span>步骤3：准备上传材料</h3>
+                    <ul class="checklist">
+                        <li>按照本指南准备所有必要素材</li>
+                        <li>将游戏打包成指定格式</li>
+                        <li>填写完整的游戏介绍信息</li>
+                        <li>准备隐私政策文件</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number"></span>步骤4：上传游戏包</h3>
+                    <ul class="checklist">
+                        <li>进入应用管理页面</li>
+                        <li>选择"上传新版本"</li>
+                        <li>上传游戏安装包</li>
+                        <li>填写版本号和更新说明</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number"></span>步骤5：填写应用信息</h3>
+                    <ul class="checklist">
+                        <li>上传游戏图标和宣传图</li>
+                        <li>填写详细的游戏介绍</li>
+                        <li>设置游戏分类和标签</li>
+                        <li>配置游戏参数（如计费方式等）</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number"></span>步骤6：提交审核</h3>
+                    <ul class="checklist">
+                        <li>确认所有信息填写完整</li>
+                        <li>勾选同意相关协议</li>
+                        <li>点击"提交审核"按钮</li>
+                        <li>等待审核结果（通常1-3个工作日）</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number"></span>步骤7：审核反馈与修改</h3>
+                    <ul class="checklist">
+                        <li>查看审核反馈（若有）</li>
+                        <li>根据反馈修改游戏内容</li>
+                        <li>重新提交审核</li>
+                        <li>重复直至通过审核</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number"></span>步骤8：发布上线</h3>
+                    <ul class="checklist">
+                        <li>审核通过后自动发布</li>
+                        <li>可在后台查看发布状态</li>
+                        <li>监控游戏数据和用户反馈</li>
+                        <li>及时响应用户问题和建议</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>六、常见问题解答</h2>
+            <div class="requirements-grid">
+                <div class="requirement-card">
+                    <h4>审核被拒常见原因</h4>
+                    <ul class="checklist">
+                        <li>内容不符合国家法律法规</li>
+                        <li>侵犯他人知识产权</li>
+                        <li>存在安全漏洞或稳定性问题</li>
+                        <li>用户体验差，操作不流畅</li>
+                        <li>素材质量不符合要求</li>
+                    </ul>
+                </div>
+                <div class="requirement-card">
+                    <h4>审核周期说明</h4>
+                    <ul class="checklist">
+                        <li>首次审核：1-3个工作日</li>
+                        <li>修改后重新审核：1个工作日</li>
+                        <li>紧急审核：联系客服申请加急</li>
+                        <li>节假日审核可能延长</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>七、联系我们</h2>
+            <p>如果您在上传过程中遇到任何问题，可以通过以下方式联系抖音互动空间技术支持：</p>
+            <ul class="checklist">
+                <li>抖音开放平台官网：https://open.douyin.com/</li>
+                <li>开发者客服邮箱：developer@douyin.com</li>
+                <li>技术支持热线：400-xxx-xxxx</li>
+            </ul>
+            <a href="#" class="btn">查看更多帮助文档</a>
+        </section>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 抖音互动空间. 本指南仅供参考，具体要求以官方最新规定为准。</p>
+    </footer>
+</body>
+</html>

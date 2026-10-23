@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>数境 · 四国远征 — 小红书小工具上传指南</title>
+<style>
+  :root{
+    --red:#ff2442; --red-d:#d81b36; --red-soft:#fff1f3;
+    --gold:#c9962f; --gold-l:#ffd76a;
+    --ink:#161a22; --ink-2:#3c4453; --ink-3:#6b7485;
+    --line:#e6e9ef; --bg:#f6f7f9; --card:#fff;
+    --ok:#1f9d55; --ok-bg:#eaf7ef;
+    --warn:#b7791f; --warn-bg:#fff8e6;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px -12px rgba(16,24,40,.18);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--red);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,kbd{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;font-size:.88em}
+  code{background:#f1f3f6;border:1px solid #e6e9ef;border-radius:5px;padding:1px 5px;overflow-wrap:anywhere;word-break:normal}
+  kbd{background:#fff;border:1px solid #d5dae2;border-bottom-width:2px;border-radius:5px;padding:1px 5px}
+
+  /* ---------- 顶部 ---------- */
+  .hero{
+    position:relative;overflow:hidden;color:#fff;
+    background:
+      radial-gradient(1200px 420px at 78% -10%,rgba(255,215,106,.20),transparent 62%),
+      radial-gradient(900px 380px at 12% 120%,rgba(255,36,66,.30),transparent 60%),
+      linear-gradient(160deg,#0c1220 0%,#141d30 58%,#1b1520 100%);
+  }
+  .hero::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:linear-gradient(rgba(255,215,106,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,215,106,.055) 1px,transparent 1px);
+    background-size:34px 34px;
+    -webkit-mask-image:radial-gradient(90% 70% at 50% 30%,#000 35%,transparent 100%);
+    mask-image:radial-gradient(90% 70% at 50% 30%,#000 35%,transparent 100%);
+  }
+  .hero-in{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:44px 22px 38px}
+  .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;letter-spacing:.14em;color:#ffd76a;text-transform:uppercase;margin-bottom:14px}
+  .kicker::before{content:"";width:26px;height:1px;background:#ffd76a}
+  h1{margin:0 0 10px;font-size:clamp(26px,4.4vw,40px);line-height:1.25;letter-spacing:-.01em}
+  h1 small{display:block;font-size:clamp(13px,1.6vw,15px);font-weight:400;color:#b9c3d6;letter-spacing:.02em;margin-top:9px}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+  .pill{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:6px 13px;font-size:13px;color:#dde4f1;backdrop-filter:blur(4px)}
+  .pill i{width:7px;height:7px;border-radius:50%;background:#ffd76a;box-shadow:0 0 0 3px rgba(255,215,106,.18)}
+  .pill.ok i{background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.18)}
+
+  /* ---------- 布局 ---------- */
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px 80px}
+  .layout{display:grid;grid-template-columns:236px minmax(0,1fr);gap:34px;align-items:start}
+  .layout>*{min-width:0}
+  @media (max-width:980px){.layout{grid-template-columns:1fr;gap:18px}}
+
+  .toc{position:sticky;top:20px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+  .toc h2{margin:0 0 10px;font-size:12px;letter-spacing:.13em;color:var(--ink-3);text-transform:uppercase}
+  .toc a{display:block;padding:6px 0;font-size:14px;color:var(--ink-2);border-bottom:1px dashed transparent}
+  .toc a:hover{color:var(--red);text-decoration:none}
+  .toc a b{display:inline-block;width:20px;color:var(--ink-3);font-weight:600;font-size:12px}
+  .toc-progress{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+  .toc-progress .bar{height:6px;border-radius:99px;background:#eef1f5;overflow:hidden;margin:8px 0 6px}
+  .toc-progress .bar>span{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--red),#ff7a8a);transition:width .35s ease}
+  .toc-progress small{color:var(--ink-3);font-size:12px}
+  @media (max-width:980px){
+    .toc{position:static;order:0;padding:12px 12px 10px}
+    .toc h2{display:none}
+    .toc-links{display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}
+    .toc-links::-webkit-scrollbar{display:none}
+    .toc a{flex:0 0 auto;border:1px solid var(--line);border-radius:99px;padding:5px 11px;font-size:13px;background:#fafbfc;white-space:nowrap}
+    .toc a b{width:auto;margin-right:5px;font-size:11px}
+    .toc-progress{margin-top:8px;padding-top:8px}
+    .toc-progress .bar{margin:6px 0 4px}
+  }
+
+  main{min-width:0}
+  section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:clamp(18px,3vw,30px);margin-bottom:22px;box-shadow:var(--shadow);scroll-margin-top:18px}
+  .sec-h{display:flex;gap:12px;align-items:baseline;margin:0 0 6px}
+  .sec-n{flex:0 0 auto;font:700 12px/1 ui-monospace,Consolas,monospace;color:var(--red);background:var(--red-soft);border-radius:6px;padding:5px 7px;letter-spacing:.06em}
+  h2.sec-t{margin:0;font-size:clamp(19px,2.4vw,23px);line-height:1.3;letter-spacing:-.01em}
+  .sec-sub{margin:8px 0 20px;color:var(--ink-3);font-size:14px}
+  h3{margin:26px 0 10px;font-size:16.5px}
+  h3:first-of-type{margin-top:4px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:6px 0}
+  .muted{color:var(--ink-3)}
+  .small{font-size:13.5px}
+
+  /* ---------- 提示框 ---------- */
+  .note{border-radius:11px;padding:13px 15px;margin:14px 0;font-size:14.5px;border:1px solid}
+  .note>b:first-child{display:block;margin-bottom:4px;font-size:13.5px}
+  .note b{font-weight:600}
+  .note.info{background:#f4f7fb;border-color:#dde6f2;color:#2c3a4e}
+  .note.ok{background:var(--ok-bg);border-color:#c9ecd7;color:#14532d}
+  .note.warn{background:var(--warn-bg);border-color:#f4e3b8;color:#6b4b12}
+  .note.red{background:var(--red-soft);border-color:#ffd7de;color:#7a1224}
+
+  /* ---------- 表格 ---------- */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:14px 0;border:1px solid var(--line);border-radius:11px}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+  @media (max-width:760px){
+    table{min-width:520px;font-size:13px}
+    th,td{padding:8px 10px}
+    .tbl-wrap{box-shadow:inset -16px 0 16px -14px rgba(16,24,40,.20)}
+  }
+  th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#fafbfc;font-weight:600;color:var(--ink-2);font-size:12.5px;letter-spacing:.04em;white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tag{display:inline-block;font-size:11.5px;line-height:1.5;padding:1px 8px;border-radius:99px;border:1px solid;white-space:nowrap}
+  .tag.req{color:#8a1020;background:#fff1f3;border-color:#ffcfd7}
+  .tag.rec{color:#6b4b12;background:#fff8e6;border-color:#f2dfae}
+  .tag.ok{color:#14532d;background:#eaf7ef;border-color:#c9ecd7}
+  .tag.no{color:#5b6472;background:#f2f4f7;border-color:#e0e4ea}
+
+  /* ---------- 规格卡 ---------- */
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  @media (max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);border-radius:11px;padding:15px;background:#fcfcfd}
+  .card h4{margin:0 0 8px;font-size:14.5px;display:flex;align-items:center;gap:7px}
+  .card ul{margin:6px 0 0;padding-left:18px;font-size:13.8px;color:var(--ink-2)}
+  .card li{margin:4px 0}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex:0 0 auto}
+  .dot.g{background:var(--gold)} .dot.ok{background:var(--ok)} .dot.b{background:#4c7dd8}
+
+  /* ---------- 清单 ---------- */
+  .checklist{margin:12px 0 0;padding:0;list-style:none}
+  .checklist li{margin:0;border-bottom:1px solid #f0f2f6}
+  .checklist li:last-child{border-bottom:0}
+  .check{display:grid;grid-template-columns:22px 1fr;gap:11px;padding:9px 2px;cursor:pointer;align-items:start;font-size:14.5px}
+  .check:hover{background:#fafbfd}
+  .check input{appearance:none;-webkit-appearance:none;width:18px;height:18px;margin:2px 0 0;border:1.8px solid #c6cdd8;border-radius:5px;background:#fff;cursor:pointer;position:relative;transition:.15s}
+  .check input:checked{background:var(--red);border-color:var(--red)}
+  .check input:checked::after{content:"";position:absolute;left:5px;top:1.5px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(43deg)}
+  .check input:focus-visible{outline:2px solid #ffb3bf;outline-offset:2px}
+  .check span{color:var(--ink-2)}
+  .check input:checked+span{color:var(--ink-3);text-decoration:line-through;text-decoration-color:#c9ced8}
+  .check code{margin:0 2px}
+
+  /* ---------- 步骤 ---------- */
+  .steps{list-style:none;margin:16px 0 0;padding:0;counter-reset:s}
+  .step{position:relative;padding:0 0 22px 46px;counter-increment:s}
+  .step::before{content:counter(s);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:700 13.5px/1 ui-monospace,Consolas,monospace;color:#fff;background:var(--red);box-shadow:0 0 0 4px var(--red-soft)}
+  .step::after{content:"";position:absolute;left:14.5px;top:34px;bottom:2px;width:1px;background:linear-gradient(#e3e7ee,transparent)}
+  .step:last-child::after{display:none}
+  .step h4{margin:3px 0 6px;font-size:15.5px}
+  .step p{margin:6px 0;font-size:14.5px;color:var(--ink-2)}
+  .step .note{margin:9px 0 0}
+
+  /* ---------- 素材 ---------- */
+  .assets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0 4px}
+  @media (max-width:840px){.assets{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .asset{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#0d1420;position:relative;cursor:zoom-in}
+  .asset img{display:block;width:100%;height:auto;aspect-ratio:750/1334;object-fit:cover;object-position:top}
+  .asset.icon img{object-fit:contain;padding:14%;background:radial-gradient(circle at 50% 42%,#16233a,#0a101a 72%)}
+  .asset figcaption{position:absolute;left:0;right:0;bottom:0;padding:20px 10px 8px;color:#fff;font-size:12px;background:linear-gradient(transparent,rgba(6,10,18,.86));letter-spacing:.02em}
+  .asset figcaption b{font-weight:600}
+  .asset figcaption em{font-style:normal;color:#c8d2e4;font-size:11px;display:block}
+
+  /* ---------- 文案块 ---------- */
+  .copybox{border:1px solid var(--line);border-radius:11px;background:#fbfcfd;margin:12px 0;overflow:hidden}
+  .copybox header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 13px;border-bottom:1px solid var(--line);background:#f7f9fb}
+  .copybox header strong{font-size:13px;color:var(--ink-2);letter-spacing:.02em}
+  .copybox pre{margin:0;padding:13px;white-space:pre-wrap;word-break:break-word;font:13.5px/1.75 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink-2)}
+  .btn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink-2);border-radius:7px;padding:5px 11px;font-size:12.5px;cursor:pointer;transition:.15s;white-space:nowrap}
+  .btn:hover{border-color:#c9d0da;background:#f7f9fb;color:var(--ink)}
+  .btn.done{color:var(--ok);border-color:#c9ecd7;background:var(--ok-bg)}
+
+  /* ---------- 灯箱 ---------- */
+  dialog.lb{border:0;padding:0;background:transparent;max-width:min(94vw,560px);width:100%;overflow:visible}
+  dialog.lb::backdrop{background:rgba(8,12,20,.82);backdrop-filter:blur(3px)}
+  dialog.lb img{display:block;width:100%;height:auto;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+  dialog.lb .lb-x{position:fixed;top:14px;right:14px;width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:20px;cursor:pointer}
+  dialog.lb .lb-x:hover{background:rgba(255,255,255,.24)}
+
+  /* ---------- 页脚 ---------- */
+  footer{border-top:1px solid var(--line);background:#fff}
+  .foot{max-width:1180px;margin:0 auto;padding:26px 22px 40px;color:var(--ink-3);font-size:13px}
+  .foot p{margin:5px 0}
+  .src{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:10px}
+  .src a{font-size:12.5px}
+
+  @media print{
+    body{background:#fff}
+    .toc,.hero::after,dialog.lb{display:none}
+    .hero{background:#fff;color:#000;border-bottom:2px solid #000}
+    .hero .pill{background:#fff;border-color:#999;color:#000}
+    section{box-shadow:none;border-color:#bbb;break-inside:avoid}
+    .step::after{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <div class="kicker">小红书 Vibe Coding 小工具 · 发布前准备</div>
+    <h1>数境 · 四国远征<small>上传指南与交付清单：技术要求、素材、自检、提审流程</small></h1>
+    <div class="hero-meta">
+      <span class="pill"><i></i>版本 v4.0.28</span>
+      <span class="pill"><i></i>2026-10-18 构建</span>
+      <span class="pill"><i></i>包体 0.67 MiB</span>
+      <span class="pill ok"><i></i>官方脚本审计 PASS</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="layout">
+
+  <nav class="toc" aria-label="页面目录">
+    <h2>目录</h2>
+    <div class="toc-links">
+      <a href="#deliver"><b>00</b>交付物总览</a>
+      <a href="#spec"><b>01</b>技术要求</a>
+      <a href="#assets"><b>02</b>必备素材</a>
+      <a href="#copy"><b>03</b>应用信息文案</a>
+      <a href="#check"><b>04</b>上传前自检</a>
+      <a href="#flow"><b>05</b>上传与提审</a>
+      <a href="#risk"><b>06</b>已知风险</a>
+    </div>
+    <div class="toc-progress">
+      <strong style="font-size:13px">自检进度</strong>
+      <div class="bar"><span id="bar"></span></div>
+      <small><span id="cnt">0</span> / <span id="tot">0</span> 项已确认</small>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- 00 交付物 -->
+    <section id="deliver">
+      <div class="sec-h"><span class="sec-n">00</span><h2 class="sec-t">交付物总览</h2></div>
+      <p class="sec-sub">上传只需要一个 zip；下面的素材与文案是上传页填写和商店展示用的，已全部备好。</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>交付物</th><th>位置</th><th>状态</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>待上传 zip</b></td>
+              <td><code>minitool/shujing-minitool-v4.0.28.zip</code></td>
+              <td><span class="tag ok">已就绪</span></td>
+              <td class="num">682.6 KB · 2 个文件 · 审计 0 warning</td>
+            </tr>
+            <tr>
+              <td>应用图标</td>
+              <td><code>minitool/store/icon_512.png</code></td>
+              <td><span class="tag ok">已生成</span></td>
+              <td>512×512 · 63 KB · PNG</td>
+            </tr>
+            <tr>
+              <td>展示截图 ×3</td>
+              <td><code>minitool/store/01~03_*.png</code></td>
+              <td><span class="tag ok">已生成</span></td>
+              <td>750×1334 · 227~557 KB · 取自实际产物</td>
+            </tr>
+            <tr>
+              <td>应用信息文案</td>
+              <td><a href="#copy">本页第 03 节</a></td>
+              <td><span class="tag ok">可复制</span></td>
+              <td>名称 / 简介 / 标签 / 审核备注</td>
+            </tr>
+            <tr>
+              <td>上传前自检</td>
+              <td><a href="#check">本页第 04 节</a></td>
+              <td><span class="tag ok">已跑审计</span></td>
+              <td>官方脚本 + 禁用能力逐项 grep</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note info">
+        <b>关于本页的依据</b>
+        容器技术要求、包体门禁、能力边界来自小红书官方《小工具容器能力清单》与项目内的打包规范技能包（<code>minitool-zip-builder 1.8.0</code>）；图标与截图的像素尺寸属于<b>平台未公开项</b>，本页按通用安全值准备，上传时以页面实际提示为准。
+      </div>
+    </section>
+
+    <!-- 01 技术要求 -->
+    <section id="spec">
+      <div class="sec-h"><span class="sec-n">01</span><h2 class="sec-t">小红书对游戏内容的技术要求</h2></div>
+      <p class="sec-sub">小工具本质是离线 H5：所有资源打进 zip，容器加载后不联网。下列为硬性约束，违反任一項都可能导致白屏或审核驳回。</p>
+
+      <h3>1.1 包体与体积门禁</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>项目</th><th>规则</th><th>本项目实测</th><th>判定</th></tr></thead>
+          <tbody>
+            <tr><td>zip 总包</td><td>≤ 10 MiB（硬上限）；建议 ≤ 2 MiB</td><td class="num">0.67 MiB</td><td><span class="tag ok">达标</span></td></tr>
+            <tr><td>单个 HTML / CSS / JS / JSON</td><td>无硬上限；&gt; 2 MiB 触发风险提示</td><td class="num">app.js 1.77 MiB</td><td><span class="tag ok">达标</span></td></tr>
+            <tr><td>上述文本解压后合计</td><td>无硬上限；&gt; 5 MiB 触发风险提示</td><td class="num">约 1.89 MiB</td><td><span class="tag ok">达标</span></td></tr>
+            <tr><td>单条 Base64</td><td>解码后 ≤ 1 MiB；&gt; 100 KiB 建议改为独立文件</td><td class="num">无内嵌大图</td><td><span class="tag ok">达标</span></td></tr>
+            <tr><td>文件数量</td><td>无限制，但只允许白名单类型</td><td class="num">2 个</td><td><span class="tag ok">达标</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">注：<code>app.js</code> 已接近 2 MiB 提示线（1.77 MiB）。后续加内容时优先拆分为多个 <code>.js</code> 按依赖顺序引入，不要把 bundle 再增大。</p>
+
+      <h3>1.2 允许的文件类型</h3>
+      <div class="grid g2">
+        <div class="card">
+          <h4><span class="dot ok"></span>可以打包</h4>
+          <ul>
+            <li><code>.html</code> — 有且只有一个 <code>index.html</code>，必须在 zip 根目录</li>
+            <li><code>.css</code> — 样式表</li>
+            <li><code>.js</code> — 脚本，必须是经典脚本</li>
+            <li><code>.png .jpg .jpeg .gif .webp .svg</code> — 图片</li>
+            <li><code>.woff .woff2</code> — 字体</li>
+            <li><code>.json</code> — 小型静态数据，不得当数据库</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4><span class="dot"></span>不能出现</h4>
+          <ul>
+            <li><code>node_modules</code>、<code>.git</code>、<code>.DS_Store</code></li>
+            <li><code>*.map</code>、构建配置（vite/webpack config）</li>
+            <li>多套一层目录导致 <code>index.html</code> 不在根（如 <code>dist/index.html</code>）</li>
+            <li>多个 HTML 页面站点（单页，视图用 JS 切换）</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>1.3 资源加载规则（容器 CSP）</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>资源</th><th>允许</th><th>禁止</th></tr></thead>
+          <tbody>
+            <tr><td>脚本</td><td>包内 <code>&lt;script src="./app.js"&gt;</code></td><td>内联 <code>&lt;script&gt;</code>、行内事件 <code>onclick</code>、<code>javascript:</code>、<code>eval</code> / <code>new Function</code>、WebAssembly、外部域名 / <code>data:</code> / <code>blob:</code> 脚本</td></tr>
+            <tr><td>样式</td><td>内联 <code>&lt;style&gt;</code>、行内 <code>style</code>、包内样式表</td><td>外部域名样式表</td></tr>
+            <tr><td>图片</td><td>包内图片、<code>data:</code>、<code>blob:</code>（选图预览）</td><td>外部域名图片</td></tr>
+            <tr><td>字体</td><td>仅包内字体文件</td><td>外部域名字体</td></tr>
+            <tr><td>音视频</td><td>仅包内媒体文件</td><td>外部域名、<code>data:</code> / <code>blob:</code> 媒体源</td></tr>
+            <tr><td>iframe / object</td><td>—</td><td>全部禁止</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note warn">
+        <b>三个最容易踩的坑</b>
+        ① 脚本必须外置——容器 CSP 不含 <code>unsafe-inline</code>，内联脚本和 <code>onclick</code> 一律不执行；② 不要用 <code>type="module"</code>，离线 zip 下相对 <code>import</code> 解析不可靠，典型症状是“界面出来了但逻辑全死”；③ 不要写 <code>&lt;base href&gt;</code>，会破坏真机路径。
+      </div>
+
+      <h3>1.4 分辨率与适配</h3>
+      <div class="grid g2">
+        <div class="card">
+          <h4><span class="dot b"></span>页面必须声明</h4>
+          <ul>
+            <li><code>&lt;!DOCTYPE html&gt;</code></li>
+            <li><code>lang="zh-CN"</code></li>
+            <li><code>charset="UTF-8"</code></li>
+            <li>viewport 含 <code>width=device-width, initial-scale=1, viewport-fit=cover</code></li>
+            <li>资源全部相对路径 <code>./assets/...</code></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4><span class="dot b"></span>适配与安全区</h4>
+          <ul>
+            <li>刘海 / 圆角屏用 <code>viewport-fit=cover</code> + <code>env(safe-area-inset-*)</code></li>
+            <li>容器统一控制导航栏、下拉刷新，包内不要自绘外壳</li>
+            <li>视觉全屏用 CSS 布局实现，<code>requestFullscreen</code> 被禁用</li>
+            <li>触摸手势用 <code>touch*</code> 或 Pointer Events</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>1.5 运行环境与兼容基线</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>维度</th><th>要求</th><th>本包处理</th></tr></thead>
+          <tbody>
+            <tr><td>内核基线</td><td>Android 8.1 出厂 WebView / Chrome 61</td><td>纯 ES2017，无 <code>?.</code> / <code>??</code> / 对象展开 / <code>flat</code> / <code>replaceAll</code></td></tr>
+            <tr><td>脚本形态</td><td>经典脚本，无 <code>import</code> / <code>export</code></td><td>单文件 bundle，<code>node --check</code> 通过</td></tr>
+            <tr><td>CSS</td><td>Chrome 61 基线层 + 能力检测增强</td><td>53 处 <code>clamp()/min()/max()</code> 均有前置降级声明</td></tr>
+            <tr><td>iOS 最低版本</td><td>iOS 18.4（在线文档更新）</td><td>低版本设备无法保证运行，需在说明中提示</td></tr>
+            <tr><td>Storage API</td><td>客户端 ≥ 9.46.0；文件系统 / 评论互动 ≥ 9.49</td><td>本包未使用平台 Storage，走 localStorage + 存档码</td></tr>
+            <tr><td>AI 能力</td><td><code>window.xhs.AI</code> 内测期需 appId 加白</td><td>未加白时返回 false 并显示人话提示</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>1.6 可用 / 禁用能力</h3>
+      <div class="grid g2">
+        <div class="card">
+          <h4><span class="dot ok"></span>可用</h4>
+          <ul>
+            <li>HTML / CSS / 标准 DOM 与事件</li>
+            <li>Canvas 2D；WebGL 1/2（受 DPR、纹理、draw call 预算约束）</li>
+            <li><code>alert()</code> / <code>confirm()</code>（原生 UI）</li>
+            <li><code>&lt;input type="file"&gt;</code>（仅能选图片 / 视频）</li>
+            <li><code>getUserMedia</code>（需用户手势 + 授权）</li>
+            <li>包内音视频内联播放</li>
+            <li><code>window.xhs.AI</code>（需加白，100 次/天/用户）</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4><span class="dot"></span>禁用（调用即异常或被拦截）</h4>
+          <ul>
+            <li>联网：<code>fetch</code> / <code>XMLHttpRequest</code> / 外部资源</li>
+            <li>实时通信：WebSocket / EventSource / WebRTC</li>
+            <li>多线程：Worker / SharedWorker / Service Worker / SharedArrayBuffer</li>
+            <li>定位、剪贴板、蓝牙 / USB / 串口、各类传感器</li>
+            <li>全屏、<code>window.open</code>、<code>window.prompt</code>、外链跳转</li>
+            <li>文件下载 <code>a[download]</code>、表单跳转提交、PWA 安装</li>
+            <li><code>eval</code> / <code>new Function</code> / WebAssembly</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note red">
+        <b>本包已按禁用清单改写</b>
+        云存档、远程识别、本地 OCR、剪贴板复制、文件导出、全屏按钮均已停用或移除；AI 讲解改走 <code>window.xhs.AI</code>。详细改写记录见 <code>minitool/校验摘要.md</code>。
+      </div>
+    </section>
+
+    <!-- 02 素材 -->
+    <section id="assets">
+      <div class="sec-h"><span class="sec-n">02</span><h2 class="sec-t">必备素材清单</h2></div>
+      <p class="sec-sub">上传页只强制要 zip；图标、截图、文案用于应用展示与审核沟通。下列素材已生成在 <code>minitool/store/</code>，点击可放大。</p>
+
+      <div class="assets">
+        <figure class="asset icon" data-full="minitool/store/icon_512.png">
+          <img src="minitool/store/icon_512.png" alt="应用图标 512x512" loading="lazy">
+          <figcaption><b>应用图标</b><em>512×512 · PNG · 63 KB</em></figcaption>
+        </figure>
+        <figure class="asset" data-full="minitool/store/01_战场.png">
+          <img src="minitool/store/01_战场.png" alt="战场探索截图" loading="lazy">
+          <figcaption><b>01 战场探索</b><em>750×1334 · 557 KB</em></figcaption>
+        </figure>
+        <figure class="asset" data-full="minitool/store/02_烽火答题.png">
+          <img src="minitool/store/02_烽火答题.png" alt="答题开箱截图" loading="lazy">
+          <figcaption><b>02 开箱答题</b><em>750×1334 · 227 KB</em></figcaption>
+        </figure>
+        <figure class="asset" data-full="minitool/store/03_战术地图.png">
+          <img src="minitool/store/03_战术地图.png" alt="战术地图截图" loading="lazy">
+          <figcaption><b>03 战术地图</b><em>750×1334 · 424 KB</em></figcaption>
+        </figure>
+      </div>
+
+      <div class="note warn">
+        <b>尺寸说明</b>
+        小红书上传页<b>未公开</b>图标与截图的像素规范。上述 512×512 图标、750×1334 截图是 App Store / 安卓商店通用的安全尺寸；若上传页给出其他要求（例如 1080×1920、3:4 或最多 5 张），按页面提示重新导出即可，原件为 2 倍高清渲染，等比缩放不会糊。
+      </div>
+
+      <h3>2.1 素材自检</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>素材</th><th>要求</th><th>本次文件</th><th>状态</th></tr></thead>
+          <tbody>
+            <tr><td>应用图标</td><td>圆角底板、四角透明、主体居中</td><td class="num">512×512 PNG RGBA</td><td><span class="tag ok">达标</span></td></tr>
+            <tr><td>截图 1</td><td>竖屏、无系统状态栏、无调试角标</td><td class="num">750×1334</td><td><span class="tag ok">达标</span></td></tr>
+            <tr><td>截图 2</td><td>展示核心答题玩法，答案高亮可见</td><td class="num">750×1334</td><td><span class="tag ok">达标</span></td></tr>
+            <tr><td>截图 3</td><td>展示战术地图 / 系统深度</td><td class="num">750×1334</td><td><span class="tag ok">达标</span></td></tr>
+            <tr><td>截图统一性</td><td>同一版本、同一套 UI、无版本号冲突</td><td class="num">均取自 v4.0.28 产物</td><td><span class="tag ok">达标</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">截图直接用 <code>minitool/dist/index.html</code> 在 Chrome 560×996 视口渲染，再等比缩放到 750×1334；引导横幅、任务条与帧率角标已在截图前隐藏，未改动包内代码。</p>
+    </section>
+
+    <!-- 03 文案 -->
+    <section id="copy">
+      <div class="sec-h"><span class="sec-n">03</span><h2 class="sec-t">应用信息文案</h2></div>
+      <p class="sec-sub">直接复制到上传页对应字段。字数按常见限制预留，若页面限制更严，优先保留每段第一句。</p>
+
+      <div class="copybox">
+        <header><strong>应用名称</strong><button class="btn" data-copy>复制</button></header>
+        <pre>数境 · 四国远征</pre>
+      </div>
+
+      <div class="copybox">
+        <header><strong>一句话简介 / 副标题</strong><button class="btn" data-copy>复制</button></header>
+        <pre>在战术地图上边答题边撤离的硬核知识游戏</pre>
+      </div>
+
+      <div class="copybox">
+        <header><strong>详细简介</strong><button class="btn" data-copy>复制</button></header>
+        <pre>带一张战术地图进入零点演算场：开箱、破门、交火，每一步都要先解题。答对才能搜刮物资，答错会暴露位置、引来守卫；撤离成功，战利品才真正归你。
+
+18 个学科域 + 多步大题 + 攻坚题轮换出题，跑刀、保险、交易站、特勤处升级构成完整的风险循环。纯离线单机，无登录、无充值、无联网请求，进度与存档码都留在本机。</pre>
+      </div>
+
+      <div class="copybox">
+        <header><strong>标签</strong><button class="btn" data-copy>复制</button></header>
+        <pre>益智  ·  数学  ·  策略  ·  答题  ·  单机  ·  撤离玩法</pre>
+      </div>
+
+      <div class="copybox">
+        <header><strong>审核备注（提交审核时填写）</strong><button class="btn" data-copy>复制</button></header>
+        <pre>1. 本工具为纯离线单机答题游戏，无账号、无支付、无任何网络请求，全部资源打包在 zip 内。
+2. 入口为 zip 根目录 index.html，仅含 index.html 与 assets/app.js 两个文件。
+3. 已按容器规范移除 fetch、Worker、剪贴板、文件下载、全屏等禁用能力。
+4. AI 讲解调用 window.xhs.AI，未加白时自动隐藏入口并提示，不影响主流程。
+5. 存档使用 localStorage（容器内可能不保证持久），已提供存档码导出/导入作为兜底。</pre>
+      </div>
+
+      <div class="note info">
+        <b>分类怎么选</b>
+        上传页的分类下拉项以实际页面为准。若同时存在“教育 / 工具 / 娱乐”，优先选<b>教育 · 益智</b>；若只有娱乐向分类，选<b>游戏 · 休闲</b>，并在简介首句保留“知识游戏”定位，避免被判为纯工具。
+      </div>
+    </section>
+
+    <!-- 04 自检 -->
+    <section id="check">
+      <div class="sec-h"><span class="sec-n">04</span><h2 class="sec-t">上传前自检清单</h2></div>
+      <p class="sec-sub">勾选状态会保存在本机。前 5 组共 <span id="tot2">0</span> 项，全部勾完再上传。</p>
+
+      <h3>A. 包结构</h3>
+      <ul class="checklist">
+        <li><label class="check"><input type="checkbox" data-k="a1"><span><code>index.html</code> 在 zip 根目录，解压后第一层就能看到</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="a2"><span>没有多套一层目录（不是 <code>dist/index.html</code>）</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="a3"><span>只含白名单类型，无 <code>node_modules</code> / <code>*.map</code> / 构建配置</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="a4"><span>只有一个 <code>index.html</code>，没有第二个 HTML 页面</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="a5"><span>zip 体积 ≤ 10 MiB，且已尽量压在 2 MiB 以内</span></label></li>
+      </ul>
+
+      <h3>B. 资源与 CSP</h3>
+      <ul class="checklist">
+        <li><label class="check"><input type="checkbox" data-k="b1"><span>所有引用都是相对路径 <code>./...</code>，无 <code>http(s)://</code> 外部资源</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="b2"><span>无内联 <code>&lt;script&gt;</code>、无 <code>onclick=</code> 等行内事件、无 <code>javascript:</code></span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="b3"><span>脚本为经典脚本：无 <code>type="module"</code>、无 <code>import</code> / <code>export</code></span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="b4"><span>无 <code>eval</code> / <code>new Function</code> / WebAssembly</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="b5"><span>无 <code>&lt;base href&gt;</code>、无 <code>&lt;iframe&gt;</code> / <code>&lt;object&gt;</code>、无自建 CSP meta</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="b6"><span>音视频只引用包内文件，没有 <code>data:</code> / <code>blob:</code> 媒体源</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="b7"><span>单条 Base64 解码后 ≤ 1 MiB；超 100 KiB 的已改为独立文件</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="b8"><span>页面引用的每个资源都真的在 zip 里，路径大小写一致</span></label></li>
+      </ul>
+
+      <h3>C. 兼容性</h3>
+      <ul class="checklist">
+        <li><label class="check"><input type="checkbox" data-k="c1"><span>JS 不超出 ES2017：无 <code>?.</code>、<code>??</code>、对象展开、<code>flat</code>、<code>replaceAll</code></span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="c2"><span>用到的 Web API 都有能力检测或降级路径</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="c3"><span>现代 CSS 有回退声明；老内核下核心布局不塌</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="c4"><span>在平台模拟器里完整走通一遍核心流程</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="c5"><span>Android 真机扫码验证通过</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="c6"><span>iOS 真机扫码验证通过（系统 ≥ iOS 18.4）</span></label></li>
+      </ul>
+
+      <h3>D. 能力合规</h3>
+      <ul class="checklist">
+        <li><label class="check"><input type="checkbox" data-k="d1"><span>无 <code>fetch</code> / <code>XMLHttpRequest</code> / WebSocket / EventSource / WebRTC</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="d2"><span>无 Worker / Service Worker / SharedArrayBuffer</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="d3"><span>无定位、剪贴板、蓝牙 / USB / 串口、传感器调用</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="d4"><span>无全屏、<code>window.open</code>、<code>window.prompt</code>、外链跳转</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="d5"><span>无 <code>a[download]</code> 下载、无表单跳转提交</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="d6"><span>用到的平台能力都有在线文档的明确说明（AI 已按错误码兜底）</span></label></li>
+      </ul>
+
+      <h3>E. 体验与风险</h3>
+      <ul class="checklist">
+        <li><label class="check"><input type="checkbox" data-k="e1"><span>首屏不白屏，加载失败有可理解的提示</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="e2"><span>页面隐藏时停止动画 / 定时器，回到前台能恢复</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="e3"><span>存档不保证持久这一点，已在产品内告知用户（存档码兜底）</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="e4"><span>AI 未加白时入口不突兀，提示文案可读</span></label></li>
+        <li><label class="check"><input type="checkbox" data-k="e5"><span>真机帧率 / 内存未实测，已在交付说明中标注</span></label></li>
+      </ul>
+
+      <div class="note ok">
+        <b>已完成（2026-10-22 复核）</b>
+        官方审计脚本 <code>audit_artifact.py</code> 对 zip 返回 <b>PASS: 2 file(s), 0 warning(s)</b>；禁用能力逐项 grep：<code>fetch</code> / <code>XMLHttpRequest</code> / <code>WebSocket</code> / <code>EventSource</code> / <code>RTCPeerConnection</code> / <code>clipboard</code> / <code>execCommand</code> / <code>Worker</code> / <code>eval</code> / <code>new Function</code> / <code>WebAssembly</code> / <code>window.open</code> / <code>target="_blank"</code> / <code>&lt;base&gt;</code> / <code>type="module"</code> / <code>requestFullscreen</code> 全部 <b>0 命中</b>（<code>iframe</code> 仅出现在注释里）。
+      </div>
+      <p class="small muted">自动审计只检查文件系统与体积，不判断语义。C 组后三项（模拟器、Android、iOS）必须由你在真实容器里完成，浏览器直跑的结果不能作为验收依据。</p>
+    </section>
+
+    <!-- 05 流程 -->
+    <section id="flow">
+      <div class="sec-h"><span class="sec-n">05</span><h2 class="sec-t">上传与提审流程</h2></div>
+      <p class="sec-sub">小红书的小工具上传入口在创服平台的上传页。官方文档明确：<b>从上小工具上传页开始</b>，复制页面给出的当前口令给工作区 AI，由它按口令取对应版本 Skill、校验打包，再回到上传页第二步。字段与步骤以页面实际为准。</p>
+
+      <ol class="steps">
+        <li class="step">
+          <h4>确认产物与版本</h4>
+          <p>确认 <code>minitool/dist/index.html</code> 内的 <code>NEWS_VER</code> 与公告内容一致（小工具版为 <code>v4.0.28-3f17d760</code>）。它和网页版的 <code>653a052c</code> 不同是正常的——小工具版不渲染「怎么开全屏」区块，卡片内容变了，哈希自然变。</p>
+          <div class="note info"><b>不要重新压缩</b>本仓库的 zip 已是“压缩目录内容”的方式，<code>index.html</code> 在根。若要自己压，进入 <code>minitool/dist</code> 后压缩当前目录内容，别压缩 <code>dist</code> 文件夹本身。</div>
+        </li>
+        <li class="step">
+          <h4>进入小工具上传页</h4>
+          <p>打开小红书创服平台的小工具上传页（与容器文档同域：<code>miniapp-sandbox.xiaohongshu.com</code>）。页面会展示当前上传口令与两步流程，<b>不要沿用手工保存的旧口令</b>。</p>
+        </li>
+        <li class="step">
+          <h4>把口令交给工作区 AI（如需重新打包）</h4>
+          <p>复制上传页第一步的完整口令，发给当前工作区的 AI 助手。它会按口令下载对应版本 Skill、解压到指定目录、读取 <code>SKILL.md</code>，再做校验、修复与打包。</p>
+          <div class="note warn"><b>口令等于操作指令。</b>只把上传页当次给出的口令发给你信任的工作区；本项目已有合规产物时，可直接跳到下一步，不必重跑打包。</div>
+        </li>
+        <li class="step">
+          <h4>上传 zip 并填写应用信息</h4>
+          <p>在上传页第二步选择 <code>minitool/shujing-minitool-v4.0.28.zip</code>。按第 03 节填入名称、简介、标签；图标与截图用 <code>minitool/store/</code> 内的文件，若页面提示尺寸不符，按提示等比导出。</p>
+        </li>
+        <li class="step">
+          <h4>平台模拟器完整验证</h4>
+          <p>上传后在创服平台模拟器里从头走一遍：公告 → 首访说明 → 进入战场 → 开箱答题 → 战术地图 → 撤离结算 → 存档码导出。重点看：是否有白屏、按钮是否点了没反应、AI 入口在未加白时是否给出提示。</p>
+        </li>
+        <li class="step">
+          <h4>Android 真机扫码验证</h4>
+          <p>用 Android 手机扫码打开同一产物，验证触摸手感、滚动、返回、软键盘遮挡、音效恢复（需用户手势）、切后台再回前台是否正常。</p>
+          <div class="note red"><b>浏览器直跑不算数。</b>官方规范明确：普通浏览器里跑通不能作为小工具功能与兼容性的验收依据。</div>
+        </li>
+        <li class="step">
+          <h4>iOS 真机扫码验证</h4>
+          <p>用系统 ≥ iOS 18.4 的 iPhone 扫码验证同一产物。重点看安全区（刘海 / 底部横条）、<code>100vh</code> 布局、滚动惯性、以及 localStorage 在容器内是否被清理。</p>
+        </li>
+        <li class="step">
+          <h4>提交审核</h4>
+          <p>三端验证通过后提交，审核备注直接用第 03 节内容。审核时长与驳回口径平台未公开，以页面状态为准；被驳回时按反馈改包，<b>版本号递增</b>后重新走 04 节自检。</p>
+        </li>
+        <li class="step">
+          <h4>发布后回归</h4>
+          <p>通过后保留：本次 zip、三张截图、审核备注、真机验证记录。后续每次发版重复“改包 → 审计 → 模拟器 → 双端真机 → 提审”，不要只在一端验证。</p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- 06 风险 -->
+    <section id="risk">
+      <div class="sec-h"><span class="sec-n">06</span><h2 class="sec-t">已知风险与待你验证项</h2></div>
+      <p class="sec-sub">如实记录，不掩盖。这些不是靠改文档能解决的，需要真机数据或平台配置。</p>
+
+      <div class="grid g2">
+        <div class="card">
+          <h4><span class="dot"></span>存档可能不持久</h4>
+          <ul>
+            <li>容器把浏览器存储列为“兼容降级方案”，不保证长期保留</li>
+            <li>未改用平台 Storage API：它是异步接口，而存档是同步热路径</li>
+            <li>已内置兜底：存档码导出 / 导入（纯文本，可长按复制）</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4><span class="dot"></span>AI 讲解需加白</h4>
+          <ul>
+            <li><code>window.xhs.AI</code> 内测期需平台为 appId 加白</li>
+            <li>未加白会返回 <code>AI_NOT_ALLOWED</code>，界面显示“这个工具还没开通 AI 详解”</li>
+            <li>配额 100 次/天/用户；需处理 <code>AI_QUOTA_EXCEEDED</code> / <code>AI_CONTENT_BLOCKED</code></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4><span class="dot"></span>性能未实测</h4>
+          <ul>
+            <li>包体与代码量合规，但真机帧率 / 内存没有运行数据</li>
+            <li>WebGL 场景在低端机的降级路径已存在，触发阈值未验证</li>
+            <li>验收以模拟器 + 双端真机为准，不以本地 Chrome 为准</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4><span class="dot"></span>平台规则会变</h4>
+          <ul>
+            <li>iOS 最低版本、Storage / 文件系统版本门槛近期有更新</li>
+            <li>上传口令每次以页面当次展示为准，旧口令会失效</li>
+            <li>图标 / 截图规格未公开，提审前先看上传页提示</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="note ok" style="margin-top:18px">
+        <b>下一步只有三件事</b>
+        ① 上传 <code>minitool/shujing-minitool-v4.0.28.zip</code> 到创服平台；② 在模拟器、Android 真机、iOS 真机各走一遍完整流程；③ 用第 03 节文案提交审核。素材与自检已备好，不需要再改包。
+      </div>
+    </section>
+
+  </main>
+</div>
+</div>
+
+<footer>
+  <div class="foot">
+    <p><b>数境 · 四国远征</b> — 小红书 Vibe Coding 小工具上传指南 · 对应版本 v4.0.28（2026-10-18）· 本页更新于 2026-10-22</p>
+    <p class="muted">本页为项目内部交付文档，不是平台官方文档。容器规则以官方在线文档为准；图标 / 截图规格等未公开项以实际上传页提示为准。</p>
+    <div class="src">
+      <a href="https://miniapp-sandbox.xiaohongshu.com/minitool/doc" target="_blank" rel="noopener">小工具在线文档（容器能力清单）</a>
+      <a href="minitool/校验摘要.md">本包校验摘要</a>
+    </div>
+  </div>
+</footer>
+
+<dialog class="lb" id="lb">
+  <button class="lb-x" aria-label="关闭" data-close>×</button>
+  <img id="lbImg" alt="">
+</dialog>
+
+<script>
+(function () {
+  var KEY = 'xhs-guide-check-v1';
+
+  /* 进度与勾选记忆 */
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.check input'));
+  var total = boxes.length;
+  var totEls = [document.getElementById('tot'), document.getElementById('tot2')];
+  totEls.forEach(function (el) { if (el) el.textContent = total; });
+
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { saved = {}; }
+
+  function sync() {
+    var done = 0;
+    boxes.forEach(function (b) { if (b.checked) done++; });
+    var bar = document.getElementById('bar');
+    var cnt = document.getElementById('cnt');
+    if (bar) bar.style.width = total ? (done / total * 100) + '%' : '0';
+    if (cnt) cnt.textContent = done;
+  }
+
+  boxes.forEach(function (b) {
+    var k = b.getAttribute('data-k');
+    if (saved[k]) b.checked = true;
+    b.addEventListener('change', function () {
+      saved[k] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+      sync();
+    });
+  });
+  sync();
+
+  /* 目录平滑滚动 */
+  document.querySelectorAll('.toc a[href^="#"]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var t = document.querySelector(a.getAttribute('href'));
+      if (!t) return;
+      e.preventDefault();
+      t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', a.getAttribute('href'));
+    });
+  });
+
+  /* 图片灯箱 */
+  var lb = document.getElementById('lb');
+  var lbImg = document.getElementById('lbImg');
+  document.querySelectorAll('.asset').forEach(function (fig) {
+    fig.addEventListener('click', function () {
+      var src = fig.getAttribute('data-full');
+      if (!src || !lb || !lb.showModal) return;
+      lbImg.src = src;
+      lbImg.alt = fig.querySelector('img') ? fig.querySelector('img').alt : '';
+      lb.showModal();
+    });
+  });
+  if (lb) {
+    lb.addEventListener('click', function (e) {
+      if (e.target === lb) lb.close();
+    });
+    var x = lb.querySelector('[data-close]');
+    if (x) x.addEventListener('click', function () { lb.close(); });
+  }
+
+  /* 复制文案 */
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    return ok ? Promise.resolve() : Promise.reject(new Error('copy failed'));
+  }
+
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = btn.closest('.copybox').querySelector('pre');
+      copyText(pre.textContent.trim()).then(function () {
+        btn.textContent = '已复制';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = '复制'; btn.classList.remove('done'); }, 1600);
+      }).catch(function () {
+        btn.textContent = '请手动选中';
+        setTimeout(function () { btn.textContent = '复制'; }, 1800);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

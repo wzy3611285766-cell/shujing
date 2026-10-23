@@ -114,10 +114,15 @@ def fs_block():
     return "\n".join(out)
 
 
-def render_card(en):
-    """渲染 #news 里的整张卡片。id 是 55_boot_news.js / build.py 的锚点，别改。"""
+def render_card(en, with_fs=True):
+    """渲染 #news 里的整张卡片。id 是 55_boot_news.js / build.py 的锚点，别改。
+
+    with_fs=False 用于小工具离线包：容器没有网页全屏 API，也没有 Safari /
+    微信环境，教用户按 F11、添加到主屏幕只会让人白点。
+    """
     secs = "\n".join(render_sec(s) for s in en.get("sections", []))
-    secs = (secs + "\n\n" + fs_block()) if secs else fs_block()
+    if with_fs:
+        secs = (secs + "\n\n" + fs_block()) if secs else fs_block()
     return (
         '<div class="news-card">\n'
         '      <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>\n'
@@ -166,14 +171,14 @@ def summary(en):
 # --------------------------------------------------------------------------- #
 # 注入 / 体检
 # --------------------------------------------------------------------------- #
-def inject(raw):
+def inject(raw, with_fs=True):
     """把公告卡注进产物：返回 (新字节, 卡片 HTML)。标记区缺失就抛错 —— 静默不注入太危险。"""
     i = raw.find(START_MARK.encode("utf-8"))
     k = raw.find(END_MARK.encode("utf-8"))
     if i < 0 or k < 0 or k < i:
         raise SystemExit("src/10_body.html 里找不到公告标记区 %s ... %s" % (START_MARK, END_MARK))
     en = latest()
-    card = render_card(en)
+    card = render_card(en, with_fs)
     head_end = raw.find(b"\n", i) + 1
     data = raw[:head_end] + card.encode("utf-8") + b"\r\n" + raw[k:]
     return data, card

@@ -13,14 +13,14 @@ EPIC_STATE.sound=ADV_STATE.sound;
 
 const ADV={
   id:'adv',W:2400,H:1900,
-  title:'格物纪元 · 四国远征',
+  title:'数境 · 四国远征',
   sub:'走遍数理群岛、力理亚、嬗变利亚、生衍利亚',
   regions:REGIONS,bridges:BRIDGES,spots:SPOTS,loose:LOOSE,spirits:SPIRITS,
   st:ADV_STATE,save:SAVE_KEY,actR:86
 };
 const EPIC={
   id:'epic',W:EPIC_W,H:EPIC_H,
-  title:'格物纪元 · 科学编年史',
+  title:'数境 · 科学编年史',
   sub:'从伊尚戈骨上的刻痕，到碱基的双螺旋',
   regions:EPIC_REGIONS,bridges:[],spots:EPIC_SPOTS,loose:EPIC_DUST,spirits:[],
   st:EPIC_STATE,save:SAVE_KEY_EPIC,actR:74,

@@ -102,7 +102,7 @@ const BLAZE_LOOSE=[];
 
 const BLAZE={
   id:'blaze',W:1600,H:1200,
-  title:'格物纪元 · 烽火地带',
+  title:'数境 · 烽火地带',
   sub:'搜刮 · 交火 · 活着撤离',
   regions:BLAZE_REGIONS,bridges:[],spots:BLAZE_SPOTS,loose:BLAZE_LOOSE,spirits:[],
   st:BLAZE_STATE,save:SAVE_KEY_BLAZE,actR:78,

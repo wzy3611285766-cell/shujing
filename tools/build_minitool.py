@@ -54,7 +54,7 @@ PATCH_JS = {
             "function cloudLoadSdk(cb){\n  if(ACCT.cloud){cb&&cb();return;}",
             "function cloudLoadSdk(cb){\n"
             "  /* 【小工具】容器不联网，CDN 上的云端组件必然加载不出来。\n"
-            "     这里直接判定失败并给出可理解的提示，不再尝试挂 <script src=\"https://...\">。 */\n"
+            "     这里直接判定失败并给出可理解的提示，不再尝试挂外部 CDN 脚本。 */\n"
             "  ACCT.sdk='fail';\n"
             "  acctMsg('小工具运行在离线容器里，云存档与账号同步用不了。进度存在本机，换设备请用「存档码」。','bad');\n"
             "  cb&&cb();return;\n"
@@ -290,15 +290,15 @@ PATCH_JS = {
         ),
         (
             "    toast('已存成文件 ✅');\n  };\n  $('sv5')",
-            "    toast(downloadFile('格物纪元存档_'+new Date().toISOString().slice(0,10)+'.txt',\n"
-            "      '格物纪元 · 四国远征 —— 存档码\\n（把下面这整段粘回游戏的「导入存档码」即可）\\n\\n'+code)\n"
+            "    toast(downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',\n"
+            "      '数境 · 四国远征 —— 存档码\\n（把下面这整段粘回游戏的「导入存档码」即可）\\n\\n'+code)\n"
             "      ?'已存成文件 ✅':'容器里不能下载文件 —— 请复制下面的存档码存好');\n"
             "  };\n  $('sv5')",
         ),
         (
-            "    downloadFile('格物纪元存档_'+new Date().toISOString().slice(0,10)+'.txt',saveCodeCache);\n"
+            "    downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',saveCodeCache);\n"
             "    $('msg').textContent='已存成文件 ✅';",
-            "    $('msg').textContent=downloadFile('格物纪元存档_'+new Date().toISOString().slice(0,10)+'.txt',saveCodeCache)\n"
+            "    $('msg').textContent=downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',saveCodeCache)\n"
             "      ?'已存成文件 ✅':'容器里不能下载文件 —— 请长按全选上面的文本复制走';",
         ),
     ],
@@ -547,6 +547,32 @@ def _root_fallback(root_src):
     )
 
 
+INSET_RX = re.compile(r"(?<=[;{])(\s*)inset(\s*:\s*)([^;{}]+?)(\s*;|(?=\s*\}))")
+
+
+def expand_inset(m):
+    """把 inset 简写展开成四条老内核认得的声明，放在原句前面。"""
+    val = m.group(3).strip()
+    if "(" in val:
+        return m.group(0)
+    parts = val.split()
+    if len(parts) == 1:
+        t = r = b = l = parts[0]
+    elif len(parts) == 2:
+        t = b = parts[0]
+        r = l = parts[1]
+    elif len(parts) == 3:
+        t, r, l, b = parts[0], parts[1], parts[1], parts[2]
+    elif len(parts) == 4:
+        t, r, b, l = parts
+    else:
+        return m.group(0)
+    ind = m.group(1)
+    fb = "".join(ind + k + ":" + v + ";" for k, v in
+                 (("top", t), ("right", r), ("bottom", b), ("left", l)))
+    return fb + m.group(0)
+
+
 def css_compat(css_text, fname):
     """给规则体里的 clamp/min/max 补降级声明；:root 走 @supports 双份。"""
     crlf = "\r\n" in css_text
@@ -583,7 +609,12 @@ def css_compat(css_text, fname):
         return fb + m.group(0)
 
     css_text = re.sub(rx, decl, css_text)
-    return _eol_back(css_text, crlf), n_root, n_fb[0]
+
+    # inset 简写要 Chrome 87：老内核整条丢弃，fixed/absolute 容器会失去四边定位
+    # （#app 会直接塌成内容宽度，整屏游戏变一条）。展开成 top/right/bottom/left 前置，
+    # 原句保留给新内核。含 var()/calc() 的值不做静态展开，交给新内核。
+    css_text, n_inset = re.subn(INSET_RX, expand_inset, css_text)
+    return _eol_back(css_text, crlf), n_root, n_fb[0], n_inset
 
 
 # --------------------------------------------------------------------------- #
@@ -637,9 +668,10 @@ def build():
                 tail = read(path)
         elif path.endswith(".css"):
             src = read(path)
-            patched, n_root, n_fb = css_compat(src, path)
+            patched, n_root, n_fb, n_inset = css_compat(src, path)
             css_parts.append(patched)
-            print("  css %-28s root:%d 降级声明:%d" % (os.path.basename(path), n_root, n_fb))
+            print("  css %-28s root:%d 降级声明:%d inset:%d"
+                  % (os.path.basename(path), n_root, n_fb, n_inset))
         else:
             js_files.append(path)
             print("  js  %-28s 改写:%d" % (os.path.basename(path), len(PATCH_JS.get(path, []))))
@@ -662,7 +694,7 @@ def build():
             + tail_html)
 
     data = html.encode("utf-8")
-    data, card = news.inject(data)
+    data, card = news.inject(data, with_fs=False)
     news_ver = news.ver_token(news.latest(), card)
     data = data.replace(b"__NEWS_VER__", news_ver.encode("utf-8"))
     data = data.replace(b"__BUILD_VER__", ver.encode("utf-8"))

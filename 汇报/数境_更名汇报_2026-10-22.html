@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>数境 · 更名汇报（2026-10-22）</title>
+<style>
+/* =========================================================================
+   更名汇报 · 2026-10-22
+   -------------------------------------------------------------------------
+   记录「格物纪元 · 四国远征」→「数境」的完整切换：
+   源码、构建产物、版本配置、上架素材、文档，以及刻意没动的历史归档。
+   配色沿用游戏本身：深蓝底 + 金色主调 + 蓝色章节条。
+   ========================================================================= */
+*{box-sizing:border-box}
+:root{
+  --ink:#eaf4ff; --dim:#9cc0e0; --dim2:#7d94ab;
+  --gold:#ffd76a; --gold2:#f5b23c;
+  --blue:#2f6fd0; --cyan:#7ee0ff;
+  --card:rgba(10,22,38,.72);
+  --line:rgba(255,255,255,.12);
+  --mono:ui-monospace,Consolas,"Cascadia Mono",monospace;
+}
+html,body{margin:0;background:#060d17;color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  line-height:1.72;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(60% 42% at 50% 0%,rgba(47,111,208,.20),transparent 70%),
+    radial-gradient(40% 30% at 85% 12%,rgba(245,178,60,.10),transparent 70%),
+    linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px) 0 0/100% 44px,
+    linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px) 0 0/44px 100%}
+.wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:28px 18px 80px}
+
+/* ---------- 顶栏 ---------- */
+header{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;
+  padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:22px}
+header h1{margin:0;font-size:24px;letter-spacing:.4px}
+header h1 em{font-style:normal;color:var(--gold)}
+header p{margin:7px 0 0;color:var(--dim);font-size:13.5px;max-width:720px}
+.meta{margin-left:auto;text-align:right;font-size:12px;color:var(--dim2);white-space:nowrap}
+.meta b{display:block;font-family:var(--mono);font-size:20px;color:var(--cyan);line-height:1.2}
+
+/* ---------- 指标卡 ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 15px}
+.kpi .n{font-family:var(--mono);font-size:26px;color:var(--gold);line-height:1.15}
+.kpi .n small{font-size:13px;color:var(--dim);margin-left:3px}
+.kpi .t{font-size:12.5px;color:var(--dim2);margin-top:2px}
+
+/* ---------- 章节 ---------- */
+h2{font-size:17px;margin:34px 0 8px;padding-left:11px;border-left:4px solid var(--blue)}
+h2 small{font-weight:400;color:var(--dim2);font-size:12.5px;margin-left:8px}
+.note{font-size:13.4px;color:var(--dim);margin:6px 0 14px;max-width:920px}
+.note code{font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.07);
+  border-radius:5px;padding:1px 5px;color:#bfe9ff}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+
+/* ---------- 提示块 ---------- */
+.tip{border-radius:12px;padding:12px 14px;font-size:13.2px;margin:14px 0;
+  background:rgba(255,215,106,.07);border:1px solid rgba(255,215,106,.26);border-left-width:4px}
+.tip b{color:var(--gold)}
+.tip.blue{background:rgba(126,224,255,.06);border-color:rgba(126,224,255,.24)}
+.tip.blue b{color:var(--cyan)}
+
+/* ---------- 表格 ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+table{width:100%;border-collapse:collapse;font-size:13.2px;min-width:560px}
+th,td{padding:10px 13px;text-align:left;vertical-align:top;border-bottom:1px solid rgba(255,255,255,.07)}
+th{background:rgba(255,255,255,.045);color:var(--dim);font-weight:600;font-size:12.5px;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td code{font-family:var(--mono);font-size:11.8px;background:rgba(255,255,255,.07);
+  border-radius:4px;padding:1px 5px;color:#bfe9ff}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;
+  border:1px solid rgba(126,224,255,.3);color:#bfe9ff;background:rgba(126,224,255,.08)}
+.tag.g{border-color:rgba(255,215,106,.35);color:var(--gold);background:rgba(255,215,106,.08)}
+
+/* ---------- 名字对照 ---------- */
+.rename{display:grid;grid-template-columns:1fr 56px 1fr;gap:12px;align-items:center;margin:6px 0 4px}
+.rename .box{border-radius:14px;padding:18px 20px;border:1px solid var(--line);background:var(--card)}
+.rename .box.old{opacity:.62}
+.rename .lbl{font-size:11.5px;color:var(--dim2);letter-spacing:.6px;margin-bottom:5px}
+.rename .big{font-size:23px;font-weight:700;letter-spacing:.5px}
+.rename .old .big{color:var(--dim);text-decoration:line-through;text-decoration-color:rgba(255,120,120,.6)}
+.rename .new .big{color:var(--gold)}
+.rename .arrow{text-align:center;color:var(--cyan);font-size:22px}
+.rename .sub{font-size:12.5px;color:var(--dim2);margin-top:5px}
+
+/* ---------- 图片 ---------- */
+.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:6px}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:14px;
+  overflow:hidden;display:flex;flex-direction:column}
+figure img{display:block;width:100%;height:340px;object-fit:contain;background:#071120}
+figure.square img{padding:32px;background:transparent}
+figcaption{margin-top:auto;padding:9px 12px;font-size:12px;color:var(--dim2);
+  border-top:1px solid rgba(255,255,255,.07)}
+figcaption b{color:var(--dim);font-weight:600}
+
+/* ---------- 代码块 ---------- */
+pre{margin:12px 0 0;padding:14px 16px;border-radius:12px;overflow-x:auto;
+  background:#040a12;border:1px solid var(--line);
+  font-family:var(--mono);font-size:12.2px;line-height:1.75;color:#b9d4ec}
+pre .c{color:#5f7d96}
+pre .g{color:var(--gold)}
+pre .k{color:#7ee0ff}
+
+/* ---------- 清单 ---------- */
+ul.check{list-style:none;padding:0;margin:8px 0 0}
+ul.check li{position:relative;padding-left:24px;margin-bottom:8px;font-size:13.3px;color:var(--dim)}
+ul.check li::before{content:"✓";position:absolute;left:2px;color:var(--gold);font-weight:700}
+ul.check li.no::before{content:"—";color:var(--dim2)}
+ul.check li b{color:var(--ink)}
+
+footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:12px;color:var(--dim2);display:flex;flex-wrap:wrap;gap:10px}
+footer span:last-child{margin-left:auto}
+
+@media (max-width:760px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .rename{grid-template-columns:1fr;gap:8px}
+  .rename .arrow{transform:rotate(90deg)}
+  header h1{font-size:20px}
+  .meta{margin-left:0;text-align:left}
+  figure img{height:400px}
+  table{min-width:500px;font-size:12.3px}
+  th,td{padding:9px 11px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>数境 <em>· 更名汇报</em></h1>
+    <p>从「格物纪元 · 四国远征」到「数境」：源码、构建产物、上架素材、文档一次性切换完毕，历史归档保持原样。</p>
+  </div>
+  <div class="meta">
+    <b>v4.0.28</b>
+    2026-10-22
+  </div>
+</header>
+
+<section class="kpis">
+  <div class="kpi"><div class="n">25</div><div class="t">改动文件</div></div>
+  <div class="kpi"><div class="n">50</div><div class="t">替换处数</div></div>
+  <div class="kpi"><div class="n">0</div><div class="t">活跃文件残留</div></div>
+  <div class="kpi"><div class="n">0.67<small>MB</small></div><div class="t">游戏包体积</div></div>
+</section>
+
+<h2>一、结论 <small>先看这段就够了</small></h2>
+<p class="note">
+  改名不是改一行 <code>&lt;title&gt;</code>。这个项目的名字同时活在八个地方：首页标题、地图标题、菜单标题、
+  四个模式各自的标题、错题本导出表头、存档文件名、版本清单，以及已经生成好的截图与宣传图里。
+  这次把这八处一次改齐，再重新构建、重新截图、重新打包，最后用脚本复查到 0 处残留。
+</p>
+<div class="tip">
+  <b>一句话</b>：游戏叫「数境」，包叫 <code>数境-v4.0.28.zip</code>，商店名填「数境」，模式名保留副标题（如「数境 · 烽火地带」）。
+</div>
+
+<h2>二、为什么是「数境」</h2>
+<p class="note">
+  「格物纪元 · 四国远征」的问题不在含义，在记忆成本：七个字、两组概念、还要解释「格物」的出处。
+  玩家在商店列表里扫一眼，记不住。而「数境」两个字自带画面感——数学的境界、数字的疆域，
+  既兜住了知识问答的内核，也容得下四个国家的地图探索；念起来短、写出来稳，图标里那条环也有了落点。
+</p>
+<p class="note">
+  顺带一提：项目历史版本本来就叫「数境169」，这次相当于把被换掉的名字拿回来，去掉尾巴上的数字。
+</p>
+
+<div class="rename">
+  <div class="box old">
+    <div class="lbl">原名</div>
+    <div class="big">格物纪元 · 四国远征</div>
+    <div class="sub">7 字 + 分隔符，两组概念</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="box new">
+    <div class="lbl">新名</div>
+    <div class="big">数境</div>
+    <div class="sub">2 字，独立成词</div>
+  </div>
+</div>
+
+<h2>三、命名规则 <small>主名与副标题怎么分工</small></h2>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>场景</th><th>写法</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>游戏名 / 商店名 / 图标</td><td><code>数境</code></td><td>只保留主名，最干净</td></tr>
+    <tr><td>浏览器标题 / 版本清单</td><td><code>数境</code></td><td><code>&lt;title&gt;</code> 与 <code>version.json</code> 的 name</td></tr>
+    <tr><td>闯关模式</td><td><code>数境 · 四国远征</code></td><td>主名 + 模式副标，出现在地图顶部与菜单</td></tr>
+    <tr><td>烽火地带</td><td><code>数境 · 烽火地带</code></td><td>同上</td></tr>
+    <tr><td>科学编年史</td><td><code>数境 · 科学编年史</code></td><td>同上</td></tr>
+    <tr><td>练枪场</td><td><code>数境 · 练枪场</code></td><td>同上</td></tr>
+    <tr><td>存档文件</td><td><code>数境存档_2026-10-22.txt</code></td><td>导出时自动带日期</td></tr>
+    <tr><td>错题本导出</td><td><code>数境 · 错题本导出 2026-10-22</code></td><td>文件头标题</td></tr>
+    <tr><td>上传包</td><td><code>数境-v4.0.28.zip</code></td><td>去掉多余的「四国远征」</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>四、改动清单 <small>按层级分</small></h2>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>层级</th><th>文件</th><th>处数</th><th>改了什么</th></tr></thead>
+  <tbody>
+    <tr><td><span class="tag">源码</span></td><td><code>src/00_head.html</code></td><td>1</td><td>页面标题改为「数境」，不挂副标题</td></tr>
+    <tr><td><span class="tag">源码</span></td><td><code>src/js/11_world.js</code></td><td>2</td><td><code>WORLD_TITLE</code> 与文件头注释</td></tr>
+    <tr><td><span class="tag">源码</span></td><td><code>src/js/50_epic_map.js</code></td><td>2</td><td>闯关模式、科学编年史两个地图标题</td></tr>
+    <tr><td><span class="tag">源码</span></td><td><code>src/js/52_blaze_entry.js</code></td><td>1</td><td>烽火地带地图标题</td></tr>
+    <tr><td><span class="tag">源码</span></td><td><code>src/js/53_drill4.js</code></td><td>2</td><td>练枪场标题与面板副标</td></tr>
+    <tr><td><span class="tag">源码</span></td><td><code>src/js/70_blaze_overrides.js</code></td><td>1</td><td>菜单按模式切换的主标题</td></tr>
+    <tr><td><span class="tag">源码</span></td><td><code>src/js/45_wrongbook_io.js</code></td><td>1</td><td>错题本导出文件的表头</td></tr>
+    <tr><td><span class="tag">源码</span></td><td><code>src/js/49_drill.js</code></td><td>3</td><td>存档文件名与文件正文</td></tr>
+    <tr><td><span class="tag g">配置</span></td><td><code>version.json</code></td><td>1</td><td><code>name</code> → 数境</td></tr>
+    <tr><td><span class="tag g">产物</span></td><td><code>shujing-app/</code>、<code>minitool/dist/</code></td><td>—</td><td>重新构建，两个入口标题均验证为「数境」</td></tr>
+    <tr><td><span class="tag g">素材</span></td><td>启动图、宣传图、5 张截图</td><td>—</td><td>重新抓图并重新排版，画面内标题同步</td></tr>
+    <tr><td><span class="tag g">文档</span></td><td>抖音配置 / 隐私政策 / 介绍 / 清单</td><td>11</td><td>标题、商店名、包名</td></tr>
+    <tr><td><span class="tag g">文档</span></td><td>小红书指南与三份模板</td><td>9</td><td>同步改名</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>五、素材重建 <small>不只是换字，是重新出图</small></h2>
+<p class="note">
+  截图里的地图标题、宣传图顶部的品牌字、启动图的主标题都带着旧名，所以这次不是覆盖文字了事，
+  而是重新用无头浏览器抓界面、重新排版、重新导出。启动图主标题按两个字重排了字号（96 → 138px），
+  否则「数境」两个大字撑不住原来的版面。
+</p>
+<div class="shots">
+  <figure class="square">
+    <img src="../抖音上传准备材料/assets/images/icon_512x512.png" alt="图标">
+    <figcaption><b>图标</b> · 圆环开口 512×512</figcaption>
+  </figure>
+  <figure class="tall">
+    <img src="../抖音上传准备材料/assets/images/splash_720x1280.png" alt="启动图">
+    <figcaption><b>启动图</b> · 数境 + 四国远征</figcaption>
+  </figure>
+  <figure class="tall">
+    <img src="../抖音上传准备材料/assets/images/banner_1080x1920.jpg" alt="宣传图">
+    <figcaption><b>宣传图</b> · 实机画面已含新名</figcaption>
+  </figure>
+  <figure class="tall">
+    <img src="../抖音上传准备材料/assets/images/screenshots/screenshot_1_720x1280.png" alt="截图">
+    <figcaption><b>截图 1</b> · 画面标题「数境 · 烽火地带」</figcaption>
+  </figure>
+</div>
+<div class="tip blue">
+  <b>备选图标</b>：<code>_alt/ring_blue.png</code>（亮蓝白环，最接近你原来那张头像）与当前金色版同结构，
+  主线用金色是为了和启动图、宣传图统一。该目录不参与上传。
+</div>
+
+<h2>六、构建与校验 <small>可复现的三步</small></h2>
+<pre><span class="c"># 1. 重新构建单页应用与 minitool 产物</span>
+python tools/build.py
+python tools/build_minitool.py
+
+<span class="c"># 2. 重新抓实机截图，再生成全部素材</span>
+python tools/capture_game_shots.py
+python tools/make_douyin_assets.py
+
+<span class="c"># 3. 打包并按平台规格校验</span>
+python tools/pack_douyin_package.py</pre>
+<div class="tablewrap" style="margin-top:14px">
+<table>
+  <thead><tr><th>校验项</th><th>结果</th><th>状态</th></tr></thead>
+  <tbody>
+    <tr><td>构建字节数</td><td>1,973,336 字节 / 74 个模块</td><td><span class="tag g">通过</span></td></tr>
+    <tr><td>两个入口标题</td><td><code>shujing-app</code> 与 <code>minitool/dist</code> 均为「数境」</td><td><span class="tag g">通过</span></td></tr>
+    <tr><td>活跃文件残留扫描</td><td>0 个文件 / 0 处</td><td><span class="tag g">通过</span></td></tr>
+    <tr><td>图片规格</td><td>图标 512×512、启动图与截图 720×1280、宣传图 1080×1920</td><td><span class="tag g">通过</span></td></tr>
+    <tr><td>音频</td><td>3 个 WAV，44.1kHz，最大 2.3 MB</td><td><span class="tag g">通过</span></td></tr>
+    <tr><td>游戏包</td><td><code>数境-v4.0.28.zip</code> · 0.67 MB · <code>index.html</code> 在根目录</td><td><span class="tag g">通过</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>七、刻意没动的地方 <small>以及为什么</small></h2>
+<ul class="check">
+  <li class="no"><b>releases/ 下的版本快照</b>：文件名是「数境169_v4.0.x_日期.html」，改了会破坏版本追溯与历史链接对不上。</li>
+  <li class="no"><b>backup/ 与 汇报/ 的历史文件</b>：记录的是当时的版本状态，属于存档而非当前文案。</li>
+  <li class="no"><b>CHANGELOG.md</b>：历史条目保留旧名，避免篡改发布记录。</li>
+  <li><b>CHANGELOG 顶部可以补一行</b>：如需在发布记录里留痕，建议新增一条「v4.0.28 更名为数境」，而不是回改旧条目。</li>
+</ul>
+<div class="tip">
+  <b>风险提醒</b>：如果之前已经用旧包提交过审核，这次务必递增版本号再上传。
+  同名同版本覆盖，容易被判定为重复提交，也可能让已安装用户收不到更新。
+</div>
+
+<h2>八、下一步 <small>改名只是其中一步</small></h2>
+<ul class="check">
+  <li><b>补主体信息</b>：隐私政策与游戏介绍里还留着【提交前请填写】的主体与邮箱。</li>
+  <li><b>真机跑一遍</b>：新用户引导 → 四国闯关 → 答题 → 存档码导出，确认改名没碰坏流程。</li>
+  <li><b>确认题库授权</b>：题目解析需为原创或已获授权，这是审核最常卡的一点。</li>
+  <li><b>上传</b>：<code>数境-v4.0.28.zip</code> + 图标 + 启动图 + 宣传图 + 5 张截图，按清单逐项勾选。</li>
+</ul>
+
+<footer>
+  <span>数境 · 更名汇报 · v4.0.28</span>
+  <span>2026-10-22 · 由 tools/rename_to_shujing.py 执行，可复现</span>
+</footer>
+
+</div>
+</body>
+</html>
