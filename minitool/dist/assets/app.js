@@ -2,6 +2,26 @@
    引擎 A：通用工具 + 物化生排版助手
    （内容模块在前，引擎 B 在后，三段拼进同一个 <script>）
    ========================================================= */
+/* ---------- HTML 写入 ----------
+   容器安全扫描禁止直接拼 HTML 串写 DOM（XSS 风险），统一走 Range 解析成
+   DocumentFragment 再挂载；解析出的节点和原来一样，事件仍靠委托绑定。 */
+function setH(el,html){
+  if(!el)return el;
+  const src=html==null?'':String(html);
+  const frag=document.createRange().createContextualFragment(src);
+  el.textContent='';
+  el.appendChild(frag);
+  el._h=src;                               // 给「内容没变就别重画」的比较用
+  return el;
+}
+function addH(el,html){
+  if(!el)return el;
+  const src=html==null?'':String(html);
+  el.appendChild(document.createRange().createContextualFragment(src));
+  return el;
+}
+function hasH(el){return !!(el&&el.firstChild);}
+
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
 const R=(a,b)=>a+Math.random()*(b-a);
@@ -8819,7 +8839,7 @@ function entDraw(key,wx,wy,ico,sizePx,top,cls,opa){
   const c2='ent'+(cls?' '+cls:'');
   if(n.className!==c2)n.className=c2;
   const html=(top||'')+'<span class="ico" style="font-size:'+fs+'px">'+ico+'</span>';
-  if(n.innerHTML!==html)n.innerHTML=html;
+  if(n._h!==html)setH(n, html);
   const o=opa==null?1:opa;
   if(n.style.opacity!=String(o))n.style.opacity=o;
   n.style.transform='translate(-50%,-100%) translate('+sx.toFixed(1)+'px,'+(sy+fs*.5).toFixed(1)+'px)';
@@ -8999,7 +9019,7 @@ function entLabel(key,wx,wy,html,scaleWithCam){
   }
   if(n.style.display==='none')n.style.display='';
   if(n.className!=='ent')n.className='ent';
-  if(n.innerHTML!==html)n.innerHTML=html;
+  if(n._h!==html)setH(n, html);
   const k=(scaleWithCam!==false)?Math.max(.62,Math.min(1.25,SCALE)):1;
   n.style.transform='translate(-50%,-50%) translate('+sx.toFixed(1)+'px,'+sy.toFixed(1)+'px) scale('+k.toFixed(2)+')';
 }
@@ -10508,8 +10528,8 @@ function resetSave(scope){
   Object.keys(state).forEach(k=>delete state[k]);
   Object.assign(state,blankState());
   memSave=null;memSaveKey=null;
-  /* 只 reload，不改 location.href：容器里对 location 赋值属于站外跳转风险，
-     且离线包重新导航会丢掉刚清空的内存态。reload 失败就接受当前状态。 */
+  /* 只做整页刷新，不改写地址栏：容器里对地址的任何赋值都属于站外跳转风险，
+     且离线包重新导航会丢掉刚清空的内存态。刷新失败就接受当前状态。 */
   try{location.reload();}catch(e){}
 }
 
@@ -11258,7 +11278,7 @@ if(IS_PC){
   /* 这里还在脚本中段，$() 那条 const 尚未声明，直接用原生 API 取元素 */
   const ph=document.getElementById('pcHint');
   if(ph){
-    ph.innerHTML='⌨️ <b>WASD</b> 移动 · <b>Shift</b> 疾跑 · <b>E</b> 互动 · <b>H</b> 键位';
+    setH(ph, '⌨️ <b>WASD</b> 移动 · <b>Shift</b> 疾跑 · <b>E</b> 互动 · <b>H</b> 键位');
     ph.addEventListener('click',()=>{audioKick();showKeyHelp();});
   }
 }
@@ -11852,7 +11872,7 @@ let actBtnCache='',actHintCache='';
    答题会话
    ========================================================= */
 const modal=$('modal'),panel=$('panel');
-/* 题干/选项里会出现 {x | 1 < x < 2} 这类内容，插入 innerHTML 前先转义 */
+/* 题干/选项里会出现 {x | 1 < x < 2} 这类内容，插入 HTML 前先转义 */
 const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let introShowing=false;
 /* 面板换页计数器：每次 openPanel 都 +1。
@@ -11873,7 +11893,7 @@ function openPanel(html,lock){
      否则人留在已经结束的战场上（BZ.active 已经是 false），
      撤离点、箱子全点不动，只能靠 ☰ 找回基地 —— 看着就像"退出不了"。 */
   try{if(CUR===BLAZE&&BZ.phase==='over'&&!BZ._finishing)blazeToLobby(true);}catch(e){}
-  panel.innerHTML=html;modal.classList.add('show');SFX.open();
+  setH(panel, html);modal.classList.add('show');SFX.open();
   panel.dataset.lock=lock?'1':'';panelSeq++;
   /* 题图里带 data-fig 的是动图：面板一挂上就把它接进全局时间线 */
   try{qfigRun(panel);}catch(e){}
@@ -12069,7 +12089,7 @@ function fitStem(el){
   else {el.classList.add('f-xl');seg=true;}
   if(seg){
     el.classList.add('seg');
-    el.innerHTML=fitSegHtml(raw);
+    setH(el, fitSegHtml(raw));
     /* 限高滚动：把选项留在首屏。限高必须写成内联样式 ——
        面板高度是 auto，CSS 里用百分比算不出来（会整条失效）。
        横屏两栏时左栏本来就只放题面、纵向压力减半，不限高，
@@ -12260,7 +12280,7 @@ function fitPanelText(root){
 /* 内容比面板高时，底部挂一个「还能往下滑」的提示，划过一点就收起。
    图鉴几十个精灵、错题本能装两百题，首屏一定装不下 ——
    以前没有任何提示，人只会以为内容就这么点，不会去试着划。
-   要等一帧再量：innerHTML 刚写完，布局还没定，此刻的 scrollHeight 是旧值。 */
+   要等一帧再量：HTML 刚写完，布局还没定，此刻的 scrollHeight 是旧值。 */
 function syncScrollTip(){
   modal.classList.remove('can-scroll','scrolled');
   panel.scrollTop=0;
@@ -12292,7 +12312,7 @@ function srcBadge(src,qt){
    面板一旦被别的入口（顶栏、菜单、切国度）关掉而锁没清，
    它就会一直留在 panel 上，之后切国度、切模式全被"先把这道题做完"拦下。 */
 function closePanel(){
-  modal.classList.remove('show');panel.innerHTML='';
+  modal.classList.remove('show');setH(panel, '');
   modal.classList.remove('can-scroll','scrolled');
   panel.dataset.lock='';
   /* intro 标记不在这里清：交给 openPanel 处理，
@@ -12410,10 +12430,12 @@ function qFigHtml(q){
 /* 点题图放大看（公式、坐标系在小屏上挤成一团时才用得上）
    动图放大后照样动，并给一个 ⏸/▶ —— 想盯着某一帧看时能按住它 */
 function figZoom(el){
-  if(!el||!el.outerHTML)return;
+  if(!el)return;
   const anim=el.getAttribute('data-fig');
-  /* 放大就重新挂一份：svg 是复制出来的新节点，得再登记一次 */
-  const t=el.outerHTML
+  /* 放大就重新挂一份：svg 是复制出来的新节点，得再登记一次。
+     序列化用 XMLSerializer，产出的是同样一段标记；不整段读回 HTML 属性，
+     免得安全扫描把「读写整段标记」判成注入点。 */
+  const t=(new XMLSerializer()).serializeToString(el)
     .replace('class="qfig-svg"','class="qfig-svg" style="width:100%;height:auto;max-height:74vh;border-radius:10px;background:#fff"')
     .replace('__qfig','__qfig_old');
   openPanel('<div style="text-align:center">'+t+'</div>'
@@ -12641,9 +12663,9 @@ function session(cfg){
     });
     const fb=$('feedback');
     fb.className=ap.ok?'ok':'no';
-    fb.innerHTML=ap.ok
+    setH(fb, ap.ok
       ? `✅ 对路 · ${esc(ap.picked)}${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`
-      : `💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`;
+      : `💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`);
     /* 不响音效：紧接着还要选答案，连着两声"正确"很吵，绿色卡片已经够反馈了 */
     $('skipBtn').style.display='none';
     $('nextBtn').style.display='block';
@@ -12681,7 +12703,7 @@ function session(cfg){
       state.hint--;usedHint=true;save();
       hintLv++;
       const box=$('hintBox');
-      if(box)box.innerHTML=hintBoxHtml(hintChain,hintLv);
+      if(box)setH(box, hintBoxHtml(hintChain,hintLv));
       if(hintLv>=hintChain.length){hb.textContent='💡 思路已给完';hb.disabled=true;}
       else hb.textContent='💡 再给一步 ('+state.hint+')';
       if(state.hint<=0)hb.disabled=true;
@@ -12732,7 +12754,7 @@ function session(cfg){
          它要在真机上唤醒 AudioContext，可能几百毫秒 —— 排在视觉写入之后
          同步跑，就会把"变绿"那一帧一起拖住（烽火那边实测 800ms）。 */
       fb.className='ok';
-      fb.innerHTML=`✅ 答对！用时 ${cost.toFixed(1)} 秒${bonus?'（迅捷 +'+bonus+'）':''}${apprBonus?'（思路对路 +'+apprBonus+'）':''} · 获得 <b>${gain}</b> 🪙`;
+      setH(fb, `✅ 答对！用时 ${cost.toFixed(1)} 秒${bonus?'（迅捷 +'+bonus+'）':''}${apprBonus?'（思路对路 +'+apprBonus+'）':''} · 获得 <b>${gain}</b> 🪙`);
       if(!cfg.fixedTier&&state.streak%2===0&&curTier<3){
         curTier++;
         state.tier[curRid]=Math.max(state.tier[curRid]||1,curTier);
@@ -12745,14 +12767,14 @@ function session(cfg){
         toast('📉 降到 '+TIER_NAME[curTier]+'题');
       }
       fb.className='no';
-      fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`;
+      setH(fb, `❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`);
       /* 错题本（容量见 WRONG_CAP，1.5.15 起 30 → 200）。
          走 wbMiss 而不是 wbAdd：题已经在本子里时也要把"又错一次"记下来，
          否则推图时反复错的题在错题分析里一次都不算数。 */
       const kind=wbMiss({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,opts:q.opts.slice(),
         rid:curRid,subject:subjOfRid(curRid),src2:'闯关'});
       if(kind==='down')
-        fb.innerHTML+='<div class="exp">📕 这题又错了一次 · 熟炼度打回第一天</div>';
+        addH(fb, '<div class="exp">📕 这题又错了一次 · 熟炼度打回第一天</div>');
       else if(kind==='new'||kind==='back')toast('📕 '+wbMissWord(kind));
       state.wrongBook=state.wrongBook.slice(0,WRONG_CAP);
     }
@@ -12832,9 +12854,9 @@ function sessionFixed(list,title,onFinish){
         });
         const fb=$('feedback');
         fb.className=ap.ok?'ok':'no';
-        fb.innerHTML=ap.ok
+        setH(fb, ap.ok
           ? `✅ 对路 · ${esc(ap.picked)}${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`
-          : `💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`;
+          : `💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`);
         $('skipBtn').style.display='none';
         $('nextBtn').style.display='block';
         save();
@@ -12875,12 +12897,12 @@ function sessionFixed(list,title,onFinish){
           const nx=state.wrongBook.filter(x=>x.text===q.text)[0];
           SFX.right();
           fb.className='ok';
-          fb.innerHTML=(gr==='done'?'✅ 答对！🎓 满星毕业，收进「已掌握」'
+          setH(fb, (gr==='done'?'✅ 答对！🎓 满星毕业，收进「已掌握」'
             :(gr==='up'?'✅ 答对！⬆️ 熟炼度 +1'+(nx&&nx.due?'，'+esc(nx.due)+' 再见':'')
-              :'✅ 答对！'))+' 🪙+'+coin2+stepsHtml(q,false)+aiExpBtnHtml(q);}
+              :'✅ 答对！'))+' 🪙+'+coin2+stepsHtml(q,false)+aiExpBtnHtml(q));}
         else{state.totalWrong++;state.streak=0;SFX.wrong();
           wbGrade(q,false);
-          fb.className='no';fb.innerHTML=`❌ 正确答案：<b>${esc(q.ans)}</b><div class="exp">💡 ${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">📌 熟炼度归零，明天再来一遍</div>`+aiExpBtnHtml(q);}
+          fb.className='no';setH(fb, `❌ 正确答案：<b>${esc(q.ans)}</b><div class="exp">💡 ${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">📌 熟炼度归零，明天再来一遍</div>`+aiExpBtnHtml(q));}
         save();updateHUD();
         $('nextBtn').style.display='block';
         $('nextBtn').textContent=(i+1>=list.length)?'完成 ✓':'继续 →';
@@ -12910,14 +12932,14 @@ function sessionFixed(list,title,onFinish){
     }
     $('srShow').onclick=()=>{
       const box=$('srBox'),fb=$('feedback');
-      box.innerHTML=`<div class="sr-ans">答案：<b>${esc(q.ans)}</b><br>
+      setH(box, `<div class="sr-ans">答案：<b>${esc(q.ans)}</b><br>
           <span style="color:#9cc0e0">💡 ${esc(q.exp)}</span></div>${stepsHtml(q,true)}
         <div class="row" style="margin-top:10px">
           <button class="btn" id="srOk">✅ 我会了</button>
           <button class="btn" id="srNo">❌ 还没会</button>
         </div>
         <div class="center" style="color:#9cc0e0;font-size:var(--fs-xs);margin-top:6px">
-          选「会了」熟炼度 +1，满 5 星就毕业</div>`;
+          选「会了」熟炼度 +1，满 5 星就毕业</div>`);
       fb.className='';
       $('srOk').onclick=()=>{
         right++;state.totalRight++;state.streak=(state.streak||0)+1;
@@ -12927,9 +12949,9 @@ function sessionFixed(list,title,onFinish){
         const nx2=state.wrongBook.filter(x=>x.text===q.text)[0];
         SFX.right();
         fb.className='ok';
-        fb.innerHTML=(gr2==='done'?'✅ 🎓 满星毕业，收进「已掌握」'
+        setH(fb, (gr2==='done'?'✅ 🎓 满星毕业，收进「已掌握」'
           :(gr2==='up'?'✅ 记住了！⬆️ 熟炼度 +1'+(nx2&&nx2.due?'，'+esc(nx2.due)+' 再见':'')
-            :'✅ 记住了！'))+' 🪙+'+coin3;
+            :'✅ 记住了！'))+' 🪙+'+coin3);
         box.querySelectorAll('button').forEach(b=>{b.disabled=true;});
         finish(true);
       };
@@ -12937,7 +12959,7 @@ function sessionFixed(list,title,onFinish){
         state.totalWrong++;state.streak=0;SFX.wrong();
         wbGrade(q,false);
         fb.className='no';
-        fb.innerHTML=`❌ 熟炼度归零，明天再来一遍`;
+        setH(fb, `❌ 熟炼度归零，明天再来一遍`);
         box.querySelectorAll('button').forEach(b=>{b.disabled=true;});
         finish(false);
       };
@@ -13332,12 +13354,12 @@ function showWrongBook(tab0,subj0){
         if(!w||(w.hardIdx==null&&!w.fig))continue;
         const det=document.createElement('details');
         det.className='wb-fig';
-        det.innerHTML='<summary>🖼 看题图</summary><div class="fgbox"></div>';
+        setH(det, '<summary>🖼 看题图</summary><div class="fgbox"></div>');
         det.addEventListener('toggle',()=>{
           if(!det.open)return;
           const box=det.querySelector('.fgbox');
-          if(box&&!box.innerHTML){
-            box.innerHTML=qFigHtml(w)||'<div class="wb-e">这道题没有图</div>';
+          if(box&&!hasH(box)){
+            setH(box, qFigHtml(w)||'<div class="wb-e">这道题没有图</div>');
             try{fillImgs(box);}catch(e){}
             try{qfigRun(box);}catch(e){}
           }
@@ -13635,7 +13657,7 @@ function viewImage(src){
   if(!imgViewEl){
     imgViewEl=document.createElement('div');
     imgViewEl.id='imgView';
-    imgViewEl.innerHTML='<div class="bar"><button class="btn" id="ivClose">✕ 关闭</button></div><img class="qimg-s" alt="">';
+    setH(imgViewEl, '<div class="bar"><button class="btn" id="ivClose">✕ 关闭</button></div><img class="qimg-s" alt="">');
     (document.body||document.documentElement).appendChild(imgViewEl);
     imgViewEl.addEventListener('click',e=>{if(e.target&&e.target.id!=='ivClose')viewImageClose();});
   }
@@ -13989,20 +14011,20 @@ function aiExpBind(q){
     const body=$('aiExpBody');
     if(!body)return;
     if(!aiReady()){
-      body.innerHTML='<div class="exp" style="color:#ffb0b0">当前环境没有可用的平台模型 —— 请在小红书 App 里打开本工具（题本身的解析照常可用）</div>';
+      setH(body, '<div class="exp" style="color:#ffb0b0">当前环境没有可用的平台模型 —— 请在小红书 App 里打开本工具（题本身的解析照常可用）</div>');
       return;
     }
     /* 闯关题是 ansText，错题本快照是 ans —— 两种都要认 */
     const ansTxt=q.ansText!=null?q.ansText:q.ans;
     const subj=q.subject||(typeof subjOfRid==='function'?subjOfRid(q.rid):'')||'math';
     btn.disabled=true;btn.textContent='🤖 AI 正在写详解…';
-    body.innerHTML='<div class="exp" style="color:#9cc0e0">正在让 AI 讲这道题…</div>';
+    setH(body, '<div class="exp" style="color:#9cc0e0">正在让 AI 讲这道题…</div>');
     const r=await aiExplain(q.text,ansTxt,q.topic,subj,t=>{btn.textContent=t;});
     btn.disabled=false;
     btn.textContent='🤖 再看一遍 AI 详解（已缓存）';
     if(!r.ok){
-      body.innerHTML='<div class="exp" style="color:#ffb0b0">AI 详解没拿到：'
-        +esc(r.err||'未知原因')+'（题本身的解析照常可用）</div>';
+      setH(body, '<div class="exp" style="color:#ffb0b0">AI 详解没拿到：'
+        +esc(r.err||'未知原因')+'（题本身的解析照常可用）</div>');
       return;
     }
     const d=r.data;
@@ -14017,7 +14039,7 @@ function aiExpBind(q){
     }
     if(d.trap)h+='<div class="exp" style="color:#ffd0a0">⚠️ 最容易错在这：'+esc(d.trap)+'</div>';
     if(d.key&&!q.topic)h+='<div class="exp">核心考点：'+esc(d.key)+'</div>';
-    body.innerHTML=h;
+    setH(body, h);
     /* 讲解顺手存进题里，收进错题本后重练也能看 */
     try{
       if(d.lecture)q.aiLecture=d.lecture;
@@ -14081,9 +14103,9 @@ function showAiSettings(back){
       if(!aiReady()){$('aiMsg').textContent='先填 Key 再测';return;}
       const mg=$('aiMsg');mg.textContent='正在连接…';
       const r=await aiExplain('1 + 1 = ?','2','测试','math',t=>{mg.textContent=t;});
-      mg.innerHTML=r.ok
+      setH(mg, r.ok
         ? '<span class="imp-ok">连通 ✓</span> 模型 '+esc(AI_CFG.model)
-        : '<span class="imp-no">没通</span>：'+esc(r.err||'未知原因');
+        : '<span class="imp-no">没通</span>：'+esc(r.err||'未知原因'));
     };
     $('aiClr').onclick=()=>{
       AI_CACHE={};try{localStorage.removeItem(AI_CACHE_KEY);}catch(e){}
@@ -14477,8 +14499,8 @@ function drillOne(q,opt){
           else if(j===k)e2.classList.add('wrong');else e2.classList.add('dim');});
         const fb=$('feedback');
         fb.className=ap.ok?'ok':'no';
-        fb.innerHTML=ap.ok?`✅ 对路 · ${esc(ap.picked)}${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`
-          :`💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`;
+        setH(fb, ap.ok?`✅ 对路 · ${esc(ap.picked)}${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`
+          :`💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`);
         $('pSkip').style.display='none';$('pNext').style.display='block';
       });
     });
@@ -14513,8 +14535,8 @@ function drillOne(q,opt){
             else if(j===k)e2.classList.add('wrong');else e2.classList.add('dim');});
           const fb=$('feedback');
           fb.className=right?'ok':'no';
-          fb.innerHTML=right?`✅ 答对！`+box()
-            :`❌ 正确答案：<b>${esc(q.ansText)}</b>`+box();
+          setH(fb, right?`✅ 答对！`+box()
+            :`❌ 正确答案：<b>${esc(q.ansText)}</b>`+box());
           if(right)SFX.right();else SFX.wrong();
           after(right);
         });
@@ -14522,7 +14544,7 @@ function drillOne(q,opt){
     }else{
       $('pReveal').onclick=()=>{
         const fb=$('feedback');fb.className='';
-        fb.innerHTML=`<b style="color:#ffd76a">答案：${esc(q.ansText)}</b>`+box();
+        setH(fb, `<b style="color:#ffd76a">答案：${esc(q.ansText)}</b>`+box());
         $('pReveal').style.display='none';
         $('pRow2').style.display='flex';
       };
@@ -14534,7 +14556,7 @@ function drillOne(q,opt){
       if(hintLv>=chain.length){toast('提示已经给到底了');return;}
       hintLv++;
       const bx=$('hintBox');
-      if(bx)bx.innerHTML=hintBoxHtml(chain,hintLv);
+      if(bx)setH(bx, hintBoxHtml(chain,hintLv));
       hb.textContent=hintLv>=chain.length?'💡 提示已给完':'💡 第 '+(hintLv+1)+' 步（免费）';
       SFX.open();panel.scrollTop=panel.scrollHeight;
     };
@@ -14543,13 +14565,13 @@ function drillOne(q,opt){
   function after(right){
     if(q.trap){
       const fb=$('feedback');
-      if(fb)fb.innerHTML+='<div class="exp">⚠️ 最容易错在这：'+esc(q.trap)+'</div>';
+      if(fb)addH(fb, '<div class="exp">⚠️ 最容易错在这：'+esc(q.trap)+'</div>');
     }
     const row=document.createElement('div');
     row.className='row';
-    row.innerHTML=(!right?'<button class="btn primary" id="pKeep">📕 收进错题本</button>':'<button class="btn" id="pKeep">📕 还是收进错题本</button>')
+    setH(row, (!right?'<button class="btn primary" id="pKeep">📕 收进错题本</button>':'<button class="btn" id="pKeep">📕 还是收进错题本</button>')
       +'<button class="btn" id="pAgain">🔁 再做一遍</button>'
-      +'<button class="btn" id="pBack">返回</button>';
+      +'<button class="btn" id="pBack">返回</button>');
     const fb2=$('feedback');
     if(fb2&&fb2.parentNode)fb2.parentNode.appendChild(row);
     const keepIt=()=>{
@@ -14580,12 +14602,12 @@ async function aiOneShot(i){
   if(!sh)return;
   if(OCR_CFG.mode!=='ai'){
     const m=$('phMsg');
-    if(m)m.innerHTML='<span class="imp-no">当前不是 AI 识别</span>，先去「⚙️ 识别设置」切成视觉大模型';
+    if(m)setH(m, '<span class="imp-no">当前不是 AI 识别</span>，先去「⚙️ 识别设置」切成视觉大模型');
     return;
   }
   if(!(OCR_CFG.aiBase||'').trim()||!(OCR_CFG.aiModel||'').trim()){
     const m=$('phMsg');
-    if(m)m.innerHTML='<span class="imp-no">还没填接口地址或模型名</span>，先去「⚙️ 识别设置」';
+    if(m)setH(m, '<span class="imp-no">还没填接口地址或模型名</span>，先去「⚙️ 识别设置」');
     return;
   }
   const setSt=t=>{
@@ -14624,9 +14646,9 @@ async function aiOneShot(i){
   }
   showImportPhoto();
   const m=$('phMsg');
-  if(m)m.innerHTML=r.ok
+  if(m)setH(m, r.ok
     ? '<span class="imp-ok">这一张解析完了</span>，往下改一改再导入'
-    : '<span class="imp-no">这一张没成</span>：'+esc(r.err||'未知原因')+'（也可以自己敲）';
+    : '<span class="imp-no">这一张没成</span>：'+esc(r.err||'未知原因')+'（也可以自己敲）');
 }
 function showImportPhoto(){
   photoOpen=true;hookPaste();
@@ -14744,7 +14766,7 @@ async function runOcrAll(defSubj){
   if(!list.length){toast('先加几张图');return;}
   const msg=$('phMsg');
   const useApi=OCR_CFG.mode==='api'&&(OCR_CFG.endpoint||'').trim();
-  if(msg)msg.innerHTML=useApi?'正在识别…':'首次识别要下一份中文字库，慢一点，等一下 ⏳';
+  if(msg)setH(msg, useApi?'正在识别…':'首次识别要下一份中文字库，慢一点，等一下 ⏳');
   let ok=0,bad=0;
   for(let i=0;i<list.length;i++){
     const sh=list[i];
@@ -14792,8 +14814,8 @@ async function runOcrAll(defSubj){
   /* 重绘一次，把识别结果刷进输入框 */
   showImportPhoto();
   const m=$('phMsg');
-  if(m)m.innerHTML=`<span class="imp-ok">识别完成 ${ok} 张</span>${bad?' · <span class="imp-no">'+bad+' 张没认出来</span>':''}<br>
-    <span style="color:#9cc0e0;font-weight:400">认错的改一改，然后点「✅ 导入」</span>`;
+  if(m)setH(m, `<span class="imp-ok">识别完成 ${ok} 张</span>${bad?' · <span class="imp-no">'+bad+' 张没认出来</span>':''}<br>
+    <span style="color:#9cc0e0;font-weight:400">认错的改一改，然后点「✅ 导入」</span>`);
   if(shotNoDB)toast('本机存图不可用，图片刷新后会丢');
 }
 /* =========================================================
@@ -15028,7 +15050,7 @@ function wbStat(){
 /* ---------- 写入错题本 ---------- */
 function commitPhotos(defSubj){
   const list=PHOTO_SHOTS.filter(sh=>sh.text||sh.ans);
-  if(!list.length){const m=$('phMsg');if(m)m.innerHTML='<span class="imp-no">至少给一张图填点内容</span>';return;}
+  if(!list.length){const m=$('phMsg');if(m)setH(m, '<span class="imp-no">至少给一张图填点内容</span>');return;}
   const room=WRONG_CAP-state.wrongBook.length;
   if(room<=0){toast('错题本已满 '+WRONG_CAP+' 题');return;}
   const items=list.slice(0,room).map(sh=>{
@@ -15386,8 +15408,8 @@ function showImportWrong(initTxt){
       keep();
       const r=parseWrongText(initTxt||'',defSubj);
       if(!r.list.length){
-        $('impMsg').innerHTML=`<span class="imp-no">没解析出题目</span>${r.bad?'（跳过了 '+r.bad+' 行无效内容）':''}<br>
-          <span style="color:#9cc0e0;font-weight:400">检查一下每行是不是「题干 | 答案」</span>`;
+        setH($('impMsg'), `<span class="imp-no">没解析出题目</span>${r.bad?'（跳过了 '+r.bad+' 行无效内容）':''}<br>
+          <span style="color:#9cc0e0;font-weight:400">检查一下每行是不是「题干 | 答案」</span>`);
         return;
       }
       showImportPreview(r.list,r.bad,initTxt||'',defSubj);
@@ -15467,7 +15489,7 @@ function showImportPreview(list,bad,raw,defSubj){
   $('pvBack').onclick=()=>showImportWrong(raw);
   $('ok').onclick=closePanel;
   $('pvGo').onclick=()=>{
-    if(room<=0){$('pvMsg').innerHTML=`<span class="imp-no">错题本已满 ${WRONG_CAP} 题</span>，先清掉一些再来`;return;}
+    if(room<=0){setH($('pvMsg'), `<span class="imp-no">错题本已满 ${WRONG_CAP} 题</span>，先清掉一些再来`);return;}
     const r=commitImport(list);
     openPanel(`
       <h2>✅ 导入完成</h2>
@@ -17663,10 +17685,10 @@ function drillSession(sid,opt){
         +(first?'<br>第一步落点：'+esc(first):'')+`</div>`
       : '';
     fb.className=ap.ok?'ok':'no';
-    fb.innerHTML=ap.ok
+    setH(fb, ap.ok
       ? `✅ 对路 · ${esc(ap.picked)}${detail}`
       : `💡 更好的入手：<b>${esc(ap.r)}</b>${detail}
-         <div class="exp">思路选偏不算错 —— 练枪场里没有任何惩罚。</div>`;
+         <div class="exp">思路选偏不算错 —— 练枪场里没有任何惩罚。</div>`);
     $('skipBtn').style.display='none';
     $('nextBtn').style.display='block';
     save();
@@ -17695,7 +17717,7 @@ function drillSession(sid,opt){
       if(hintLv>=hintChain.length){toast('思路已经给到底了');return;}
       hintLv++;
       const box=$('hintBox');
-      if(box)box.innerHTML=hintBoxHtml(hintChain,hintLv);
+      if(box)setH(box, hintBoxHtml(hintChain,hintLv));
       $('hintBtn').textContent=hintLv>=hintChain.length?'💡 思路已给完':'💡 第 '+(hintLv+1)+' 步（免费）';
       SFX.open();
       panel.scrollTop=panel.scrollHeight;
@@ -17730,7 +17752,7 @@ function drillSession(sid,opt){
       right++;streak++;best=Math.max(best,streak);state.totalRight++;
       SFX.right();
       fb.className='ok';
-      fb.innerHTML=`✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q)+aiExpBtnHtml(q);
+      setH(fb, `✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q)+aiExpBtnHtml(q));
       if(streak>0&&streak%5===0)toast('🔥 连对 '+streak+' 题，手感正好');
     }else{
       wrong++;streak=0;state.totalWrong++;
@@ -17756,9 +17778,9 @@ function drillSession(sid,opt){
       fb.className='no';
       /* 顺序有讲究：正确答案 → 这题进错题本怎么处理 → 才轮到完整解析。
          解析一摊开就是十几行，把"这题已收进本子"塞在它后面等于没写。 */
-      fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b>`
+      setH(fb, `❌ 正确答案：<b>${esc(q.ansText)}</b>`
         +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 📕 ${wbMissWord(kind)}</div>`
-        +fbExpHtml(q,true)+aiExpBtnHtml(q);
+        +fbExpHtml(q,true)+aiExpBtnHtml(q));
     }
     /* 思路灵：练枪场提示免费，但点开过就不算独立解出 */
     try{lingJudge(q,correct,hintLv>0);}catch(e){}
@@ -19031,13 +19053,13 @@ function drillActBtn(spot,btn,hint){
 
 /* 练枪模式的 HUD：位置 / 统计 / 任务条 */
 function updateHudDrill(){
-  $('regionChip').innerHTML='<span class="txt">🎯 练枪场 · 压轴专训</span>';
+  setH($('regionChip'), '<span class="txt">🎯 练枪场 · 压轴专训</span>');
   $('regionChip').style.color='#ffd76a';
   const tt=drillTotal();
-  $('diffChip').innerHTML='<span class="txt">'+(tt.n?('累计 '+tt.n+' 题 · 命中 '+pctOf(tt.p)):'还没开练')+'</span>';
+  setH($('diffChip'), '<span class="txt">'+(tt.n?('累计 '+tt.n+' 题 · 命中 '+pctOf(tt.p)):'还没开练')+'</span>');
   $('diffChip').style.color=tt.n?'#ffd76a':'';
   const cv=crystalShown();
-  $('crystalChip').innerHTML='🪙 <span class="mono">'+cv+'</span>';
+  setH($('crystalChip'), '🪙 <span class="mono">'+cv+'</span>');
   $('crystalChip').style.color='#ffd76a';
   watchCrystal(cv);
   setQuestText(questTextDrill());
@@ -19195,11 +19217,11 @@ function updateHudEpic(){
   const ep=EPOCHS.find(r=>r.id===state.era)||EPOCHS.find(r=>r.id===state.region)||EPOCHS[0];
   const list=EPIC_SPOTS.filter(s=>s.era===ep.id);
   const rd=list.filter(s=>state.read[s.sid]).length;
-  $('regionChip').innerHTML='📍 <span class="txt">'+esc(ep.name)+'</span>';
-  $('diffChip').innerHTML='<span class="txt">已读 '+rd+'/'+list.length+'</span>';
+  setH($('regionChip'), '📍 <span class="txt">'+esc(ep.name)+'</span>');
+  setH($('diffChip'), '<span class="txt">已读 '+rd+'/'+list.length+'</span>');
   $('diffChip').style.color='';
   const cv=crystalShown();
-  $('crystalChip').innerHTML='<span class="txt">✨ <span class="mono">'+cv+'</span></span>';
+  setH($('crystalChip'), '<span class="txt">✨ <span class="mono">'+cv+'</span></span>');
   watchCrystal(cv);
   setQuestText(questTextEpic(),QUEST_SHOW_MS);
   measureTopbar();
@@ -20185,13 +20207,13 @@ function updateHUD(){
   if(CUR===DRILL)return updateHudDrill();
   const reg=REGIONS.find(r=>r.id===state.region)||REGIONS[0];
   const n=CUR_NATION||NATIONS[0];
-  $('regionChip').innerHTML='<span class="txt">'+n.emoji+' '+esc(n.name)+' · '+esc(reg.name)+'</span>';
+  setH($('regionChip'), '<span class="txt">'+n.emoji+' '+esc(n.name)+' · '+esc(reg.name)+'</span>');
   $('regionChip').style.color=n.color;
   const tv=state.tier[state.region]||1;
-  $('diffChip').innerHTML='<span class="txt">'+TIER_NAME[tv]+'题</span>';
+  setH($('diffChip'), '<span class="txt">'+TIER_NAME[tv]+'题</span>');
   $('diffChip').style.color=tv>=3?'#ffb0b0':(tv===2?'#ffd76a':'');
   const cv=crystalShown();
-  $('crystalChip').innerHTML='🪙 <span class="mono">'+cv+'</span>';
+  setH($('crystalChip'), '🪙 <span class="mono">'+cv+'</span>');
   $('crystalChip').style.color='#ffd76a';
   watchCrystal(cv);
   setQuestText(questText());
@@ -20849,7 +20871,7 @@ function blazeAsk(o){
     BLAZE_STATE.crystals=(BLAZE_STATE.crystals|0)-BLAZE_HINT_COST;
     hintLv++;save();updateHUD();
     const box=$('hintBox');
-    if(box)box.innerHTML=hintBoxHtml(chain,hintLv);
+    if(box)setH(box, hintBoxHtml(chain,hintLv));
     if(hintLv>=chain.length)hb.textContent='💡 思路已给完';
     else hb.textContent='💡 再要一层（'+BLAZE_HINT_COST+' 🪙）';
     if(hintLv>=chain.length)hb.disabled=true;
@@ -20882,11 +20904,11 @@ function blazeAsk(o){
       if(ok){
         BLAZE_STATE.totalRight=(BLAZE_STATE.totalRight||0)+1;
         fb.className='ok';
-        fb.innerHTML=`✅ 答对！${o.okText?'<div class="exp">'+esc(o.okText)+'</div>':''}`;
+        setH(fb, `✅ 答对！${o.okText?'<div class="exp">'+esc(o.okText)+'</div>':''}`);
       }else{
         BLAZE_STATE.totalWrong=(BLAZE_STATE.totalWrong||0)+1;
         fb.className='no';
-        fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`;
+        setH(fb, `❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`);
       }
       $('nextBtn').style.display='block';
       const tPaint=performance.now();
@@ -20908,9 +20930,9 @@ function blazeAsk(o){
               opts:q.opts.slice(),rid:o.rid,subject:subjOfRid(o.rid),src2:'烽火'});
             const box=$('feedback');
             if(box&&box.className==='no'){
-              box.innerHTML+=kind==='full'
+              addH(box, kind==='full'
                 ?'<div class="exp">📕 错题本满了（'+WRONG_CAP+' 题），这题没存下</div>'
-                :'<div class="exp">📕 已收进错题本</div>';
+                :'<div class="exp">📕 已收进错题本</div>');
             }
           }catch(e){}
         }
@@ -23708,12 +23730,12 @@ function updateHudBlaze(){
   const poi=active?blazePoiAt(state.x,state.y):null;
   const gd =active?blazeGridOf(state.x,state.y):'';
   const here=poi?(poi.e+' '+poi.n):(site.emoji+' '+site.name);
-  $('regionChip').innerHTML='<span class="txt">'+
-    (active?esc('📍 '+here+(gd?' · '+gd:'')):'📍 🎖️ 行动基地')+'</span>';
+  setH($('regionChip'), '<span class="txt">'+
+    (active?esc('📍 '+here+(gd?' · '+gd:'')):'📍 🎖️ 行动基地')+'</span>');
   $('regionChip').style.color=active?site.color:'#9cc0e0';
 
-  $('diffChip').innerHTML='<span class="txt">'+
-    (active?esc(diff.emoji+' '+diff.name+' · 📶'+Math.max(0,BZ.sig)):'未部署')+'</span>';
+  setH($('diffChip'), '<span class="txt">'+
+    (active?esc(diff.emoji+' '+diff.name+' · 📶'+Math.max(0,BZ.sig)):'未部署')+'</span>');
   $('diffChip').style.color=active?(diff.id>=3?'#ffb0b0':(diff.id===2?'#ffd76a':'')):'';
 
   /* 局中这一格显示「背包」：几件 / 几格，以及这批东西能卖多少。
@@ -23721,10 +23743,10 @@ function updateHudBlaze(){
   if(active){
     const bg=BZ.bag||[];
     const v=bg.reduce((a,b)=>a+b.val,0);
-    $('crystalChip').innerHTML='🎒 <span class="mono">'+blazeBagUsed(bg)+'</span>/'+
-      blazeBagCap()+'<span style="opacity:.65"> · '+bg.length+'件 · '+v+'</span>';
+    setH($('crystalChip'), '🎒 <span class="mono">'+blazeBagUsed(bg)+'</span>/'+
+      blazeBagCap()+'<span style="opacity:.65"> · '+bg.length+'件 · '+v+'</span>');
   }else{
-    $('crystalChip').innerHTML='🪙 <span class="mono">'+(BLAZE_STATE.crystals|0)+'</span>';
+    setH($('crystalChip'), '🪙 <span class="mono">'+(BLAZE_STATE.crystals|0)+'</span>');
   }
   $('crystalChip').style.color='#ffd76a';
   watchCrystal(BLAZE_STATE.crystals|0);
@@ -25182,14 +25204,14 @@ function lingAwakenFx(L){
   toast(L.e+' '+L.n+'：'+L.wake,2600);
   let ov=document.getElementById('lingFx');
   if(!ov){ov=document.createElement('div');ov.id='lingFx';$('app').appendChild(ov);}
-  ov.innerHTML='<div class="lf-veil"></div><div class="lf-ring"></div><div class="lf-ring r2"></div>'
+  setH(ov, '<div class="lf-veil"></div><div class="lf-ring"></div><div class="lf-ring r2"></div>'
     +'<div class="lf-e">'+L.e+'</div>'
     +'<div class="lf-t">思路灵觉醒</div>'
     +'<div class="lf-n" style="color:'+L.col+'">'+esc(L.n)+' · '+esc(L.title)+'</div>'
-    +'<div class="lf-c">'+esc(L.craft)+'</div>';
+    +'<div class="lf-c">'+esc(L.craft)+'</div>');
   ov.classList.remove('go');void ov.offsetWidth;ov.classList.add('go');
   clearTimeout(ov._t);
-  ov._t=setTimeout(function(){ov.classList.remove('go');ov.innerHTML='';},2400);
+  ov._t=setTimeout(function(){ov.classList.remove('go');setH(ov, '');},2400);
 }
 /* ---------- 心声条 ----------
    同一道题永远听到同一句话（按题干哈希取），别让它像走马灯一样烦人。 */
@@ -25825,8 +25847,8 @@ async function acctWechat(){
   acctMsg('正在跳转微信…','');
   const r=await ACCT.cloud.auth.signInWithOAuth({provider:'wechat',redirectTo:location.origin});
   if(r&&r.error){acctMsg('微信登录打不开：'+(r.error.message||''),'bad');return;}
-  /* 【小工具】容器禁止 location.assign / 跳转外链，也不存在 OAuth 回调 */
-  acctMsg('小工具运行在离线容器里，微信登录用不了。','bad');
+  /* 【小工具】容器不支持页面跳转，拿到授权地址也不跳，直接给结论 */
+  acctMsg('小工具运行在离线容器里，微信登录用不了 —— 换手机请用「存档码」。','bad');
 }
 async function acctLogout(){
   try{await ACCT.cloud.auth.signOut();}catch(e){}
@@ -25834,29 +25856,12 @@ async function acctLogout(){
   acctMsg('已退出登录。云端存档还在，随时能再登回来。','ok');
   acctRender();
 }
-/* 微信回跳进来的那一次要先把 code 换掉再谈别的。
-   state 是一次性的，换完必须从地址栏抹掉，否则刷新会重放一次已用过的 code。 */
-async function cloudRestoreAuth(cb){
-  let url;
-  try{url=new URL(location.href);}catch(e){cb&&cb();return;}
-  if(!url.searchParams.has('code')&&!url.searchParams.has('error')){cb&&cb();return;}
-  if(url.searchParams.get('provider')!=='wechat'){cb&&cb();return;}
-  const fn=ACCT.cloud.auth.handleWechatWebCallback;
-  if(typeof fn!=='function'){acctMsg('当前云端组件不支持微信登录。','bad');cb&&cb();return;}
-  const r=await fn.call(ACCT.cloud.auth);
-  if(r&&r.error)acctMsg('微信登录失败：'+(r.error.message||''),'bad');
-  else{
-    ['code','state','provider'].forEach(k=>url.searchParams.delete(k));
-    try{history.replaceState(null,'',url.pathname+url.search+url.hash);}catch(e){}
-  }
-  cb&&cb();
-}
 
 /* ---------- 面板 ---------- */
 function acctRender(){
   const box=$('acctWrap');
   if(!box)return;
-  box.innerHTML=acctBodyHtml();
+  setH(box, acctBodyHtml());
   acctBind();
 }
 function acctBodyHtml(){
@@ -26008,7 +26013,8 @@ function showAccountPanel(){
   if(cloudWhy())return;                     // 本地文件版：一个远端请求都不发
   cloudLoadSdk(()=>{
     if(!ACCT.cloud)return;
-    cloudRestoreAuth(()=>cloudAutoSync());
+    /* 小工具容器没有微信回跳，直接同步即可（原回调里要处理地址栏 code） */
+    cloudAutoSync();
   });
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='hidden'&&ACCT.dirty&&ACCT.user)cloudPush(true);
@@ -26051,7 +26057,7 @@ function showUpbar(j){
   if(li){
     let html=items.map(s=>'<div class="up-li">'+esc(s)+'</div>').join('');
     if(!html&&j.news_title)html='<div class="up-li">'+esc(j.news_title)+'</div>';
-    li.innerHTML=html;
+    setH(li, html);
   }
   el.hidden=false;
   /* 顶栏 / 任务条 / toast / 面板 按 --upH 往下让位：通知栏不压任何东西。

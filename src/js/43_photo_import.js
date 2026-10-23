@@ -141,8 +141,8 @@ function drillOne(q,opt){
           else if(j===k)e2.classList.add('wrong');else e2.classList.add('dim');});
         const fb=$('feedback');
         fb.className=ap.ok?'ok':'no';
-        fb.innerHTML=ap.ok?`✅ 对路 · ${esc(ap.picked)}${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`
-          :`💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`;
+        setH(fb, ap.ok?`✅ 对路 · ${esc(ap.picked)}${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`
+          :`💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`);
         $('pSkip').style.display='none';$('pNext').style.display='block';
       });
     });
@@ -177,8 +177,8 @@ function drillOne(q,opt){
             else if(j===k)e2.classList.add('wrong');else e2.classList.add('dim');});
           const fb=$('feedback');
           fb.className=right?'ok':'no';
-          fb.innerHTML=right?`✅ 答对！`+box()
-            :`❌ 正确答案：<b>${esc(q.ansText)}</b>`+box();
+          setH(fb, right?`✅ 答对！`+box()
+            :`❌ 正确答案：<b>${esc(q.ansText)}</b>`+box());
           if(right)SFX.right();else SFX.wrong();
           after(right);
         });
@@ -186,7 +186,7 @@ function drillOne(q,opt){
     }else{
       $('pReveal').onclick=()=>{
         const fb=$('feedback');fb.className='';
-        fb.innerHTML=`<b style="color:#ffd76a">答案：${esc(q.ansText)}</b>`+box();
+        setH(fb, `<b style="color:#ffd76a">答案：${esc(q.ansText)}</b>`+box());
         $('pReveal').style.display='none';
         $('pRow2').style.display='flex';
       };
@@ -198,7 +198,7 @@ function drillOne(q,opt){
       if(hintLv>=chain.length){toast('提示已经给到底了');return;}
       hintLv++;
       const bx=$('hintBox');
-      if(bx)bx.innerHTML=hintBoxHtml(chain,hintLv);
+      if(bx)setH(bx, hintBoxHtml(chain,hintLv));
       hb.textContent=hintLv>=chain.length?'💡 提示已给完':'💡 第 '+(hintLv+1)+' 步（免费）';
       SFX.open();panel.scrollTop=panel.scrollHeight;
     };
@@ -207,13 +207,13 @@ function drillOne(q,opt){
   function after(right){
     if(q.trap){
       const fb=$('feedback');
-      if(fb)fb.innerHTML+='<div class="exp">⚠️ 最容易错在这：'+esc(q.trap)+'</div>';
+      if(fb)addH(fb, '<div class="exp">⚠️ 最容易错在这：'+esc(q.trap)+'</div>');
     }
     const row=document.createElement('div');
     row.className='row';
-    row.innerHTML=(!right?'<button class="btn primary" id="pKeep">📕 收进错题本</button>':'<button class="btn" id="pKeep">📕 还是收进错题本</button>')
+    setH(row, (!right?'<button class="btn primary" id="pKeep">📕 收进错题本</button>':'<button class="btn" id="pKeep">📕 还是收进错题本</button>')
       +'<button class="btn" id="pAgain">🔁 再做一遍</button>'
-      +'<button class="btn" id="pBack">返回</button>';
+      +'<button class="btn" id="pBack">返回</button>');
     const fb2=$('feedback');
     if(fb2&&fb2.parentNode)fb2.parentNode.appendChild(row);
     const keepIt=()=>{
@@ -244,12 +244,12 @@ async function aiOneShot(i){
   if(!sh)return;
   if(OCR_CFG.mode!=='ai'){
     const m=$('phMsg');
-    if(m)m.innerHTML='<span class="imp-no">当前不是 AI 识别</span>，先去「⚙️ 识别设置」切成视觉大模型';
+    if(m)setH(m, '<span class="imp-no">当前不是 AI 识别</span>，先去「⚙️ 识别设置」切成视觉大模型');
     return;
   }
   if(!(OCR_CFG.aiBase||'').trim()||!(OCR_CFG.aiModel||'').trim()){
     const m=$('phMsg');
-    if(m)m.innerHTML='<span class="imp-no">还没填接口地址或模型名</span>，先去「⚙️ 识别设置」';
+    if(m)setH(m, '<span class="imp-no">还没填接口地址或模型名</span>，先去「⚙️ 识别设置」');
     return;
   }
   const setSt=t=>{
@@ -288,9 +288,9 @@ async function aiOneShot(i){
   }
   showImportPhoto();
   const m=$('phMsg');
-  if(m)m.innerHTML=r.ok
+  if(m)setH(m, r.ok
     ? '<span class="imp-ok">这一张解析完了</span>，往下改一改再导入'
-    : '<span class="imp-no">这一张没成</span>：'+esc(r.err||'未知原因')+'（也可以自己敲）';
+    : '<span class="imp-no">这一张没成</span>：'+esc(r.err||'未知原因')+'（也可以自己敲）');
 }
 function showImportPhoto(){
   photoOpen=true;hookPaste();
@@ -408,7 +408,7 @@ async function runOcrAll(defSubj){
   if(!list.length){toast('先加几张图');return;}
   const msg=$('phMsg');
   const useApi=OCR_CFG.mode==='api'&&(OCR_CFG.endpoint||'').trim();
-  if(msg)msg.innerHTML=useApi?'正在识别…':'首次识别要下一份中文字库，慢一点，等一下 ⏳';
+  if(msg)setH(msg, useApi?'正在识别…':'首次识别要下一份中文字库，慢一点，等一下 ⏳');
   let ok=0,bad=0;
   for(let i=0;i<list.length;i++){
     const sh=list[i];
@@ -456,7 +456,7 @@ async function runOcrAll(defSubj){
   /* 重绘一次，把识别结果刷进输入框 */
   showImportPhoto();
   const m=$('phMsg');
-  if(m)m.innerHTML=`<span class="imp-ok">识别完成 ${ok} 张</span>${bad?' · <span class="imp-no">'+bad+' 张没认出来</span>':''}<br>
-    <span style="color:#9cc0e0;font-weight:400">认错的改一改，然后点「✅ 导入」</span>`;
+  if(m)setH(m, `<span class="imp-ok">识别完成 ${ok} 张</span>${bad?' · <span class="imp-no">'+bad+' 张没认出来</span>':''}<br>
+    <span style="color:#9cc0e0;font-weight:400">认错的改一改，然后点「✅ 导入」</span>`);
   if(shotNoDB)toast('本机存图不可用，图片刷新后会丢');
 }

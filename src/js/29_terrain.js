@@ -178,7 +178,7 @@ function entDraw(key,wx,wy,ico,sizePx,top,cls,opa){
   const c2='ent'+(cls?' '+cls:'');
   if(n.className!==c2)n.className=c2;
   const html=(top||'')+'<span class="ico" style="font-size:'+fs+'px">'+ico+'</span>';
-  if(n.innerHTML!==html)n.innerHTML=html;
+  if(n._h!==html)setH(n, html);
   const o=opa==null?1:opa;
   if(n.style.opacity!=String(o))n.style.opacity=o;
   n.style.transform='translate(-50%,-100%) translate('+sx.toFixed(1)+'px,'+(sy+fs*.5).toFixed(1)+'px)';
@@ -358,7 +358,7 @@ function entLabel(key,wx,wy,html,scaleWithCam){
   }
   if(n.style.display==='none')n.style.display='';
   if(n.className!=='ent')n.className='ent';
-  if(n.innerHTML!==html)n.innerHTML=html;
+  if(n._h!==html)setH(n, html);
   const k=(scaleWithCam!==false)?Math.max(.62,Math.min(1.25,SCALE)):1;
   n.style.transform='translate(-50%,-50%) translate('+sx.toFixed(1)+'px,'+sy.toFixed(1)+'px) scale('+k.toFixed(2)+')';
 }

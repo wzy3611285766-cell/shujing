@@ -16,12 +16,12 @@ function updateHudBlaze(){
   const poi=active?blazePoiAt(state.x,state.y):null;
   const gd =active?blazeGridOf(state.x,state.y):'';
   const here=poi?(poi.e+' '+poi.n):(site.emoji+' '+site.name);
-  $('regionChip').innerHTML='<span class="txt">'+
-    (active?esc('📍 '+here+(gd?' · '+gd:'')):'📍 🎖️ 行动基地')+'</span>';
+  setH($('regionChip'), '<span class="txt">'+
+    (active?esc('📍 '+here+(gd?' · '+gd:'')):'📍 🎖️ 行动基地')+'</span>');
   $('regionChip').style.color=active?site.color:'#9cc0e0';
 
-  $('diffChip').innerHTML='<span class="txt">'+
-    (active?esc(diff.emoji+' '+diff.name+' · 📶'+Math.max(0,BZ.sig)):'未部署')+'</span>';
+  setH($('diffChip'), '<span class="txt">'+
+    (active?esc(diff.emoji+' '+diff.name+' · 📶'+Math.max(0,BZ.sig)):'未部署')+'</span>');
   $('diffChip').style.color=active?(diff.id>=3?'#ffb0b0':(diff.id===2?'#ffd76a':'')):'';
 
   /* 局中这一格显示「背包」：几件 / 几格，以及这批东西能卖多少。
@@ -29,10 +29,10 @@ function updateHudBlaze(){
   if(active){
     const bg=BZ.bag||[];
     const v=bg.reduce((a,b)=>a+b.val,0);
-    $('crystalChip').innerHTML='🎒 <span class="mono">'+blazeBagUsed(bg)+'</span>/'+
-      blazeBagCap()+'<span style="opacity:.65"> · '+bg.length+'件 · '+v+'</span>';
+    setH($('crystalChip'), '🎒 <span class="mono">'+blazeBagUsed(bg)+'</span>/'+
+      blazeBagCap()+'<span style="opacity:.65"> · '+bg.length+'件 · '+v+'</span>');
   }else{
-    $('crystalChip').innerHTML='🪙 <span class="mono">'+(BLAZE_STATE.crystals|0)+'</span>';
+    setH($('crystalChip'), '🪙 <span class="mono">'+(BLAZE_STATE.crystals|0)+'</span>');
   }
   $('crystalChip').style.color='#ffd76a';
   watchCrystal(BLAZE_STATE.crystals|0);

@@ -117,14 +117,14 @@ function lingAwakenFx(L){
   toast(L.e+' '+L.n+'：'+L.wake,2600);
   let ov=document.getElementById('lingFx');
   if(!ov){ov=document.createElement('div');ov.id='lingFx';$('app').appendChild(ov);}
-  ov.innerHTML='<div class="lf-veil"></div><div class="lf-ring"></div><div class="lf-ring r2"></div>'
+  setH(ov, '<div class="lf-veil"></div><div class="lf-ring"></div><div class="lf-ring r2"></div>'
     +'<div class="lf-e">'+L.e+'</div>'
     +'<div class="lf-t">思路灵觉醒</div>'
     +'<div class="lf-n" style="color:'+L.col+'">'+esc(L.n)+' · '+esc(L.title)+'</div>'
-    +'<div class="lf-c">'+esc(L.craft)+'</div>';
+    +'<div class="lf-c">'+esc(L.craft)+'</div>');
   ov.classList.remove('go');void ov.offsetWidth;ov.classList.add('go');
   clearTimeout(ov._t);
-  ov._t=setTimeout(function(){ov.classList.remove('go');ov.innerHTML='';},2400);
+  ov._t=setTimeout(function(){ov.classList.remove('go');setH(ov, '');},2400);
 }
 /* ---------- 心声条 ----------
    同一道题永远听到同一句话（按题干哈希取），别让它像走马灯一样烦人。 */

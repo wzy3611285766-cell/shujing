@@ -161,6 +161,9 @@
   @media (max-width:840px){.assets{grid-template-columns:repeat(2,minmax(0,1fr))}}
   .asset{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#0d1420;position:relative;cursor:zoom-in}
   .asset img{display:block;width:100%;height:auto;aspect-ratio:750/1334;object-fit:cover;object-position:top}
+  .asset.land img{aspect-ratio:1334/750;object-fit:cover}
+  .assets.landrow{grid-template-columns:repeat(2,minmax(0,1fr))}
+  @media (max-width:840px){.assets.landrow{grid-template-columns:1fr}}
   .asset.icon img{object-fit:contain;padding:14%;background:radial-gradient(circle at 50% 42%,#16233a,#0a101a 72%)}
   .asset figcaption{position:absolute;left:0;right:0;bottom:0;padding:20px 10px 8px;color:#fff;font-size:12px;background:linear-gradient(transparent,rgba(6,10,18,.86));letter-spacing:.02em}
   .asset figcaption b{font-weight:600}
@@ -248,10 +251,16 @@
           <thead><tr><th>交付物</th><th>位置</th><th>状态</th><th>说明</th></tr></thead>
           <tbody>
             <tr>
-              <td><b>待上传 zip</b></td>
+              <td><b>竖屏包</b></td>
               <td><code>minitool/shujing-minitool-v4.0.28.zip</code></td>
               <td><span class="tag ok">已就绪</span></td>
-              <td class="num">682.6 KB · 2 个文件 · 审计 0 warning</td>
+              <td class="num">682.8 KB · 2 个文件 · 审计 0 warning</td>
+            </tr>
+            <tr>
+              <td><b>横屏包</b></td>
+              <td><code>minitool/shujing-minitool-landscape-v4.0.28.zip</code></td>
+              <td><span class="tag ok">已就绪</span></td>
+              <td class="num">683.1 KB · 2 个文件 · 审计 0 warning</td>
             </tr>
             <tr>
               <td>应用图标</td>
@@ -379,8 +388,8 @@
           <thead><tr><th>维度</th><th>要求</th><th>本包处理</th></tr></thead>
           <tbody>
             <tr><td>内核基线</td><td>Android 8.1 出厂 WebView / Chrome 61</td><td>纯 ES2017，无 <code>?.</code> / <code>??</code> / 对象展开 / <code>flat</code> / <code>replaceAll</code></td></tr>
-            <tr><td>脚本形态</td><td>经典脚本，无 <code>import</code> / <code>export</code></td><td>单文件 bundle，<code>node --check</code> 通过</td></tr>
-            <tr><td>CSS</td><td>Chrome 61 基线层 + 能力检测增强</td><td>53 处 <code>clamp()/min()/max()</code> 均有前置降级声明</td></tr>
+            <tr><td>脚本形态</td><td>经典脚本，无 <code>import</code> / <code>export</code></td><td>单文件 bundle，Chrome headless 实跑无报错</td></tr>
+            <tr><td>CSS</td><td>Chrome 61 基线层 + 能力检测增强</td><td>47 处现代数学函数声明均有前置回退，<code>:has()</code> 只用于横屏增强</td></tr>
             <tr><td>iOS 最低版本</td><td>iOS 18.4（在线文档更新）</td><td>低版本设备无法保证运行，需在说明中提示</td></tr>
             <tr><td>Storage API</td><td>客户端 ≥ 9.46.0；文件系统 / 评论互动 ≥ 9.49</td><td>本包未使用平台 Storage，走 localStorage + 存档码</td></tr>
             <tr><td>AI 能力</td><td><code>window.xhs.AI</code> 内测期需 appId 加白</td><td>未加白时返回 false 并显示人话提示</td></tr>
@@ -464,6 +473,30 @@
         </table>
       </div>
       <p class="small muted">截图直接用 <code>minitool/dist/index.html</code> 在 Chrome 560×996 视口渲染，再等比缩放到 750×1334；引导横幅、任务条与帧率角标已在截图前隐藏，未改动包内代码。</p>
+
+      <h3>2.2 横屏版素材与差异</h3>
+      <p>横屏包复用同一份源码，只在构建时改两处：把「仅矮屏横屏」的媒体查询放宽成「所有横屏」，再把面板宽度从 560px 放到 1000px。竖屏包一字未动。</p>
+
+      <div class="assets landrow">
+        <figure class="asset land" data-full="minitool/store/landscape/01_战场.png">
+          <img src="minitool/store/landscape/01_战场.png" alt="横屏战场" loading="lazy">
+          <figcaption><b>L1 战场</b><em>1334×750 · 668 KB</em></figcaption>
+        </figure>
+        <figure class="asset land" data-full="minitool/store/landscape/02_烽火答题.png">
+          <img src="minitool/store/landscape/02_烽火答题.png" alt="横屏答题" loading="lazy">
+          <figcaption><b>L2 答题双栏</b><em>1334×750 · 147 KB</em></figcaption>
+        </figure>
+        <figure class="asset land" data-full="minitool/store/landscape/03_战术地图.png">
+          <img src="minitool/store/landscape/03_战术地图.png" alt="横屏战术地图" loading="lazy">
+          <figcaption><b>L3 战术地图</b><em>1334×750 · 469 KB</em></figcaption>
+        </figure>
+      </div>
+
+      <div class="note warn">
+        <b>两个包怎么选</b>
+        小工具容器按上传页登记的朝向加载。登记竖屏就传 <code>shujing-minitool-v4.0.28.zip</code>；登记横屏（或容器本身是横屏）就传 <code>shujing-minitool-landscape-v4.0.28.zip</code>。传错不会导致白屏，但会一边留大片空白、另一边被裁切。不确定时先传竖屏，在模拟器里旋转设备看一眼再定。
+      </div>
+      <p class="small muted">横屏截图取自 <code>minitool/dist-landscape</code>，视口 1334×750，同样隐藏了引导浮层与帧率角标；URL 带 <code>?pc=0</code> 强制走触摸分支，避免截图里出现 <code>WASD</code> / <code>Shift</code> 这类手机上做不到的键位提示。</p>
     </section>
 
     <!-- 03 文案 -->
@@ -579,6 +612,7 @@
         <li class="step">
           <h4>确认产物与版本</h4>
           <p>确认 <code>minitool/dist/index.html</code> 内的 <code>NEWS_VER</code> 与公告内容一致（小工具版为 <code>v4.0.28-3f17d760</code>）。它和网页版的 <code>653a052c</code> 不同是正常的——小工具版不渲染「怎么开全屏」区块，卡片内容变了，哈希自然变。</p>
+          <p>再确认一次拿的是哪个朝向的包：竖屏 <code>shujing-minitool-v4.0.28.zip</code>，横屏 <code>shujing-minitool-landscape-v4.0.28.zip</code>。两个文件大小几乎一样，别只凭体积判断。</p>
           <div class="note info"><b>不要重新压缩</b>本仓库的 zip 已是“压缩目录内容”的方式，<code>index.html</code> 在根。若要自己压，进入 <code>minitool/dist</code> 后压缩当前目录内容，别压缩 <code>dist</code> 文件夹本身。</div>
         </li>
         <li class="step">

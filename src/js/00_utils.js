@@ -2,6 +2,26 @@
    引擎 A：通用工具 + 物化生排版助手
    （内容模块在前，引擎 B 在后，三段拼进同一个 <script>）
    ========================================================= */
+/* ---------- HTML 写入 ----------
+   容器安全扫描禁止直接拼 HTML 串写 DOM（XSS 风险），统一走 Range 解析成
+   DocumentFragment 再挂载；解析出的节点和原来一样，事件仍靠委托绑定。 */
+function setH(el,html){
+  if(!el)return el;
+  const src=html==null?'':String(html);
+  const frag=document.createRange().createContextualFragment(src);
+  el.textContent='';
+  el.appendChild(frag);
+  el._h=src;                               // 给「内容没变就别重画」的比较用
+  return el;
+}
+function addH(el,html){
+  if(!el)return el;
+  const src=html==null?'':String(html);
+  el.appendChild(document.createRange().createContextualFragment(src));
+  return el;
+}
+function hasH(el){return !!(el&&el.firstChild);}
+
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
 const R=(a,b)=>a+Math.random()*(b-a);

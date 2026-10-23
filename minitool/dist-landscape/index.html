@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>数境</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: minitool v4.0.28 · 2026-10-22 21:36 · 小工具离线包 -->
+<!-- build: minitool v4.0.28 · 2026-10-23 23:00 · 小工具离线包 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -238,7 +238,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0d1b2a;
   font-size:var(--fs-md);
   touch-action:pan-y;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
 /* 世界地图的手势由 canvas 自己的 touch-action:none 挡住，不必再罩一层 */
-#app{position:fixed;inset:0;height:100vh;height:100dvh;overflow:hidden;
+#app{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;height:100vh;height:100dvh;overflow:hidden;
   touch-action:pan-y;overscroll-behavior:none}
 /* 世界层那两块画布自己吃手势（摇杆要靠它拖）。
    ⚠️ 这条以前是 `canvas{...}` 按元素名写的 —— 面板里的画布（战术地图 #tacCv）
@@ -317,7 +317,7 @@ body.upbar-on #modal{top:var(--upH)}
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
   line-height:var(--lh-tight);
   max-width:44vw;min-width:0;overflow:hidden;white-space:nowrap}
-.chip::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+.chip::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .chip .txt{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .chip.small{padding:calc(var(--pad) * .8) calc(var(--pad) * 1.3);font-size:var(--fs-xs)}
@@ -337,7 +337,7 @@ body.upbar-on #modal{top:var(--upH)}
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
   transition:transform .12s ease-out,filter .15s,box-shadow .15s}
 /* 镜面层：压在文字之下、玻璃底面之上的那道自上而下衰减的高光 */
-.btn::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+.btn::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .btn:active{transform:scale(.96);filter:brightness(.96);
   box-shadow:var(--gb-press-lift),var(--gb-hair)}
@@ -444,11 +444,11 @@ body.pc #stick.active{opacity:1}
   transition:transform 90ms cubic-bezier(.2,0,.2,1),box-shadow 200ms ease-out,filter 200ms ease-out;
   align-items:center;justify-content:center;isolation:isolate;will-change:transform}
 /* 常驻斜向高光：静止时也有「光泽」，这正是「贵」的关键 */
-#actBtn::before{content:"";position:absolute;inset:-30% -55%;border-radius:50%;pointer-events:none;z-index:-1;
+#actBtn::before{content:"";position:absolute;top:-30%;right:-55%;bottom:-30%;left:-55%;inset:-30% -55%;border-radius:50%;pointer-events:none;z-index:-1;
   background:linear-gradient(112deg,rgba(255,255,255,0) 34%,rgba(255,255,255,.30) 46%,rgba(255,255,255,.05) 54%,rgba(255,255,255,0) 66%);
   opacity:.30;transform:translateX(-38%)}
 /* 呼吸光晕：2.8s 一次，几乎察觉不到但按键「活着」 */
-#actBtn::after{content:"";position:absolute;inset:-14px;border-radius:50%;pointer-events:none;z-index:-1;
+#actBtn::after{content:"";position:absolute;top:-14px;right:-14px;bottom:-14px;left:-14px;inset:-14px;border-radius:50%;pointer-events:none;z-index:-1;
   background:radial-gradient(circle,rgba(255,215,106,.45),rgba(255,215,106,0) 68%);
   filter:blur(8px);opacity:.55;
   animation:p1Breathe 2.8s cubic-bezier(.45,0,.55,1) infinite}
@@ -495,7 +495,7 @@ body.pc #stick.active{opacity:1}
    （我上一轮判断"面板开着地图就停画、模糊只算一次"是错的，实测推翻了。）
    观感：模糊背后是一张被压到 68% 的深色地图，本来就看不出来 ——
    改成更厚的不透明度之后，视觉差别几乎为零。 */
-#modal{position:absolute;inset:0;background:rgba(4,12,24,.93);
+#modal{position:absolute;top:0;right:0;bottom:0;left:0;inset:0;background:rgba(4,12,24,.93);
   z-index:40;display:none;align-items:center;justify-content:center;
   padding:10px 10px 10px 10px;
   padding:max(10px,var(--safeT)) max(10px,var(--safeR)) max(10px,var(--safeB)) max(10px,var(--safeL));
@@ -538,7 +538,7 @@ body.pc #stick.active{opacity:1}
 /* 4.0.19：公告这层同样去掉 blur(12px)（理由见 00_base.css 里 #modal 那段：
    全屏模糊在内容滚动/变化时每帧重算，实测滚动 100ms → 16.7ms）。
    背景从 84% 提到 95%，观感几乎一致。 */
-#news{position:fixed;inset:0;z-index:66;display:none;
+#news{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:66;display:none;
   align-items:center;justify-content:center;
   padding:12px 12px 12px 12px;
   padding:max(12px,var(--safeT)) max(12px,var(--safeR)) max(12px,var(--safeB)) max(12px,var(--safeL));
@@ -546,7 +546,7 @@ body.pc #stick.active{opacity:1}
   overscroll-behavior:contain}
 #news.show{display:flex}
 /* 顶部一道暖光、底部一道冷光：让"压暗"不等于"变黑"，中间还是亮的 */
-#news::before{content:'';position:absolute;inset:0;pointer-events:none;
+#news::before{content:'';position:absolute;top:0;right:0;bottom:0;left:0;inset:0;pointer-events:none;
   background:radial-gradient(ellipse 72% 46% at 50% 0%,rgba(255,215,106,.15),transparent 70%),
              radial-gradient(ellipse 62% 42% at 50% 102%,rgba(94,214,255,.11),transparent 70%)}
 .news-card{position:relative;width:520px;width:min(520px,100%);max-height:100%;
@@ -783,7 +783,7 @@ body.pc #stick.active{opacity:1}
   -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-drop);
   transition:transform .12s ease-out,box-shadow .2s,filter .15s,background .2s,border-color .2s}
-.opt::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+.opt::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .opt:active{transform:scale(.96);box-shadow:var(--gb-press-lift)}
 .opt.right{background:var(--gb-tint-green);border-color:rgba(110,231,183,.8)}
@@ -1032,7 +1032,7 @@ body.pc #stick.active{opacity:1}
   -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
   transition:transform .12s ease-out,box-shadow .15s,filter .15s}
-.fitbtn::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+.fitbtn::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .fitbtn:active{transform:scale(.92);box-shadow:var(--gb-press-lift),var(--gb-hair)}
 /* 点一下弹一跳：字号确实变档了，先让按钮自己动给你看（原先只改 ±8% 的字号，不盯着看不出来） */
@@ -1055,7 +1055,7 @@ body.pc #stick.active{opacity:1}
   -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
   transition:transform .12s ease-out,box-shadow .15s,filter .15s}
-.menu-li::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+.menu-li::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .menu-li:active{transform:scale(.98);filter:brightness(.97);
   box-shadow:var(--gb-press-lift),var(--gb-hair)}
@@ -1208,7 +1208,7 @@ margin-top:8px;padding:5px 0}
   position:relative;isolation:isolate;
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
   transition:transform .12s ease-out,box-shadow .15s,filter .15s}
-.tp::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+.tp::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .tp:active{transform:scale(.93);box-shadow:var(--gb-press-lift),var(--gb-hair)}
 .tp.on{background:var(--gb-tint-gold);color:#fff;text-shadow:0 1px 4px rgba(90,45,0,.45);
@@ -1257,7 +1257,7 @@ margin-top:8px;padding:5px 0}
   line-height:1.4;position:relative;isolation:isolate;
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
   transition:transform .12s ease-out,box-shadow .15s,filter .15s}
-.wb-tab::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+.wb-tab::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .wb-tab:active{transform:scale(.94);box-shadow:var(--gb-press-lift),var(--gb-hair)}
 .wb-tab.on{background:var(--gb-tint-gold);color:#fff;text-shadow:0 1px 4px rgba(90,45,0,.45);
@@ -1300,7 +1300,7 @@ margin-top:8px;padding:5px 0}
   position:relative;isolation:isolate;
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
   transition:transform .12s ease-out,box-shadow .15s,filter .15s}
-.wb-op::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+.wb-op::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .wb-op:active{transform:scale(.93);box-shadow:var(--gb-press-lift),var(--gb-hair)}
 .wb-op.on{background:var(--gb-tint-gold);color:#fff;text-shadow:0 1px 3px rgba(90,45,0,.45);
@@ -1394,7 +1394,7 @@ margin-top:8px;padding:5px 0}
   -webkit-user-select:text;touch-action:auto}
 .shot-inp::placeholder{color:#7f9cba}
 /* 全屏看图 */
-#imgView{position:fixed;inset:0;background:rgba(2,8,16,.94);z-index:60;
+#imgView{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;background:rgba(2,8,16,.94);z-index:60;
   display:none;align-items:center;justify-content:center;padding:14px;
   touch-action:pinch-zoom;overflow:auto}
 #imgView.show{display:flex}
@@ -1405,7 +1405,7 @@ margin-top:8px;padding:5px 0}
    emoji 一律用 DOM 渲染 —— iOS Safari 在 canvas 里画彩色 emoji 会退化成纯色方块，
    所以全部交给 HTML 元素画，canvas 只负责地面、阴影和光效。
    字号带 --entk（由 JS 按世界缩放写入），世界缩得再小也不会糊成一团。 */
-#ents{position:absolute;inset:0;pointer-events:none;z-index:14;overflow:hidden}
+#ents{position:absolute;top:0;right:0;bottom:0;left:0;inset:0;pointer-events:none;z-index:14;overflow:hidden}
 .ent{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;
   white-space:nowrap;will-change:transform;--entk:1;
   font-family:"Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji","Twemoji Mozilla",sans-serif}
@@ -1426,7 +1426,7 @@ margin-top:8px;padding:5px 0}
 /* ============ 拾取特效层 ============
    结晶被捡起的一瞬间：地面冲击环 + 光屑迸射 + 「+3」飘字 + 本体飞向顶栏结晶数。
    全部由 Web Animations 驱动，播完节点自己删掉，不往 DOM 里堆垃圾。 */
-#fx{position:absolute;inset:0;pointer-events:none;z-index:26;overflow:hidden}
+#fx{position:absolute;top:0;right:0;bottom:0;left:0;inset:0;pointer-events:none;z-index:26;overflow:hidden}
 #fx>div{position:absolute;left:0;top:0;will-change:transform,opacity}
 .fx-ring{border-radius:50%;border:2px solid rgba(255,215,106,.9);
   box-shadow:0 0 16px rgba(255,215,106,.55),inset 0 0 14px rgba(255,215,106,.3)}
@@ -1488,7 +1488,7 @@ margin-top:8px;padding:5px 0}
   position:relative;isolation:isolate;
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
   transition:transform .12s ease-out,box-shadow .15s,filter .15s}
-.era-li::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+.era-li::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .era-li:active{transform:scale(.97);box-shadow:var(--gb-press-lift),var(--gb-hair)}
 .era-li .t{font-size:var(--fs-md)}
@@ -1736,7 +1736,7 @@ margin-top:8px;padding:5px 0}
   position:relative;isolation:isolate;
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
   transition:transform .12s ease-out,box-shadow .15s,filter .15s}
-.lcell::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+.lcell::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .lcell:active{transform:scale(.95);box-shadow:var(--gb-press-lift),var(--gb-hair)}
 .lcell .e{font-size:var(--fs-xl);line-height:1.2;filter:drop-shadow(0 2px 7px rgba(0,0,0,.4))}
@@ -1766,11 +1766,11 @@ margin-top:8px;padding:5px 0}
 /* ============ 思路灵 · 觉醒仪式 ============
    一屏金光：扩散环 + 灵浮现 + 名号，2.4s 自动散，全程 pointer-events:none，
    不挡玩家紧接着点「继续」。 */
-#lingFx{position:absolute;inset:0;z-index:60;display:none;
+#lingFx{position:absolute;top:0;right:0;bottom:0;left:0;inset:0;z-index:60;display:none;
   align-items:center;justify-content:center;flex-direction:column;
   pointer-events:none;text-align:center;padding:24px}
 #lingFx.go{display:flex}
-#lingFx .lf-veil{position:absolute;inset:0;
+#lingFx .lf-veil{position:absolute;top:0;right:0;bottom:0;left:0;inset:0;
   background:radial-gradient(circle at 50% 46%,rgba(255,215,106,.22),rgba(7,16,28,.86) 68%);
   animation:lfVeil 2.3s ease both}
 #lingFx .lf-ring{position:absolute;left:50%;top:46%;
@@ -1804,7 +1804,9 @@ margin-top:8px;padding:5px 0}
    2. 宽屏容器（1280 及以上）把面板放宽，别让内容缩在中间一窄条 */
 @media (orientation:landscape){
   .news-card{width:min(1180px,100%)}
-  .panel{max-width:min(1180px,100%)}
+  /* 只放开 max-width 不够：面板自身是 width:min(560px,…)，上限再大也不会变宽。
+     宽屏横屏下显式给宽度，题面与选项才真正摊开；窄横屏由 min() 收回到 96%。 */
+  .panel{width:min(1000px,96%);max-width:min(1180px,100%)}
   #modal{padding-left:max(12px,var(--safeL));padding-right:max(12px,var(--safeR))}
   .menu-list{grid-template-columns:1fr 1fr}
 }
@@ -1898,18 +1900,6 @@ margin-top:8px;padding:5px 0}
           <div class="news-sec-h">本次更新</div>
           <div class="news-li"><span class="e">⏱️</span><span>云存档面板上那行改成<b>玩了多久</b>：切后台、锁屏、合盖子都不算，只有页面在眼前才计时</span></div>
           <div class="news-li"><span class="e">🌱</span><span>时长<b>从这一版开始累计</b>，以前玩的时间没有记录，所以刚更新完会显示「不到 1 分钟」</span></div>
-        </div>
-
-        <div class="news-sec">
-          <div class="news-sec-h">⛶ 全屏 · 一键开，怎么用</div>
-          <button class="fs-btn" id="newsFs">⛶ 一键全屏</button>
-          <div class="fs-tips">
-            <div class="fs-tip"><span class="k">⛶ 游戏里</span><b>右上角 ☰ 菜单 → ⛶ 全屏</b>，一键进 / 一键退；菜单里永远留着它</div>
-            <div class="fs-tip"><span class="k">💻 电脑</span>按 <b>F11</b>（Mac 是 <b>⌃⌘F</b>），再按一次退出</div>
-            <div class="fs-tip"><span class="k">📱 iPhone</span>Safari 底部「分享」→「<b>添加到主屏幕</b>」，从桌面图标打开即全屏、没有地址栏</div>
-            <div class="fs-tip"><span class="k">🤖 安卓</span>Chrome 右上角 <b>⋮</b> →「<b>添加到主屏幕</b>」，同样从图标进</div>
-            <div class="fs-tip"><span class="k">💬 微信</span>右上角 <b>⋯</b> →「<b>在浏览器打开</b>」，再照上面的做</div>
-          </div>
         </div>
       </div>
 

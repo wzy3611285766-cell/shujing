@@ -176,20 +176,20 @@ function aiExpBind(q){
     const body=$('aiExpBody');
     if(!body)return;
     if(!aiReady()){
-      body.innerHTML='<div class="exp" style="color:#ffb0b0">还没填智谱 API Key —— 点下面「⚙️ AI 设置」填一个就能用</div>';
+      setH(body, '<div class="exp" style="color:#ffb0b0">还没填智谱 API Key —— 点下面「⚙️ AI 设置」填一个就能用</div>');
       return;
     }
     /* 闯关题是 ansText，错题本快照是 ans —— 两种都要认 */
     const ansTxt=q.ansText!=null?q.ansText:q.ans;
     const subj=q.subject||(typeof subjOfRid==='function'?subjOfRid(q.rid):'')||'math';
     btn.disabled=true;btn.textContent='🤖 智谱正在写详解…';
-    body.innerHTML='<div class="exp" style="color:#9cc0e0">正在让 GLM 讲这道题…</div>';
+    setH(body, '<div class="exp" style="color:#9cc0e0">正在让 GLM 讲这道题…</div>');
     const r=await aiExplain(q.text,ansTxt,q.topic,subj,t=>{btn.textContent=t;});
     btn.disabled=false;
     btn.textContent='🤖 再看一遍 AI 详解（已缓存）';
     if(!r.ok){
-      body.innerHTML='<div class="exp" style="color:#ffb0b0">AI 详解没拿到：'
-        +esc(r.err||'未知原因')+'（题本身的解析照常可用）</div>';
+      setH(body, '<div class="exp" style="color:#ffb0b0">AI 详解没拿到：'
+        +esc(r.err||'未知原因')+'（题本身的解析照常可用）</div>');
       return;
     }
     const d=r.data;
@@ -204,7 +204,7 @@ function aiExpBind(q){
     }
     if(d.trap)h+='<div class="exp" style="color:#ffd0a0">⚠️ 最容易错在这：'+esc(d.trap)+'</div>';
     if(d.key&&!q.topic)h+='<div class="exp">核心考点：'+esc(d.key)+'</div>';
-    body.innerHTML=h;
+    setH(body, h);
     /* 讲解顺手存进题里，收进错题本后重练也能看 */
     try{
       if(d.lecture)q.aiLecture=d.lecture;
@@ -268,9 +268,9 @@ function showAiSettings(back){
       if(!aiReady()){$('aiMsg').textContent='先填 Key 再测';return;}
       const mg=$('aiMsg');mg.textContent='正在连接…';
       const r=await aiExplain('1 + 1 = ?','2','测试','math',t=>{mg.textContent=t;});
-      mg.innerHTML=r.ok
+      setH(mg, r.ok
         ? '<span class="imp-ok">连通 ✓</span> 模型 '+esc(AI_CFG.model)
-        : '<span class="imp-no">没通</span>：'+esc(r.err||'未知原因');
+        : '<span class="imp-no">没通</span>：'+esc(r.err||'未知原因'));
     };
     $('aiClr').onclick=()=>{
       AI_CACHE={};try{localStorage.removeItem(AI_CACHE_KEY);}catch(e){}

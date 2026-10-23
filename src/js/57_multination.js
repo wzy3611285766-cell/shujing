@@ -267,13 +267,13 @@ function updateHUD(){
   if(CUR===DRILL)return updateHudDrill();
   const reg=REGIONS.find(r=>r.id===state.region)||REGIONS[0];
   const n=CUR_NATION||NATIONS[0];
-  $('regionChip').innerHTML='<span class="txt">'+n.emoji+' '+esc(n.name)+' · '+esc(reg.name)+'</span>';
+  setH($('regionChip'), '<span class="txt">'+n.emoji+' '+esc(n.name)+' · '+esc(reg.name)+'</span>');
   $('regionChip').style.color=n.color;
   const tv=state.tier[state.region]||1;
-  $('diffChip').innerHTML='<span class="txt">'+TIER_NAME[tv]+'题</span>';
+  setH($('diffChip'), '<span class="txt">'+TIER_NAME[tv]+'题</span>');
   $('diffChip').style.color=tv>=3?'#ffb0b0':(tv===2?'#ffd76a':'');
   const cv=crystalShown();
-  $('crystalChip').innerHTML='🪙 <span class="mono">'+cv+'</span>';
+  setH($('crystalChip'), '🪙 <span class="mono">'+cv+'</span>');
   $('crystalChip').style.color='#ffd76a';
   watchCrystal(cv);
   setQuestText(questText());

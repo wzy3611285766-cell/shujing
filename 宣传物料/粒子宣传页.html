@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>格物纪元 · 四国远征 — 粒子宣传片</title>
+<style>
+  :root{
+    --bg:#060c14;
+    --gold:#ffd76a;
+    --blue:#4aa3d8;
+    --ink:#e8eef8;
+    --dim:#5c7188;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--bg)}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    color:var(--ink);
+    cursor:none;
+  }
+  body.show-cursor{cursor:default}
+
+  /* 背景：径向渐层 + 战术网格 + 缓慢扫描线，全部在 canvas 下面 */
+  .stage{position:fixed;inset:0;overflow:hidden}
+  .bg{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(1100px 760px at 50% 42%,rgba(24,54,86,.55) 0%,rgba(9,18,30,.85) 52%,#050a12 100%),
+      radial-gradient(900px 620px at 82% 12%,rgba(255,215,106,.10),transparent 60%);
+  }
+  .grid{
+    position:absolute;inset:0;opacity:.55;
+    background-image:
+      linear-gradient(rgba(255,215,106,.055) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,215,106,.055) 1px,transparent 1px);
+    background-size:64px 64px;
+    -webkit-mask-image:radial-gradient(76% 66% at 50% 46%,#000 30%,transparent 88%);
+    mask-image:radial-gradient(76% 66% at 50% 46%,#000 30%,transparent 88%);
+  }
+  .scan{
+    position:absolute;left:-10%;right:-10%;height:220px;
+    background:linear-gradient(180deg,transparent,rgba(74,163,216,.055),transparent);
+    animation:scan 9s linear infinite;
+  }
+  @keyframes scan{
+    0%{transform:translateY(-240px)}
+    100%{transform:translateY(112vh)}
+  }
+  .vignette{
+    position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 92% at 50% 46%,transparent 46%,rgba(0,0,0,.66) 100%);
+  }
+  .grain{
+    position:absolute;inset:0;pointer-events:none;opacity:.28;mix-blend-mode:overlay;
+    background-image:radial-gradient(rgba(255,255,255,.14) .5px,transparent .5px);
+    background-size:3px 3px;
+  }
+
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  /* 副标题不粒子化：小字号采样后会断笔，用普通文字叠在粒子之上更清楚 */
+  .cap{
+    position:absolute;left:0;right:0;top:71%;
+    text-align:center;
+    font-size:clamp(13px,2.05vw,24px);
+    letter-spacing:.18em;
+    color:rgba(206,222,240,.92);
+    text-shadow:0 2px 26px rgba(0,0,0,.75),0 0 10px rgba(0,0,0,.5);
+    opacity:0;transform:translateY(10px);
+    transition:opacity .75s ease,transform .75s ease;
+    pointer-events:none;z-index:2;
+  }
+  .cap.in{opacity:1;transform:none}
+  /* 预览/截图模式别让过渡停在半透明 */
+  body.snap .cap{transition:none}
+  body.snap .cap.in{opacity:1}
+
+  /* ---------- 覆盖层 ---------- */
+  .hud{
+    position:absolute;inset:0;pointer-events:none;
+    font-family:ui-monospace,Consolas,monospace;
+    opacity:.62;transition:opacity .5s ease;
+  }
+  body.ui-off .hud{opacity:0}
+
+  .hud .tl{position:absolute;top:26px;left:30px;font-size:11px;letter-spacing:.24em;color:var(--gold)}
+  .hud .tl b{color:var(--dim);font-weight:400;margin-left:10px;letter-spacing:.12em}
+  .hud .tr{position:absolute;top:26px;right:30px;font-size:11px;letter-spacing:.18em;color:var(--dim);text-align:right;line-height:1.9}
+  .hud .bl{position:absolute;bottom:26px;left:30px;font-size:11px;letter-spacing:.14em;color:var(--dim)}
+  .hud .br{position:absolute;bottom:26px;right:30px;font-size:11px;letter-spacing:.14em;color:var(--dim);text-align:right}
+
+  .corner{position:absolute;width:38px;height:38px;border:1.5px solid rgba(255,215,106,.42)}
+  .corner.tl{top:20px;left:20px;border-right:0;border-bottom:0}
+  .corner.tr{top:20px;right:20px;border-left:0;border-bottom:0}
+  .corner.bl{bottom:20px;left:20px;border-right:0;border-top:0}
+  .corner.br{bottom:20px;right:20px;border-left:0;border-top:0}
+
+  /* 底部进度 */
+  .track{position:absolute;left:30px;right:30px;bottom:52px;height:2px;background:rgba(255,255,255,.09)}
+  .track i{display:block;height:100%;width:0;background:linear-gradient(90deg,rgba(255,215,106,.35),var(--gold));
+    box-shadow:0 0 12px rgba(255,215,106,.55)}
+
+  .title-tip{
+    position:absolute;left:50%;bottom:70px;transform:translateX(-50%);
+    font-size:11px;letter-spacing:.28em;color:rgba(200,214,232,.34);
+    font-family:ui-monospace,Consolas,monospace;white-space:nowrap;
+  }
+
+  @media (max-width:640px){
+    .hud .tr,.hud .br{display:none}
+    .track{left:18px;right:18px;bottom:44px}
+    .hud .bl,.hud .br{font-size:10px}
+    .title-tip{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .scan{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="bg"></div>
+  <div class="grid"></div>
+  <div class="scan"></div>
+  <canvas id="c"></canvas>
+  <div class="cap" id="cap"></div>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+
+  <div class="hud">
+    <div class="tl">SENSE 169<b>PROMO / 2026</b></div>
+    <div class="tr">PARTICLE SEQUENCE<br><span id="scName">—</span></div>
+    <div class="bl">格物纪元 · 四国远征</div>
+    <div class="br">SPACE 暂停 · NEXT 切换 · H 隐藏 UI · F 全屏</div>
+    <div class="track"><i id="bar"></i></div>
+    <div class="title-tip">答对了，才带得走</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var canvas = document.getElementById('c');
+  var ctx = canvas.getContext('2d');
+  var barEl = document.getElementById('bar');
+  var nameEl = document.getElementById('scName');
+  var capEl = document.getElementById('cap');
+
+  var FONT = '"PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif';
+  var MONO = 'ui-monospace,Consolas,"Courier New",monospace';
+
+  var W = 0, H = 0, DPR = 1;
+  var particles = [];
+  var dust = [];
+  // sceneStart 用 rAF 时间戳锚定（-1 = 等下一帧再锚）。
+  // 不能和 performance.now() 混用：两者在虚拟时钟 / 后台节流下不同源，
+  // 会让「该切幕了」每帧都成立，粒子被反复打散、永远聚不成字。
+  var scene = 0, sceneStart = -1, gen = 0;
+  var paused = false;
+  var ready = false;
+
+  var isSmall = window.matchMedia('(max-width:720px)').matches;
+  var BUDGET = isSmall ? 5200 : 8200;
+
+  // ?snap=1：把粒子直接放到目标位（不做飞行）。用来快速预览构图 / 截静帧，
+  // 正式播放不要带这个参数。
+  var SNAP_RENDER = /[?&]snap=1/.test(location.search);
+  if (SNAP_RENDER) document.body.classList.add('snap');
+
+  // ------------------------------------------------------------------
+  // 场景定义：每幕把构图整幅画进离屏 canvas，再按像素采样成粒子
+  // ------------------------------------------------------------------
+  var SCENES = [
+    { id: 'brand', dur: 5600, draw: drawBrand, cap: '四国远征 · 纯离线单机', capTop: '80%' },
+    { id: 'claim', dur: 4800, draw: drawClaim, cap: '答错不会扣分，只会把守卫引过来' },
+    { id: 'data',  dur: 5400, draw: drawData,  cap: '题库不是配菜，是主菜' },
+    { id: 'field', dur: 4800, draw: drawField, cap: '开箱 · 破门 · 交火' },
+    { id: 'cta',   dur: 5200, draw: drawCta,   cap: '四国远征 · 纯离线单机 · 点开即玩' }
+  ];
+  var SCENE_NAME = {
+    brand: '01 / 品牌', claim: '02 / 主张', data: '03 / 题库',
+    field: '04 / 玩法', cta: '05 / 行动'
+  };
+
+  // ------------------------------------------------------------------
+  // 绘制（全部在离屏 canvas 上，坐标基于 CSS 像素 W×H）
+  // ------------------------------------------------------------------
+  function fontOf(size, weight) {
+    return (weight || 800) + ' ' + size + 'px ' + FONT;
+  }
+
+  function fitText(c, text, maxW, base, weight, min) {
+    var size = base;
+    min = min || 12;
+    c.font = fontOf(size, weight);
+    while (c.measureText(text).width > maxW && size > min) {
+      size -= 2;
+      c.font = fontOf(size, weight);
+    }
+    return size;
+  }
+
+  function drawCorners(c) {
+    var m = Math.min(W, H) * 0.07, L = Math.min(W, H) * 0.06;
+    c.strokeStyle = 'rgba(255,215,106,.30)';
+    c.lineWidth = 2;
+    var pts = [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]];
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i];
+      c.beginPath();
+      c.moveTo(p[0] + p[2] * L, p[1]);
+      c.lineTo(p[0], p[1]);
+      c.lineTo(p[0], p[1] + p[3] * L);
+      c.stroke();
+    }
+  }
+
+  function drawBrand(c) {
+    var cx = W / 2, cy = H * 0.405;
+    var r = Math.min(W, H) * 0.158;
+
+    // 主环 + 刻度弧
+    c.lineWidth = 3;
+    c.strokeStyle = 'rgba(255,215,106,.92)';
+    c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke();
+
+    c.lineWidth = 2;
+    c.strokeStyle = 'rgba(255,215,106,.42)';
+    for (var k = 0; k < 4; k++) {
+      c.beginPath();
+      c.arc(cx, cy, r - 16, k * Math.PI / 2 + 0.22, k * Math.PI / 2 + 0.22 + 0.92);
+      c.stroke();
+    }
+
+    // 中央「格」
+    var gs = fitText(c, '格', r * 1.28, r * 1.28, 800, 20);
+    c.font = fontOf(gs, 800);
+    c.fillStyle = '#ffd76a';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText('格', cx, cy + r * 0.03);
+
+    // 主标题
+    var t1 = '格物纪元';
+    var s1 = fitText(c, t1, W * 0.74, Math.min(H * 0.112, W * 0.200), 800, 24);
+    c.font = fontOf(s1, 800);
+    c.fillStyle = '#ffffff';
+    c.fillText(t1, cx, H * 0.700);
+
+    drawCorners(c);
+  }
+
+  function drawClaim(c) {
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+
+    // 两行主文案：字号 ≤ 行距的 0.8，否则上下会叠在一起
+    var a = '答对了';
+    var sa = fitText(c, a, W * 0.78, Math.min(H * 0.115, W * 0.190), 800, 30);
+    c.font = fontOf(sa, 800);
+    c.fillStyle = '#ffffff';
+    c.fillText(a, W / 2, H * 0.360);
+
+    var b = '才带得走';
+    var sb = fitText(c, b, W * 0.82, Math.min(H * 0.125, W * 0.200), 800, 30);
+    c.font = fontOf(sb, 800);
+    c.fillStyle = '#ffd76a';
+    c.fillText(b, W / 2, H * 0.505);
+
+    // 细分隔线
+    var lw = W * 0.20;
+    c.strokeStyle = 'rgba(255,215,106,.42)';
+    c.lineWidth = 2;
+    c.beginPath(); c.moveTo(W / 2 - lw, H * 0.605); c.lineTo(W / 2 + lw, H * 0.605); c.stroke();
+
+    drawCorners(c);
+  }
+
+  function drawData(c) {
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+
+    var items = [['18', '学科域'], ['135', '多步大题'], ['14', '攻坚题']];
+    var cols = items.length;
+    var gap = W * 0.045;
+    var cellW = (Math.min(W * 0.86, H * 0.9) - gap * (cols - 1)) / cols;
+    var totalW = cellW * cols + gap * (cols - 1);
+    var x0 = (W - totalW) / 2;
+    var cy = H * 0.365;
+    var ns = Math.min(H * 0.185, W * 0.17);      // 数字字号先定，标签按它下沿排
+    var labY = cy + ns * 0.62 + Math.min(H * 0.052, W * 0.055);
+
+    for (var i = 0; i < cols; i++) {
+      var cx = x0 + i * (cellW + gap) + cellW / 2;
+      var num = items[i][0];
+
+      var size = fitText(c, num, cellW * 0.92, ns, 800, 30);
+      c.font = fontOf(size, 800);
+      c.fillStyle = i === 0 ? '#ffd76a' : '#4aa3d8';
+      c.fillText(num, cx, cy);
+
+      var lab = items[i][1];
+      var ls = fitText(c, lab, cellW * 0.98, Math.min(H * 0.044, W * 0.046), 500, 12);
+      c.font = fontOf(ls, 500);
+      c.fillStyle = 'rgba(159,176,198,.95)';
+      c.fillText(lab, cx, labY);
+
+      c.strokeStyle = 'rgba(74,163,216,.34)';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(cx - cellW * 0.34, cy - ns * 0.62);
+      c.lineTo(cx + cellW * 0.34, cy - ns * 0.62);
+      c.stroke();
+    }
+
+
+
+    drawCorners(c);
+  }
+
+  function drawField(c) {
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+
+    var a = '零点演算场';
+    var sa = fitText(c, a, W * 0.84, Math.min(H * 0.135, W * 0.15), 800, 24);
+    c.font = fontOf(sa, 800);
+    c.fillStyle = '#ffffff';
+    c.fillText(a, W / 2, H * 0.42);
+
+    // 三段短线，像坐标刻度
+    var y = H * 0.60;
+    var seg = W * 0.055, sp = W * 0.018;
+    var startX = W / 2 - (seg * 3 + sp * 2) / 2;
+    c.strokeStyle = 'rgba(74,163,216,.55)';
+    c.lineWidth = 2;
+    for (var i = 0; i < 3; i++) {
+      var x = startX + i * (seg + sp);
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + seg, y); c.stroke();
+    }
+
+    drawCorners(c);
+  }
+
+  function drawCta(c) {
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+
+    var a = '小红书搜索';
+    var sa = fitText(c, a, W * 0.6, Math.min(H * 0.05, W * 0.054), 500, 16);
+    c.font = fontOf(sa, 500);
+    c.fillStyle = 'rgba(176,200,228,.95)';
+    c.fillText(a, W / 2, H * 0.305);
+
+    // 与上一行至少留 0.16H，避免 136px 的大字压到小字
+    var b = '格物纪元';
+    var sb = fitText(c, b, W * 0.82, Math.min(H * 0.152, W * 0.162), 800, 30);
+    c.font = fontOf(sb, 800);
+    c.fillStyle = '#ffd76a';
+    c.fillText(b, W / 2, H * 0.475);
+
+
+
+    drawCorners(c);
+  }
+
+  // ------------------------------------------------------------------
+  // 采样：整幅构图 → 粒子目标点
+  // ------------------------------------------------------------------
+  var off = document.createElement('canvas');
+  var octx = off.getContext('2d');
+
+  function sampleScene(def) {
+    var scale = isSmall ? 0.72 : 0.75;           // 采样分辨率：小屏要更高，否则笔画点数不够
+    var sw = Math.max(320, Math.round(W * scale));
+    var sh = Math.max(320, Math.round(H * scale));
+    off.width = sw; off.height = sh;
+
+    octx.setTransform(1, 0, 0, 1, 0, 0);
+    octx.clearRect(0, 0, sw, sh);
+    octx.save();
+    octx.scale(sw / W, sh / H);                 // 用 CSS 像素坐标绘制
+    def.draw(octx);
+    octx.restore();
+
+    var img = octx.getImageData(0, 0, sw, sh).data;
+    var pts = [];
+    // 逐像素采样再按预算抽稀：步长 2 时小字号笔画只剩一两颗粒子，字会断笔
+    var step = 1;
+    for (var y = 0; y < sh; y += step) {
+      for (var x = 0; x < sw; x += step) {
+        var i = (y * sw + x) * 4;
+        var a = img[i + 3];
+        if (a < 130) continue;
+        pts.push({
+          x: x / scale,
+          y: y / scale,
+          c: 'rgb(' + img[i] + ',' + img[i + 1] + ',' + img[i + 2] + ')'
+        });
+      }
+    }
+
+    if (pts.length > BUDGET) {
+      var keep = BUDGET / pts.length;
+      var out = [], acc = 0;
+      for (var j = 0; j < pts.length; j++) {
+        acc += keep;
+        if (acc >= 1) { out.push(pts[j]); acc -= 1; }
+      }
+      pts = out;
+    }
+
+    // 打乱顺序：pts 原本是按 y 从上到下排的，粒子按索引取目标时会整片堆在图的上部，
+    // 移动端尤其明显（看着像一团条纹）。打散后每个粒子落点均匀。
+    for (var k = pts.length - 1; k > 0; k--) {
+      var r = Math.floor(Math.random() * (k + 1));
+      var tmp = pts[k]; pts[k] = pts[r]; pts[r] = tmp;
+    }
+    return pts;
+  }
+
+  // ------------------------------------------------------------------
+  // 粒子
+  // ------------------------------------------------------------------
+  function makeParticle() {
+    // 小屏上同样大小的点相对屏幕更大，会把笔画糊成一块，这里按屏宽收一点
+    var base = isSmall ? 1.0 : 1.1;
+    var span = isSmall ? 1.0 : 1.2;
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: 0, vy: 0,
+      tx: Math.random() * W,
+      ty: Math.random() * H,
+      c: '#ffd76a',
+      size: base + Math.random() * span,
+      ease: 0.045 + Math.random() * 0.045,
+      drift: Math.random() * Math.PI * 2
+    };
+  }
+
+  function initParticles() {
+    var n = Math.round(BUDGET * 0.85);
+    particles = [];
+    for (var i = 0; i < n; i++) particles.push(makeParticle());
+
+    dust = [];
+    var dn = isSmall ? 40 : 90;
+    for (var d = 0; d < dn; d++) {
+      dust.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: 0.6 + Math.random() * 1.3,
+        vx: (Math.random() - 0.5) * 0.16,
+        vy: (Math.random() - 0.5) * 0.16,
+        a: 0.10 + Math.random() * 0.28
+      });
+    }
+  }
+
+  function scatter() {
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      var ang = Math.random() * Math.PI * 2;
+      var rad = Math.max(W, H) * (0.5 + Math.random() * 0.55);
+      p.tx = W / 2 + Math.cos(ang) * rad;
+      p.ty = H / 2 + Math.sin(ang) * rad;
+      p.ease = 0.028 + Math.random() * 0.02;
+      p.hidden = false;                    // 散开阶段全部参与，别留着上一幕藏起来的
+    }
+  }
+
+  function assign(pts) {
+    if (!pts.length) return;
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      // 粒子比目标点多时，多出来的直接藏起来，别叠在同一笔画上糊成一片
+      if (i >= pts.length) { p.hidden = true; continue; }
+      var t = pts[i];
+      p.hidden = false;
+      p.tx = t.x;
+      p.ty = t.y;
+      p.c = t.c;
+      p.ease = 0.055 + Math.random() * 0.05;
+      if (SNAP_RENDER) { p.x = t.x; p.y = t.y; p.vx = 0; p.vy = 0; }
+    }
+    // 预览模式直接清掉上一轮的拖尾残影，否则截图里全是散点
+    if (SNAP_RENDER) ctx.clearRect(0, 0, W, H);
+  }
+
+  // ------------------------------------------------------------------
+  // 主循环
+  // ------------------------------------------------------------------
+  var last = 0;
+
+  function resize() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    isSmall = window.matchMedia('(max-width:720px)').matches;
+    BUDGET = isSmall ? 5200 : 8200;
+
+    if (!particles.length) initParticles();
+    var pts = sampleScene(SCENES[scene]);
+    assign(pts);
+  }
+
+  function goTo(index, immediate) {
+    scene = (index + SCENES.length) % SCENES.length;
+    sceneStart = -1;                       // 交给下一帧的 rAF 时间戳重新锚定
+    nameEl.textContent = SCENE_NAME[SCENES[scene].id] || '';
+
+    // 副标题跟着换，先退场再进场，避免文字硬切
+    capEl.classList.remove('in');
+    capEl.textContent = SCENES[scene].cap || '';
+    capEl.style.top = SCENES[scene].capTop || '71%';
+    setTimeout(function () { capEl.classList.add('in'); }, 320);
+
+    var my = ++gen;
+    scatter();
+    setTimeout(function () {
+      if (my !== gen) return;
+      var pts = sampleScene(SCENES[scene]);
+      window.__pts = pts.length;          // 调试用：采样点数
+      assign(pts);
+    }, immediate ? 60 : 620);
+  }
+
+  function tick(now) {
+    requestAnimationFrame(tick);
+    var dt = Math.min(48, now - (last || now));
+    last = now;
+
+    // 拖尾：擦掉一部分而不是清屏，粒子才有尾迹
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.globalCompositeOperation = 'lighter';
+
+    // 环境尘埃
+    for (var d = 0; d < dust.length; d++) {
+      var u = dust[d];
+      u.x += u.vx; u.y += u.vy;
+      if (u.x < -10) u.x = W + 10;
+      if (u.x > W + 10) u.x = -10;
+      if (u.y < -10) u.y = H + 10;
+      if (u.y > H + 10) u.y = -10;
+      ctx.fillStyle = 'rgba(120,170,220,' + u.a + ')';
+      ctx.fillRect(u.x, u.y, u.r, u.r);
+    }
+
+    // 粒子
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      if (p.hidden) continue;
+      var dx = p.tx - p.x;
+      var dy = p.ty - p.y;
+
+      p.vx = (p.vx + dx * p.ease) * 0.86;
+      p.vy = (p.vy + dy * p.ease) * 0.86;
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // 到目标附近后轻微呼吸，避免死板
+      if (Math.abs(dx) < 2 && Math.abs(dy) < 2) {
+        p.drift += 0.02;
+        p.x += Math.cos(p.drift) * 0.10;
+        p.y += Math.sin(p.drift * 1.3) * 0.10;
+      }
+
+      ctx.fillStyle = p.c;
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    }
+
+    // 进度与自动切幕
+    if (!paused) {
+      if (sceneStart < 0) sceneStart = now;
+      var el = now - sceneStart;
+      var sc = SCENES[scene];
+      var prog = Math.min(1, el / sc.dur);
+      barEl.style.width = (prog * 100) + '%';
+      if (el >= sc.dur) goTo(scene + 1);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // 交互
+  // ------------------------------------------------------------------
+  document.addEventListener('keydown', function (e) {
+    var k = e.key.toLowerCase();
+    if (k === ' ') {
+      e.preventDefault();
+      paused = !paused;
+      if (!paused) sceneStart = -1;
+    } else if (k === 'arrowright' || k === 'n') {
+      goTo(scene + 1, true);
+    } else if (k === 'arrowleft') {
+      goTo(scene - 1, true);
+    } else if (k === 'h') {
+      document.body.classList.toggle('ui-off');
+    } else if (k === 'f') {
+      if (!document.fullscreenElement) {
+        var el = document.documentElement;
+        (el.requestFullscreen || el.webkitRequestFullscreen || function () {}).call(el);
+      } else {
+        (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+      }
+    }
+  });
+
+  document.addEventListener('click', function () {
+    goTo(scene + 1, true);
+  });
+
+  var rt = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(rt);
+    rt = setTimeout(resize, 160);
+  });
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { sceneStart = -1; last = 0; }
+  });
+
+  // 启动：时间一律由 rAF 时间戳驱动，不要先手动 tick 一帧
+  // （手动帧的 now 与后续 rAF 的 now 不同源，会让计时错乱）
+  // ?scene=N 可直接从第 N 幕开始（1 起），录屏或逐幕检查时用
+  var mScene = location.search.match(/[?&]scene=(\d+)/);
+  var startAt = mScene ? Math.max(0, parseInt(mScene[1], 10) - 1) : 0;
+
+  resize();
+  goTo(startAt, true);
+  ready = true;
+  requestAnimationFrame(tick);
+
+  // 字体没就绪时 measureText 会按 fallback 字宽算，把副标压到很小、
+  // 粒子化后直接看不见。等字体到位重采样一次。
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () {
+      assign(sampleScene(SCENES[scene]));
+    });
+  }
+
+  // 供录屏脚本调用：window.promoAPI.jump(2)
+  window.promoAPI = {
+    jump: function (i) { goTo(i, true); },
+    pause: function (v) { paused = !!v; },
+    scenes: SCENES.map(function (s) { return s.id; })
+  };
+})();
+</script>
+</body>
+</html>

@@ -39,9 +39,12 @@ import shots  # noqa: E402
 STORE = os.path.join(ROOT, "minitool", "store")
 TMP = os.path.join(ROOT, ".tmp_store_assets")
 SRC = "minitool/dist/index.html"
+SRC_LAND = "minitool/dist-landscape/index.html"
 SCENES = ["战场", "烽火答题", "战术地图"]
 ORDER = {"战场": 1, "烽火答题": 2, "战术地图": 3}
 TARGET = (750, 1334)
+OUTDIR = os.path.join(ROOT, "minitool", "store")
+SRC_FILE = SRC
 
 W, H, SCALE = 560, 996, 2
 
@@ -153,7 +156,7 @@ def build_icon():
         x += w + gap2
 
     out = os.path.join(STORE, "icon_512.png")
-    # 商店图标普遍要求「底板满幅、四角透明」：做成深色圆角（squircle 近似），
+    # 商店图标普遍是「底板满幅、四角透明」：做成深色圆角（squircle 近似），
     # 而不是一张不透明方图。圆角半径取短边 23%，和主流商店遮罩接近。
     img = img.convert("RGBA")
     mask = Image.new("L", img.size, 0)
@@ -167,14 +170,14 @@ def build_icon():
 
 # ---------------- 截图 ----------------
 def build_shots(names):
-    os.makedirs(STORE, exist_ok=True)
+    os.makedirs(OUTDIR, exist_ok=True)
     chrome = shots.find_chrome()
 
-    page = open(os.path.join(ROOT, SRC), encoding="utf-8").read()
+    page = open(os.path.join(ROOT, SRC_FILE), encoding="utf-8").read()
     site = os.path.join(TMP, "site")
     shutil.rmtree(site, ignore_errors=True)
     os.makedirs(os.path.join(site, "assets"), exist_ok=True)
-    shutil.copy2(os.path.join(ROOT, "minitool/dist/assets/app.js"),
+    shutil.copy2(os.path.join(ROOT, os.path.dirname(SRC_FILE), "assets", "app.js"),
                  os.path.join(site, "assets", "app.js"))
     shutil.copy2(os.path.join(ROOT, "shujing-app/version.json"),
                  os.path.join(site, "version.json"))
@@ -199,13 +202,13 @@ def build_shots(names):
                    "--virtual-time-budget=%d" % budget,
                    "--run-all-compositor-stages-before-draw",
                    "--screenshot=" + raw.replace("\\", "/"),
-                   "http://127.0.0.1:%d/index.html" % port]
+                   "http://127.0.0.1:%d/index.html?pc=0" % port]
             r = subprocess.run(cmd, capture_output=True, timeout=120)
             if not os.path.exists(raw):
                 print("%s 失败：exit=%d" % (name, r.returncode))
                 continue
             im = Image.open(raw).convert("RGB").resize(TARGET, Image.LANCZOS)
-            out = os.path.join(STORE, "%02d_%s.png" % (ORDER.get(name, 9), name))
+            out = os.path.join(OUTDIR, "%02d_%s.png" % (ORDER.get(name, 9), name))
             im.save(out, optimize=True)
             print("%s -> %s %s (%.0f KB)" % (name, os.path.relpath(out, ROOT), TARGET,
                                             os.path.getsize(out) / 1024))
@@ -216,8 +219,18 @@ def build_shots(names):
 
 
 def main():
-    global W, H
+    global W, H, TARGET, OUTDIR, SRC_FILE
     argv = sys.argv[1:]
+
+    # 横屏版：直接从 dist-landscape 取图（那份带了「所有横屏都分栏」的增强样式），
+    # 按 1334x750 出图，落在 store/landscape/，和竖屏素材分开放。
+    if "--landscape" in argv:
+        argv.remove("--landscape")
+        W, H = 1334, 750
+        TARGET = (1334, 750)
+        OUTDIR = os.path.join(STORE, "landscape")
+        SRC_FILE = SRC_LAND
+
     if "--size" in argv:
         i = argv.index("--size")
         W, H = (int(x) for x in argv[i + 1].lower().split("x"))

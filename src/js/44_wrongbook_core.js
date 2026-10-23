@@ -230,7 +230,7 @@ function wbStat(){
 /* ---------- 写入错题本 ---------- */
 function commitPhotos(defSubj){
   const list=PHOTO_SHOTS.filter(sh=>sh.text||sh.ans);
-  if(!list.length){const m=$('phMsg');if(m)m.innerHTML='<span class="imp-no">至少给一张图填点内容</span>';return;}
+  if(!list.length){const m=$('phMsg');if(m)setH(m, '<span class="imp-no">至少给一张图填点内容</span>');return;}
   const room=WRONG_CAP-state.wrongBook.length;
   if(room<=0){toast('错题本已满 '+WRONG_CAP+' 题');return;}
   const items=list.slice(0,room).map(sh=>{

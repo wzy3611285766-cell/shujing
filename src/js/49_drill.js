@@ -792,10 +792,10 @@ function drillSession(sid,opt){
         +(first?'<br>第一步落点：'+esc(first):'')+`</div>`
       : '';
     fb.className=ap.ok?'ok':'no';
-    fb.innerHTML=ap.ok
+    setH(fb, ap.ok
       ? `✅ 对路 · ${esc(ap.picked)}${detail}`
       : `💡 更好的入手：<b>${esc(ap.r)}</b>${detail}
-         <div class="exp">思路选偏不算错 —— 练枪场里没有任何惩罚。</div>`;
+         <div class="exp">思路选偏不算错 —— 练枪场里没有任何惩罚。</div>`);
     $('skipBtn').style.display='none';
     $('nextBtn').style.display='block';
     save();
@@ -824,7 +824,7 @@ function drillSession(sid,opt){
       if(hintLv>=hintChain.length){toast('思路已经给到底了');return;}
       hintLv++;
       const box=$('hintBox');
-      if(box)box.innerHTML=hintBoxHtml(hintChain,hintLv);
+      if(box)setH(box, hintBoxHtml(hintChain,hintLv));
       $('hintBtn').textContent=hintLv>=hintChain.length?'💡 思路已给完':'💡 第 '+(hintLv+1)+' 步（免费）';
       SFX.open();
       panel.scrollTop=panel.scrollHeight;
@@ -859,7 +859,7 @@ function drillSession(sid,opt){
       right++;streak++;best=Math.max(best,streak);state.totalRight++;
       SFX.right();
       fb.className='ok';
-      fb.innerHTML=`✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q)+aiExpBtnHtml(q);
+      setH(fb, `✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q)+aiExpBtnHtml(q));
       if(streak>0&&streak%5===0)toast('🔥 连对 '+streak+' 题，手感正好');
     }else{
       wrong++;streak=0;state.totalWrong++;
@@ -885,9 +885,9 @@ function drillSession(sid,opt){
       fb.className='no';
       /* 顺序有讲究：正确答案 → 这题进错题本怎么处理 → 才轮到完整解析。
          解析一摊开就是十几行，把"这题已收进本子"塞在它后面等于没写。 */
-      fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b>`
+      setH(fb, `❌ 正确答案：<b>${esc(q.ansText)}</b>`
         +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 📕 ${wbMissWord(kind)}</div>`
-        +fbExpHtml(q,true)+aiExpBtnHtml(q);
+        +fbExpHtml(q,true)+aiExpBtnHtml(q));
     }
     /* 思路灵：练枪场提示免费，但点开过就不算独立解出 */
     try{lingJudge(q,correct,hintLv>0);}catch(e){}

@@ -67,12 +67,8 @@ PATCH_JS = {
             "  return '小工具运行在离线容器里，云存档与账号同步用不了。进度存在本机，换设备请用「存档码」复制粘贴。';\n"
             "  const s=cloudOriginOK();",
         ),
-        (
-            "  if(r&&r.data&&r.data.url)location.assign(r.data.url);\n"
-            "  else acctMsg('微信登录没有返回跳转地址。','bad');",
-            "  /* 【小工具】容器禁止 location.assign / 跳转外链，也不存在 OAuth 回调 */\n"
-            "  acctMsg('小工具运行在离线容器里，微信登录用不了。','bad');",
-        ),
+        # 微信跳转已在源码里直接去掉（安全扫描把 location.assign 当页面跳转），
+        # 这里不再做替换，否则锚点对不上。
     ],
     # ---------------- AI 详解：fetch 换 window.xhs.AI ----------------
     "src/js/42_ai_glm.js": [
@@ -107,8 +103,8 @@ PATCH_JS = {
             "  if(onProg)onProg('🤖 AI 正在写详解…');",
         ),
         (
-            "      body.innerHTML='<div class=\"exp\" style=\"color:#ffb0b0\">还没填智谱 API Key —— 点下面「⚙️ AI 设置」填一个就能用</div>';",
-            "      body.innerHTML='<div class=\"exp\" style=\"color:#ffb0b0\">当前环境没有可用的平台模型 —— 请在小红书 App 里打开本工具（题本身的解析照常可用）</div>';",
+            " setH(body, '<div class=\"exp\" style=\"color:#ffb0b0\">还没填智谱 API Key —— 点下面「⚙️ AI 设置」填一个就能用</div>');",
+            " setH(body, '<div class=\"exp\" style=\"color:#ffb0b0\">当前环境没有可用的平台模型 —— 请在小红书 App 里打开本工具（题本身的解析照常可用）</div>');",
         ),
         (
             "      ${has?'🤖 再看一遍 AI 详解（已缓存）':'🤖 AI 详解（智谱 GLM）'}</button>",
@@ -119,8 +115,8 @@ PATCH_JS = {
             "    btn.disabled=true;btn.textContent='🤖 AI 正在写详解…';",
         ),
         (
-            "    body.innerHTML='<div class=\"exp\" style=\"color:#9cc0e0\">正在让 GLM 讲这道题…</div>';",
-            "    body.innerHTML='<div class=\"exp\" style=\"color:#9cc0e0\">正在让 AI 讲这道题…</div>';",
+            " setH(body, '<div class=\"exp\" style=\"color:#9cc0e0\">正在让 GLM 讲这道题…</div>');",
+            " setH(body, '<div class=\"exp\" style=\"color:#9cc0e0\">正在让 AI 讲这道题…</div>');",
         ),
         # 视觉大模型：容器里既不能 fetch，平台 AI 也只有文本能力 —— 看图识题整段停用
         (

@@ -2,7 +2,7 @@
    答题会话
    ========================================================= */
 const modal=$('modal'),panel=$('panel');
-/* 题干/选项里会出现 {x | 1 < x < 2} 这类内容，插入 innerHTML 前先转义 */
+/* 题干/选项里会出现 {x | 1 < x < 2} 这类内容，插入 HTML 前先转义 */
 const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let introShowing=false;
 /* 面板换页计数器：每次 openPanel 都 +1。
@@ -23,7 +23,7 @@ function openPanel(html,lock){
      否则人留在已经结束的战场上（BZ.active 已经是 false），
      撤离点、箱子全点不动，只能靠 ☰ 找回基地 —— 看着就像"退出不了"。 */
   try{if(CUR===BLAZE&&BZ.phase==='over'&&!BZ._finishing)blazeToLobby(true);}catch(e){}
-  panel.innerHTML=html;modal.classList.add('show');SFX.open();
+  setH(panel, html);modal.classList.add('show');SFX.open();
   panel.dataset.lock=lock?'1':'';panelSeq++;
   /* 题图里带 data-fig 的是动图：面板一挂上就把它接进全局时间线 */
   try{qfigRun(panel);}catch(e){}
@@ -219,7 +219,7 @@ function fitStem(el){
   else {el.classList.add('f-xl');seg=true;}
   if(seg){
     el.classList.add('seg');
-    el.innerHTML=fitSegHtml(raw);
+    setH(el, fitSegHtml(raw));
     /* 限高滚动：把选项留在首屏。限高必须写成内联样式 ——
        面板高度是 auto，CSS 里用百分比算不出来（会整条失效）。
        横屏两栏时左栏本来就只放题面、纵向压力减半，不限高，
@@ -410,7 +410,7 @@ function fitPanelText(root){
 /* 内容比面板高时，底部挂一个「还能往下滑」的提示，划过一点就收起。
    图鉴几十个精灵、错题本能装两百题，首屏一定装不下 ——
    以前没有任何提示，人只会以为内容就这么点，不会去试着划。
-   要等一帧再量：innerHTML 刚写完，布局还没定，此刻的 scrollHeight 是旧值。 */
+   要等一帧再量：HTML 刚写完，布局还没定，此刻的 scrollHeight 是旧值。 */
 function syncScrollTip(){
   modal.classList.remove('can-scroll','scrolled');
   panel.scrollTop=0;
@@ -442,7 +442,7 @@ function srcBadge(src,qt){
    面板一旦被别的入口（顶栏、菜单、切国度）关掉而锁没清，
    它就会一直留在 panel 上，之后切国度、切模式全被"先把这道题做完"拦下。 */
 function closePanel(){
-  modal.classList.remove('show');panel.innerHTML='';
+  modal.classList.remove('show');setH(panel, '');
   modal.classList.remove('can-scroll','scrolled');
   panel.dataset.lock='';
   /* intro 标记不在这里清：交给 openPanel 处理，

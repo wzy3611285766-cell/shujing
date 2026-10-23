@@ -474,8 +474,8 @@ async function acctWechat(){
   acctMsg('正在跳转微信…','');
   const r=await ACCT.cloud.auth.signInWithOAuth({provider:'wechat',redirectTo:location.origin});
   if(r&&r.error){acctMsg('微信登录打不开：'+(r.error.message||''),'bad');return;}
-  if(r&&r.data&&r.data.url)location.assign(r.data.url);
-  else acctMsg('微信登录没有返回跳转地址。','bad');
+  /* 【小工具】容器不支持页面跳转，拿到授权地址也不跳，直接给结论 */
+  acctMsg('小工具运行在离线容器里，微信登录用不了 —— 换手机请用「存档码」。','bad');
 }
 async function acctLogout(){
   try{await ACCT.cloud.auth.signOut();}catch(e){}
@@ -483,29 +483,12 @@ async function acctLogout(){
   acctMsg('已退出登录。云端存档还在，随时能再登回来。','ok');
   acctRender();
 }
-/* 微信回跳进来的那一次要先把 code 换掉再谈别的。
-   state 是一次性的，换完必须从地址栏抹掉，否则刷新会重放一次已用过的 code。 */
-async function cloudRestoreAuth(cb){
-  let url;
-  try{url=new URL(location.href);}catch(e){cb&&cb();return;}
-  if(!url.searchParams.has('code')&&!url.searchParams.has('error')){cb&&cb();return;}
-  if(url.searchParams.get('provider')!=='wechat'){cb&&cb();return;}
-  const fn=ACCT.cloud.auth.handleWechatWebCallback;
-  if(typeof fn!=='function'){acctMsg('当前云端组件不支持微信登录。','bad');cb&&cb();return;}
-  const r=await fn.call(ACCT.cloud.auth);
-  if(r&&r.error)acctMsg('微信登录失败：'+(r.error.message||''),'bad');
-  else{
-    ['code','state','provider'].forEach(k=>url.searchParams.delete(k));
-    try{history.replaceState(null,'',url.pathname+url.search+url.hash);}catch(e){}
-  }
-  cb&&cb();
-}
 
 /* ---------- 面板 ---------- */
 function acctRender(){
   const box=$('acctWrap');
   if(!box)return;
-  box.innerHTML=acctBodyHtml();
+  setH(box, acctBodyHtml());
   acctBind();
 }
 function acctBodyHtml(){
@@ -657,7 +640,8 @@ function showAccountPanel(){
   if(cloudWhy())return;                     // 本地文件版：一个远端请求都不发
   cloudLoadSdk(()=>{
     if(!ACCT.cloud)return;
-    cloudRestoreAuth(()=>cloudAutoSync());
+    /* 小工具容器没有微信回跳，直接同步即可（原回调里要处理地址栏 code） */
+    cloudAutoSync();
   });
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='hidden'&&ACCT.dirty&&ACCT.user)cloudPush(true);

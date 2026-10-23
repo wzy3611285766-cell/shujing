@@ -96,7 +96,7 @@ function blazeAsk(o){
     BLAZE_STATE.crystals=(BLAZE_STATE.crystals|0)-BLAZE_HINT_COST;
     hintLv++;save();updateHUD();
     const box=$('hintBox');
-    if(box)box.innerHTML=hintBoxHtml(chain,hintLv);
+    if(box)setH(box, hintBoxHtml(chain,hintLv));
     if(hintLv>=chain.length)hb.textContent='💡 思路已给完';
     else hb.textContent='💡 再要一层（'+BLAZE_HINT_COST+' 🪙）';
     if(hintLv>=chain.length)hb.disabled=true;
@@ -129,11 +129,11 @@ function blazeAsk(o){
       if(ok){
         BLAZE_STATE.totalRight=(BLAZE_STATE.totalRight||0)+1;
         fb.className='ok';
-        fb.innerHTML=`✅ 答对！${o.okText?'<div class="exp">'+esc(o.okText)+'</div>':''}`;
+        setH(fb, `✅ 答对！${o.okText?'<div class="exp">'+esc(o.okText)+'</div>':''}`);
       }else{
         BLAZE_STATE.totalWrong=(BLAZE_STATE.totalWrong||0)+1;
         fb.className='no';
-        fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`;
+        setH(fb, `❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`);
       }
       $('nextBtn').style.display='block';
       const tPaint=performance.now();
@@ -155,9 +155,9 @@ function blazeAsk(o){
               opts:q.opts.slice(),rid:o.rid,subject:subjOfRid(o.rid),src2:'烽火'});
             const box=$('feedback');
             if(box&&box.className==='no'){
-              box.innerHTML+=kind==='full'
+              addH(box, kind==='full'
                 ?'<div class="exp">📕 错题本满了（'+WRONG_CAP+' 题），这题没存下</div>'
-                :'<div class="exp">📕 已收进错题本</div>';
+                :'<div class="exp">📕 已收进错题本</div>');
             }
           }catch(e){}
         }

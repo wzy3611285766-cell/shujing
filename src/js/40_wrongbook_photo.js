@@ -121,7 +121,7 @@ function viewImage(src){
   if(!imgViewEl){
     imgViewEl=document.createElement('div');
     imgViewEl.id='imgView';
-    imgViewEl.innerHTML='<div class="bar"><button class="btn" id="ivClose">✕ 关闭</button></div><img class="qimg-s" alt="">';
+    setH(imgViewEl, '<div class="bar"><button class="btn" id="ivClose">✕ 关闭</button></div><img class="qimg-s" alt="">');
     (document.body||document.documentElement).appendChild(imgViewEl);
     imgViewEl.addEventListener('click',e=>{if(e.target&&e.target.id!=='ivClose')viewImageClose();});
   }

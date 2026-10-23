@@ -90,13 +90,13 @@ function drillActBtn(spot,btn,hint){
 
 /* 练枪模式的 HUD：位置 / 统计 / 任务条 */
 function updateHudDrill(){
-  $('regionChip').innerHTML='<span class="txt">🎯 练枪场 · 压轴专训</span>';
+  setH($('regionChip'), '<span class="txt">🎯 练枪场 · 压轴专训</span>');
   $('regionChip').style.color='#ffd76a';
   const tt=drillTotal();
-  $('diffChip').innerHTML='<span class="txt">'+(tt.n?('累计 '+tt.n+' 题 · 命中 '+pctOf(tt.p)):'还没开练')+'</span>';
+  setH($('diffChip'), '<span class="txt">'+(tt.n?('累计 '+tt.n+' 题 · 命中 '+pctOf(tt.p)):'还没开练')+'</span>');
   $('diffChip').style.color=tt.n?'#ffd76a':'';
   const cv=crystalShown();
-  $('crystalChip').innerHTML='🪙 <span class="mono">'+cv+'</span>';
+  setH($('crystalChip'), '🪙 <span class="mono">'+cv+'</span>');
   $('crystalChip').style.color='#ffd76a';
   watchCrystal(cv);
   setQuestText(questTextDrill());
@@ -254,11 +254,11 @@ function updateHudEpic(){
   const ep=EPOCHS.find(r=>r.id===state.era)||EPOCHS.find(r=>r.id===state.region)||EPOCHS[0];
   const list=EPIC_SPOTS.filter(s=>s.era===ep.id);
   const rd=list.filter(s=>state.read[s.sid]).length;
-  $('regionChip').innerHTML='📍 <span class="txt">'+esc(ep.name)+'</span>';
-  $('diffChip').innerHTML='<span class="txt">已读 '+rd+'/'+list.length+'</span>';
+  setH($('regionChip'), '📍 <span class="txt">'+esc(ep.name)+'</span>');
+  setH($('diffChip'), '<span class="txt">已读 '+rd+'/'+list.length+'</span>');
   $('diffChip').style.color='';
   const cv=crystalShown();
-  $('crystalChip').innerHTML='<span class="txt">✨ <span class="mono">'+cv+'</span></span>';
+  setH($('crystalChip'), '<span class="txt">✨ <span class="mono">'+cv+'</span></span>');
   watchCrystal(cv);
   setQuestText(questTextEpic(),QUEST_SHOW_MS);
   measureTopbar();

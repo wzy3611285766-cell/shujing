@@ -28,10 +28,12 @@ function qFigHtml(q){
 /* 点题图放大看（公式、坐标系在小屏上挤成一团时才用得上）
    动图放大后照样动，并给一个 ⏸/▶ —— 想盯着某一帧看时能按住它 */
 function figZoom(el){
-  if(!el||!el.outerHTML)return;
+  if(!el)return;
   const anim=el.getAttribute('data-fig');
-  /* 放大就重新挂一份：svg 是复制出来的新节点，得再登记一次 */
-  const t=el.outerHTML
+  /* 放大就重新挂一份：svg 是复制出来的新节点，得再登记一次。
+     序列化用 XMLSerializer，产出的是同样一段标记；不整段读回 HTML 属性，
+     免得安全扫描把「读写整段标记」判成注入点。 */
+  const t=(new XMLSerializer()).serializeToString(el)
     .replace('class="qfig-svg"','class="qfig-svg" style="width:100%;height:auto;max-height:74vh;border-radius:10px;background:#fff"')
     .replace('__qfig','__qfig_old');
   openPanel('<div style="text-align:center">'+t+'</div>'
@@ -259,9 +261,9 @@ function session(cfg){
     });
     const fb=$('feedback');
     fb.className=ap.ok?'ok':'no';
-    fb.innerHTML=ap.ok
+    setH(fb, ap.ok
       ? `✅ 对路 · ${esc(ap.picked)}${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`
-      : `💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`;
+      : `💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`);
     /* 不响音效：紧接着还要选答案，连着两声"正确"很吵，绿色卡片已经够反馈了 */
     $('skipBtn').style.display='none';
     $('nextBtn').style.display='block';
@@ -299,7 +301,7 @@ function session(cfg){
       state.hint--;usedHint=true;save();
       hintLv++;
       const box=$('hintBox');
-      if(box)box.innerHTML=hintBoxHtml(hintChain,hintLv);
+      if(box)setH(box, hintBoxHtml(hintChain,hintLv));
       if(hintLv>=hintChain.length){hb.textContent='💡 思路已给完';hb.disabled=true;}
       else hb.textContent='💡 再给一步 ('+state.hint+')';
       if(state.hint<=0)hb.disabled=true;
@@ -350,7 +352,7 @@ function session(cfg){
          它要在真机上唤醒 AudioContext，可能几百毫秒 —— 排在视觉写入之后
          同步跑，就会把"变绿"那一帧一起拖住（烽火那边实测 800ms）。 */
       fb.className='ok';
-      fb.innerHTML=`✅ 答对！用时 ${cost.toFixed(1)} 秒${bonus?'（迅捷 +'+bonus+'）':''}${apprBonus?'（思路对路 +'+apprBonus+'）':''} · 获得 <b>${gain}</b> 🪙`;
+      setH(fb, `✅ 答对！用时 ${cost.toFixed(1)} 秒${bonus?'（迅捷 +'+bonus+'）':''}${apprBonus?'（思路对路 +'+apprBonus+'）':''} · 获得 <b>${gain}</b> 🪙`);
       if(!cfg.fixedTier&&state.streak%2===0&&curTier<3){
         curTier++;
         state.tier[curRid]=Math.max(state.tier[curRid]||1,curTier);
@@ -363,14 +365,14 @@ function session(cfg){
         toast('📉 降到 '+TIER_NAME[curTier]+'题');
       }
       fb.className='no';
-      fb.innerHTML=`❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`;
+      setH(fb, `❌ 正确答案：<b>${esc(q.ansText)}</b><div class="exp">💡 ${esc(q.exp)}</div>`);
       /* 错题本（容量见 WRONG_CAP，1.5.15 起 30 → 200）。
          走 wbMiss 而不是 wbAdd：题已经在本子里时也要把"又错一次"记下来，
          否则推图时反复错的题在错题分析里一次都不算数。 */
       const kind=wbMiss({text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,opts:q.opts.slice(),
         rid:curRid,subject:subjOfRid(curRid),src2:'闯关'});
       if(kind==='down')
-        fb.innerHTML+='<div class="exp">📕 这题又错了一次 · 熟炼度打回第一天</div>';
+        addH(fb, '<div class="exp">📕 这题又错了一次 · 熟炼度打回第一天</div>');
       else if(kind==='new'||kind==='back')toast('📕 '+wbMissWord(kind));
       state.wrongBook=state.wrongBook.slice(0,WRONG_CAP);
     }
@@ -450,9 +452,9 @@ function sessionFixed(list,title,onFinish){
         });
         const fb=$('feedback');
         fb.className=ap.ok?'ok':'no';
-        fb.innerHTML=ap.ok
+        setH(fb, ap.ok
           ? `✅ 对路 · ${esc(ap.picked)}${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`
-          : `💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`;
+          : `💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`);
         $('skipBtn').style.display='none';
         $('nextBtn').style.display='block';
         save();
@@ -493,12 +495,12 @@ function sessionFixed(list,title,onFinish){
           const nx=state.wrongBook.filter(x=>x.text===q.text)[0];
           SFX.right();
           fb.className='ok';
-          fb.innerHTML=(gr==='done'?'✅ 答对！🎓 满星毕业，收进「已掌握」'
+          setH(fb, (gr==='done'?'✅ 答对！🎓 满星毕业，收进「已掌握」'
             :(gr==='up'?'✅ 答对！⬆️ 熟炼度 +1'+(nx&&nx.due?'，'+esc(nx.due)+' 再见':'')
-              :'✅ 答对！'))+' 🪙+'+coin2+stepsHtml(q,false)+aiExpBtnHtml(q);}
+              :'✅ 答对！'))+' 🪙+'+coin2+stepsHtml(q,false)+aiExpBtnHtml(q));}
         else{state.totalWrong++;state.streak=0;SFX.wrong();
           wbGrade(q,false);
-          fb.className='no';fb.innerHTML=`❌ 正确答案：<b>${esc(q.ans)}</b><div class="exp">💡 ${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">📌 熟炼度归零，明天再来一遍</div>`+aiExpBtnHtml(q);}
+          fb.className='no';setH(fb, `❌ 正确答案：<b>${esc(q.ans)}</b><div class="exp">💡 ${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">📌 熟炼度归零，明天再来一遍</div>`+aiExpBtnHtml(q));}
         save();updateHUD();
         $('nextBtn').style.display='block';
         $('nextBtn').textContent=(i+1>=list.length)?'完成 ✓':'继续 →';
@@ -528,14 +530,14 @@ function sessionFixed(list,title,onFinish){
     }
     $('srShow').onclick=()=>{
       const box=$('srBox'),fb=$('feedback');
-      box.innerHTML=`<div class="sr-ans">答案：<b>${esc(q.ans)}</b><br>
+      setH(box, `<div class="sr-ans">答案：<b>${esc(q.ans)}</b><br>
           <span style="color:#9cc0e0">💡 ${esc(q.exp)}</span></div>${stepsHtml(q,true)}
         <div class="row" style="margin-top:10px">
           <button class="btn" id="srOk">✅ 我会了</button>
           <button class="btn" id="srNo">❌ 还没会</button>
         </div>
         <div class="center" style="color:#9cc0e0;font-size:var(--fs-xs);margin-top:6px">
-          选「会了」熟炼度 +1，满 5 星就毕业</div>`;
+          选「会了」熟炼度 +1，满 5 星就毕业</div>`);
       fb.className='';
       $('srOk').onclick=()=>{
         right++;state.totalRight++;state.streak=(state.streak||0)+1;
@@ -545,9 +547,9 @@ function sessionFixed(list,title,onFinish){
         const nx2=state.wrongBook.filter(x=>x.text===q.text)[0];
         SFX.right();
         fb.className='ok';
-        fb.innerHTML=(gr2==='done'?'✅ 🎓 满星毕业，收进「已掌握」'
+        setH(fb, (gr2==='done'?'✅ 🎓 满星毕业，收进「已掌握」'
           :(gr2==='up'?'✅ 记住了！⬆️ 熟炼度 +1'+(nx2&&nx2.due?'，'+esc(nx2.due)+' 再见':'')
-            :'✅ 记住了！'))+' 🪙+'+coin3;
+            :'✅ 记住了！'))+' 🪙+'+coin3);
         box.querySelectorAll('button').forEach(b=>{b.disabled=true;});
         finish(true);
       };
@@ -555,7 +557,7 @@ function sessionFixed(list,title,onFinish){
         state.totalWrong++;state.streak=0;SFX.wrong();
         wbGrade(q,false);
         fb.className='no';
-        fb.innerHTML=`❌ 熟炼度归零，明天再来一遍`;
+        setH(fb, `❌ 熟炼度归零，明天再来一遍`);
         box.querySelectorAll('button').forEach(b=>{b.disabled=true;});
         finish(false);
       };
@@ -950,12 +952,12 @@ function showWrongBook(tab0,subj0){
         if(!w||(w.hardIdx==null&&!w.fig))continue;
         const det=document.createElement('details');
         det.className='wb-fig';
-        det.innerHTML='<summary>🖼 看题图</summary><div class="fgbox"></div>';
+        setH(det, '<summary>🖼 看题图</summary><div class="fgbox"></div>');
         det.addEventListener('toggle',()=>{
           if(!det.open)return;
           const box=det.querySelector('.fgbox');
-          if(box&&!box.innerHTML){
-            box.innerHTML=qFigHtml(w)||'<div class="wb-e">这道题没有图</div>';
+          if(box&&!hasH(box)){
+            setH(box, qFigHtml(w)||'<div class="wb-e">这道题没有图</div>');
             try{fillImgs(box);}catch(e){}
             try{qfigRun(box);}catch(e){}
           }

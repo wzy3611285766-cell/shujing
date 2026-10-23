@@ -17,7 +17,7 @@ if(IS_PC){
   /* 这里还在脚本中段，$() 那条 const 尚未声明，直接用原生 API 取元素 */
   const ph=document.getElementById('pcHint');
   if(ph){
-    ph.innerHTML='⌨️ <b>WASD</b> 移动 · <b>Shift</b> 疾跑 · <b>E</b> 互动 · <b>H</b> 键位';
+    setH(ph, '⌨️ <b>WASD</b> 移动 · <b>Shift</b> 疾跑 · <b>E</b> 互动 · <b>H</b> 键位');
     ph.addEventListener('click',()=>{audioKick();showKeyHelp();});
   }
 }

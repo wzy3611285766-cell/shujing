@@ -217,8 +217,8 @@ function showImportWrong(initTxt){
       keep();
       const r=parseWrongText(initTxt||'',defSubj);
       if(!r.list.length){
-        $('impMsg').innerHTML=`<span class="imp-no">没解析出题目</span>${r.bad?'（跳过了 '+r.bad+' 行无效内容）':''}<br>
-          <span style="color:#9cc0e0;font-weight:400">检查一下每行是不是「题干 | 答案」</span>`;
+        setH($('impMsg'), `<span class="imp-no">没解析出题目</span>${r.bad?'（跳过了 '+r.bad+' 行无效内容）':''}<br>
+          <span style="color:#9cc0e0;font-weight:400">检查一下每行是不是「题干 | 答案」</span>`);
         return;
       }
       showImportPreview(r.list,r.bad,initTxt||'',defSubj);
@@ -296,7 +296,7 @@ function showImportPreview(list,bad,raw,defSubj){
   $('pvBack').onclick=()=>showImportWrong(raw);
   $('ok').onclick=closePanel;
   $('pvGo').onclick=()=>{
-    if(room<=0){$('pvMsg').innerHTML=`<span class="imp-no">错题本已满 ${WRONG_CAP} 题</span>，先清掉一些再来`;return;}
+    if(room<=0){setH($('pvMsg'), `<span class="imp-no">错题本已满 ${WRONG_CAP} 题</span>，先清掉一些再来`);return;}
     const r=commitImport(list);
     openPanel(`
       <h2>✅ 导入完成</h2>

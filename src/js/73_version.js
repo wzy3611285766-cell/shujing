@@ -26,7 +26,7 @@ function showUpbar(j){
   if(li){
     let html=items.map(s=>'<div class="up-li">'+esc(s)+'</div>').join('');
     if(!html&&j.news_title)html='<div class="up-li">'+esc(j.news_title)+'</div>';
-    li.innerHTML=html;
+    setH(li, html);
   }
   el.hidden=false;
   /* 顶栏 / 任务条 / toast / 面板 按 --upH 往下让位：通知栏不压任何东西。

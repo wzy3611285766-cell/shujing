@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>格物纪元 · 四国远征 — 系列宣传海报</title>
+<style>
+  :root{
+    --bg:#070d16; --bg2:#0d1b2a; --panel:#101d2e;
+    --gold:#ffd76a; --gold-d:#c9962f; --gold-dd:#8a6420;
+    --blue:#4aa3d8; --blue-d:#26506f;
+    --red:#ff4d5e; --ink:#e8eef8; --ink-2:#9fb0c6; --ink-3:#61748c;
+    --line:rgba(255,215,106,.22);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{ -webkit-text-size-adjust:100% }
+  body{
+    background:
+      radial-gradient(900px 520px at 78% -8%,rgba(255,215,106,.10),transparent 62%),
+      radial-gradient(700px 460px at 8% 110%,rgba(74,163,216,.12),transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:80px;
+  }
+
+  .wrap{max-width:1320px;margin:0 auto;padding:0 24px}
+
+  /* ---------- 页头 ---------- */
+  header{padding:64px 0 40px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:44px}
+  .kicker{display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.22em;color:var(--gold);text-transform:uppercase}
+  .kicker::before{content:"";width:30px;height:1px;background:var(--gold)}
+  h1{margin:16px 0 12px;font-size:clamp(28px,4.2vw,44px);letter-spacing:-.01em;line-height:1.2}
+  h1 small{display:block;font-size:clamp(13px,1.5vw,15px);font-weight:400;color:var(--ink-2);letter-spacing:.04em;margin-top:10px}
+  .lede{max-width:760px;color:var(--ink-2);font-size:15px}
+
+  /* ---------- 品牌规范 ---------- */
+  .tokens{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:34px 0 0}
+  .token{border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:16px;background:rgba(255,255,255,.025)}
+  .token h3{font-size:12px;letter-spacing:.16em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600}
+  .sw{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:12.5px;color:var(--ink-2);font-family:ui-monospace,Consolas,monospace}
+  .sw i{width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.14);flex:0 0 auto}
+  .token p{font-size:13px;color:var(--ink-2);margin-top:8px}
+
+  /* ---------- 海报网格 ---------- */
+  .series{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px 56px;margin-top:56px}
+  @media (max-width:1080px){.series{grid-template-columns:1fr;gap:56px}}
+
+  .item{min-width:0}
+  .frame{
+    position:relative;width:100%;aspect-ratio:1080/1920;overflow:hidden;
+    border-radius:16px;border:1px solid rgba(255,255,255,.10);
+    box-shadow:0 30px 70px -30px rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.4) inset;
+    background:#070d16;
+  }
+  .poster{
+    position:absolute;top:0;left:0;width:1080px;height:1920px;
+    transform-origin:top left;overflow:hidden;
+    font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+
+  /* 海报通用 HUD */
+  .corner{position:absolute;width:54px;height:54px;border:3px solid var(--gold);opacity:.55}
+  .corner.tl{top:44px;left:44px;border-right:0;border-bottom:0}
+  .corner.tr{top:44px;right:44px;border-left:0;border-bottom:0}
+  .corner.bl{bottom:44px;left:44px;border-right:0;border-top:0}
+  .corner.br{bottom:44px;right:44px;border-left:0;border-top:0}
+
+  .topbar{
+    position:absolute;top:78px;left:88px;right:88px;display:flex;
+    align-items:center;justify-content:space-between;
+    font-size:24px;letter-spacing:.06em;color:var(--gold);font-family:ui-monospace,Consolas,monospace;
+  }
+  .topbar .dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--gold);margin-right:12px;box-shadow:0 0 14px var(--gold)}
+  .topbar .r{color:var(--ink-2)}
+
+  .brandline{position:absolute;left:88px;right:88px;bottom:96px}
+  .brandline .bn{font-size:38px;letter-spacing:.30em;color:var(--gold);font-weight:700}
+  .brandline .bs{margin-top:10px;font-size:22px;letter-spacing:.20em;color:var(--ink-3);font-family:ui-monospace,Consolas,monospace}
+
+  .grain{
+    position:absolute;inset:0;pointer-events:none;opacity:.5;mix-blend-mode:overlay;
+    background-image:radial-gradient(rgba(255,255,255,.10) .5px,transparent .5px);
+    background-size:3px 3px;
+  }
+  .vignette{position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 40%,transparent 42%,rgba(0,0,0,.62) 100%)}
+
+  /* ---------- 海报 1：撤离 ---------- */
+  .p1{background:linear-gradient(175deg,#0a1526 0%,#0b1a2c 46%,#07101c 100%)}
+  .p1 .grid-bg{position:absolute;inset:0;opacity:.5;
+    background-image:linear-gradient(rgba(255,215,106,.07) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,215,106,.07) 1px,transparent 1px);
+    background-size:60px 60px}
+  .p1 .map{position:absolute;left:50%;top:250px;transform:translateX(-50%);width:1040px;height:930px;z-index:1}
+  .p1 .beam{
+    position:absolute;left:50%;top:700px;transform:translateX(-50%);
+    width:460px;height:840px;pointer-events:none;z-index:2;
+    background:linear-gradient(180deg,rgba(255,215,106,.42),rgba(255,215,106,0) 74%);
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 92%);
+    mask-image:linear-gradient(180deg,#000 0%,transparent 92%);
+    filter:blur(6px);
+  }
+  .p1 .title{position:absolute;left:88px;right:88px;top:1210px}
+  .p1 .title .tag{display:inline-block;font-family:ui-monospace,Consolas,monospace;font-size:24px;
+    letter-spacing:.18em;color:#0a121e;background:var(--gold);padding:8px 18px;border-radius:6px;font-weight:700}
+  .p1 .title h2{margin-top:26px;font-size:104px;line-height:1.14;letter-spacing:-.02em;color:#fff;font-weight:800}
+  .p1 .title h2 em{font-style:normal;color:var(--gold)}
+  .p1 .title p{margin-top:22px;font-size:31px;color:var(--ink-2);letter-spacing:.02em}
+  .p1 .stamp{position:absolute;left:88px;top:1102px;transform:rotate(-6deg);
+    border:3px solid rgba(255,215,106,.5);border-radius:8px;padding:8px 16px;
+    font-family:ui-monospace,Consolas,monospace;font-size:22px;letter-spacing:.2em;color:rgba(255,215,106,.8)}
+
+  /* ---------- 海报 2：数据 ---------- */
+  .p2{background:radial-gradient(900px 700px at 50% 34%,#12283f 0%,#0a1522 62%,#060c15 100%)}
+  .p2 .ring{position:absolute;left:50%;top:520px;transform:translate(-50%,-50%);width:660px;height:660px;
+    border-radius:50%;border:2px solid rgba(74,163,216,.48)}
+  .p2 .ring::before,.p2 .ring::after{content:"";position:absolute;border-radius:50%;border:2px dashed rgba(74,163,216,.38)}
+  .p2 .ring::before{inset:56px}
+  .p2 .ring::after{inset:118px;border-style:solid;border-color:rgba(255,215,106,.16)}
+  .p2 .big{position:absolute;left:0;right:0;top:372px;text-align:center;
+    font-size:340px;line-height:1;font-weight:800;color:var(--gold);
+    font-family:ui-monospace,Consolas,monospace;letter-spacing:-.04em;
+    text-shadow:0 0 90px rgba(255,215,106,.45)}
+  .p2 .unit{position:absolute;left:0;right:0;top:730px;text-align:center;font-size:30px;letter-spacing:.42em;color:var(--ink-2)}
+  .p2 .title{position:absolute;left:88px;right:88px;top:960px;text-align:center}
+  .p2 .title h2{font-size:78px;line-height:1.2;font-weight:800;color:#fff;letter-spacing:-.01em}
+  .p2 .title h2 em{font-style:normal;color:var(--blue)}
+  .p2 .stats{position:absolute;left:88px;right:88px;top:1246px;display:flex;justify-content:space-between;gap:24px}
+  .p2 .stat{flex:1;text-align:center;border-top:2px solid rgba(74,163,216,.30);padding-top:22px}
+  .p2 .stat b{display:block;font-size:66px;font-family:ui-monospace,Consolas,monospace;color:var(--blue);line-height:1.1}
+  .p2 .stat span{font-size:24px;color:var(--ink-3);letter-spacing:.12em}
+  .p2 .dots{position:absolute;inset:0;opacity:.30;
+    background-image:radial-gradient(rgba(74,163,216,.9) 1px,transparent 1px);background-size:26px 26px;
+    -webkit-mask-image:radial-gradient(70% 60% at 50% 38%,#000,transparent 78%);
+    mask-image:radial-gradient(70% 60% at 50% 38%,#000,transparent 78%)}
+
+  /* ---------- 海报 3：界面 ---------- */
+  .p3{background:linear-gradient(180deg,#0a1420 0%,#0d1d2f 58%,#08121d 100%)}
+  .p3 .glow{position:absolute;left:50%;top:820px;transform:translate(-50%,-50%);width:1000px;height:1000px;
+    background:radial-gradient(circle,rgba(255,215,106,.22),transparent 62%);filter:blur(20px)}
+  .p3 .device{
+    position:absolute;left:50%;top:330px;transform:translateX(-50%) rotate(-5deg);
+    width:700px;height:1180px;border-radius:54px;border:10px solid #1b2a3d;
+    background:linear-gradient(170deg,#132a43,#0a1725);box-shadow:0 40px 100px rgba(0,0,0,.72),0 0 0 2px rgba(255,215,106,.16);
+    overflow:hidden;padding:34px 30px;
+  }
+  .p3 .dev-top{display:flex;justify-content:space-between;font-family:ui-monospace,Consolas,monospace;
+    font-size:20px;color:#7f95ad;letter-spacing:.05em}
+  .p3 .qv{margin-top:38px;font-size:34px;color:#dfe9f5;line-height:1.5;letter-spacing:-.01em}
+  .p3 .qv b{color:var(--gold)}
+  .p3 .opt{display:flex;align-items:center;gap:16px;margin-top:20px;padding:18px 20px;border-radius:12px;
+    border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.045);font-size:28px;color:#c9d6e6}
+  .p3 .opt i{width:38px;height:38px;border-radius:50%;border:2px solid rgba(255,255,255,.22);
+    display:grid;place-items:center;font-style:normal;font-size:20px;color:#8fa3ba;flex:0 0 auto}
+  .p3 .opt.ok{border-color:rgba(63,207,142,.62);background:linear-gradient(180deg,rgba(34,120,88,.34),rgba(20,80,60,.20))}
+  .p3 .opt.ok i{border-color:#3fcf8e;color:#3fcf8e}
+  .p3 .verdict{margin-top:24px;padding:18px 22px;border-radius:12px;font-size:28px;
+    background:linear-gradient(180deg,rgba(63,207,142,.26),rgba(30,90,70,.16));border:1px solid rgba(63,207,142,.45);color:#9ef0c4}
+  .p3 .cta{margin-top:26px;padding:24px;border-radius:14px;text-align:center;font-size:32px;font-weight:700;
+    color:#0a121e;background:linear-gradient(180deg,#ffd76a,#e8b23f);box-shadow:0 14px 34px rgba(232,178,63,.35)}
+  .p3 .title{position:absolute;left:88px;right:88px;top:1560px;text-align:center}
+  .p3 .title h2{font-size:82px;font-weight:800;color:#fff;line-height:1.18;letter-spacing:-.01em}
+  .p3 .title h2 em{font-style:normal;color:var(--gold)}
+  .p3 .title p{margin-top:18px;font-size:28px;color:var(--ink-2)}
+  .p3 .arrow{position:absolute;left:88px;top:1470px;font-family:ui-monospace,Consolas,monospace;
+    font-size:22px;color:var(--ink-3);letter-spacing:.1em}
+
+  /* ---------- 海报 4：跑刀 ---------- */
+  .p4{background:#0a0d12}
+  .p4 .hazard{position:absolute;inset:0;opacity:.13;
+    background:repeating-linear-gradient(135deg,var(--red) 0 26px,transparent 26px 66px)}
+  .p4 .slab{position:absolute;left:-8%;right:-8%;top:520px;height:560px;
+    background:linear-gradient(90deg,#3a0d14,#7d1524 46%,#3a0d14);transform:rotate(-4deg);
+    border-top:3px solid rgba(255,77,94,.7);border-bottom:3px solid rgba(255,77,94,.7)}
+  .p4 .slab2{position:absolute;left:-8%;right:-8%;top:1180px;height:210px;
+    background:rgba(255,77,94,.10);transform:rotate(2.4deg);border-top:1px solid rgba(255,77,94,.35)}
+  .p4 .knife{position:absolute;left:50%;top:640px;transform:translateX(-50%) rotate(-4deg);
+    font-size:196px;font-weight:800;color:#fff;letter-spacing:-.02em;text-shadow:0 10px 50px rgba(0,0,0,.6)}
+  .p4 .knife em{font-style:normal;color:var(--red)}
+  .p4 .sub{position:absolute;left:88px;right:88px;top:1240px;text-align:center;transform:rotate(2.4deg)}
+  .p4 .sub p{font-size:40px;color:#ffd9de;letter-spacing:.03em}
+  .p4 .sub b{color:var(--red)}
+  .p4 .rules{position:absolute;left:110px;right:110px;top:1430px}
+  .p4 .rule{display:flex;gap:18px;align-items:flex-start;margin-bottom:20px;font-size:28px;color:#c9b3b8}
+  .p4 .rule s{flex:0 0 auto;width:34px;height:34px;border-radius:6px;display:grid;place-items:center;
+    text-decoration:none;font-size:20px;font-family:ui-monospace,Consolas,monospace;
+    color:#0a0d12;background:var(--red);font-weight:700}
+  .p4 .rule.win s{background:var(--gold);color:#1a1206}
+  .p4 .rule.win{color:#ffe6b8}
+
+  /* ---------- 设计说明 ---------- */
+  .notes{margin-top:22px;border:1px solid rgba(255,255,255,.09);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.022)}
+  .notes header{display:flex;align-items:baseline;gap:12px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.07);margin:0}
+  .notes header b{font-size:15px;letter-spacing:.02em}
+  .notes header span{font-size:12px;color:var(--ink-3);letter-spacing:.12em;font-family:ui-monospace,Consolas,monospace}
+  .notes dl{display:grid;grid-template-columns:88px minmax(0,1fr);gap:0;margin:0}
+  .notes dt{padding:11px 16px;font-size:12.5px;color:var(--ink-3);letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,.05)}
+  .notes dd{padding:11px 16px 11px 0;font-size:13.5px;color:var(--ink-2);border-bottom:1px solid rgba(255,255,255,.05);line-height:1.65}
+  .notes dl>*:nth-last-child(-n+2){border-bottom:0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-family:ui-monospace,Consolas,monospace;
+    color:var(--ink-2);border:1px solid rgba(255,255,255,.12);border-radius:99px;padding:2px 9px 2px 3px}
+  .chip i{width:13px;height:13px;border-radius:50%;border:1px solid rgba(255,255,255,.2)}
+
+  footer{margin-top:70px;padding-top:24px;border-top:1px solid rgba(255,255,255,.07);color:var(--ink-3);font-size:12.5px}
+  footer p{margin:4px 0}
+
+  @media print{
+    body{background:#fff;color:#000}
+    .series{grid-template-columns:1fr}
+    .notes{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">Sense 169 · Poster System</div>
+    <h1>格物纪元 · 四国远征 — 系列宣传海报
+      <small>四款视觉方案 · 统一品牌调性 · 尺寸 1080×1920（9:16 竖版）</small>
+    </h1>
+    <p class="lede">
+      没有重新发明一套视觉，全部沿用游戏内的语言：深空蓝黑底、金色 HUD 描边、等宽坐标字、四角折线与雷达环。
+      四张各自解决一个问题——第一张讲「为什么刺激」，第二张讲「有多少内容」，第三张讲「长什么样」，第四张讲「风险和代价」。
+      底下每张都附了主题、配色、布局、文案与图形说明，可直接交给设计或按此重绘。
+    </p>
+
+    <div class="tokens">
+      <div class="token">
+        <h3>主色板</h3>
+        <div class="sw"><i style="background:#070d16"></i>#070D16 深空底</div>
+        <div class="sw"><i style="background:#0d1b2a"></i>#0D1B2A 面板蓝</div>
+        <div class="sw"><i style="background:#ffd76a"></i>#FFD76A 战术金</div>
+        <div class="sw"><i style="background:#c9962f"></i>#C9962F 暗金</div>
+      </div>
+      <div class="token">
+        <h3>辅色板</h3>
+        <div class="sw"><i style="background:#4aa3d8"></i>#4AA3D8 数据青</div>
+        <div class="sw"><i style="background:#ff4d5e"></i>#FF4D5E 警戒红</div>
+        <div class="sw"><i style="background:#3fcf8e"></i>#3FCF8E 通过绿</div>
+        <div class="sw"><i style="background:#e8eef8"></i>#E8EEF8 正文白</div>
+      </div>
+      <div class="token">
+        <h3>字体与图形</h3>
+        <p>标题：思源黑体 Heavy / 微软雅黑 Bold，字距收紧 -0.02em。<br>
+        数据与坐标：等宽字体，字距 +0.12em。<br>
+        图形：四角折线、1px 网格、雷达环、H 撤离标记、45° 警示斜纹。</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="series">
+
+    <!-- ============ 01 ============ -->
+    <article class="item">
+      <div class="frame">
+        <div class="poster p1">
+          <div class="grid-bg"></div>
+          <div class="beam"></div>
+          <div class="map">
+            <svg viewBox="0 0 940 840" width="940" height="840" fill="none">
+              <defs>
+                <linearGradient id="land" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#1b3350"/><stop offset="1" stop-color="#102132"/>
+                </linearGradient>
+                <linearGradient id="vault" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#3d3116"/><stop offset="1" stop-color="#241c0c"/>
+                </linearGradient>
+              </defs>
+              <path d="M120 250 H520 V120 H700 V300 H820 V640 H640 V760 H330 V620 H140 Z"
+                    fill="url(#land)" stroke="rgba(255,215,106,.35)" stroke-width="3"/>
+              <g stroke="rgba(120,170,215,.45)" stroke-width="26" stroke-linecap="square">
+                <path d="M250 430 H700"/>
+                <path d="M470 250 V690"/>
+              </g>
+              <rect x="170" y="300" width="180" height="130" fill="url(#vault)" stroke="rgba(255,215,106,.55)" stroke-width="3"/>
+              <text x="260" y="378" fill="#ffd76a" font-size="26" text-anchor="middle" font-family="monospace">保险箱房</text>
+              <rect x="560" y="360" width="200" height="160" fill="#152b42" stroke="rgba(120,170,215,.55)" stroke-width="3"/>
+              <text x="660" y="450" fill="#8fb6d6" font-size="24" text-anchor="middle" font-family="monospace">房卡房间</text>
+              <rect x="360" y="620" width="170" height="100" fill="#152b42" stroke="rgba(120,170,215,.4)" stroke-width="3"/>
+              <text x="445" y="680" fill="#8fb6d6" font-size="22" text-anchor="middle" font-family="monospace">装卸平台</text>
+              <g>
+                <circle cx="700" cy="600" r="72" fill="rgba(255,215,106,.10)" stroke="#ffd76a" stroke-width="4"/>
+                <circle cx="700" cy="600" r="58" stroke="rgba(255,215,106,.45)" stroke-width="2" stroke-dasharray="8 10"/>
+                <text x="700" y="618" fill="#ffd76a" font-size="58" text-anchor="middle" font-family="monospace" font-weight="bold">H</text>
+              </g>
+              <g fill="#ff4d5e" opacity=".85">
+                <circle cx="330" cy="450" r="7"/><circle cx="560" cy="280" r="7"/><circle cx="620" cy="700" r="7"/>
+              </g>
+              <g stroke="rgba(255,215,106,.25)" stroke-width="2">
+                <path d="M60 250 H120"/><path d="M60 250 V320"/>
+                <path d="M880 640 V760"/><path d="M820 760 H880"/>
+              </g>
+            </svg>
+          </div>
+          <div class="topbar"><span><i class="dot"></i>零点演算场 · 主机房 E4</span><span class="r">撤离倒计时 00:47</span></div>
+          <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+          <div class="stamp">风险等级 · 高</div>
+          <div class="title">
+            <span class="tag">开箱前先解题</span>
+            <h2>答对了，<br><em>才带得走</em></h2>
+            <p>答错不会扣分，只会把守卫引过来。</p>
+          </div>
+          <div class="brandline">
+            <div class="bn">格物纪元</div>
+            <div class="bs">四国远征 · 纯离线单机</div>
+          </div>
+          <div class="grain"></div>
+          <div class="vignette"></div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <header><b>01 · 撤离倒计时</b><span>KEY VISUAL</span></header>
+        <dl>
+          <dt>主题</dt><dd>把「答题」和「撤离」绑成一件事：这一箱东西能不能带走，取决于你答不答得对。</dd>
+          <dt>配色</dt><dd>
+            <span class="chips">
+              <span class="chip"><i style="background:#0b1a2c"></i>#0B1A2C</span>
+              <span class="chip"><i style="background:#ffd76a"></i>#FFD76A</span>
+              <span class="chip"><i style="background:#1b3350"></i>#1B3350</span>
+              <span class="chip"><i style="background:#ff4d5e"></i>#FF4D5E 点缀</span>
+            </span></dd>
+          <dt>布局</dt><dd>上 45% 是俯视战术地图（含撤离点 H 光柱），中间金色标签条，下 40% 三行大字左对齐；四角折线锁边，顶部一条状态栏。</dd>
+          <dt>文案</dt><dd>主：答对了，才带得走　／　副：答错不会扣分，只会把守卫引过来。</dd>
+          <dt>图形</dt><dd>抽象地图（房间块 + 走廊 + 保险箱房高亮）、金色雷达环与 H 标记、垂直光柱、1px 网格、扫描颗粒。</dd>
+        </dl>
+      </div>
+    </article>
+
+    <!-- ============ 02 ============ -->
+    <article class="item">
+      <div class="frame">
+        <div class="poster p2">
+          <div class="dots"></div>
+          <div class="ring"></div>
+          <div class="big">18</div>
+          <div class="unit">学 科 域</div>
+          <div class="title">
+            <h2>题库不是配菜，<br><em>是主菜</em></h2>
+          </div>
+          <div class="stats">
+            <div class="stat"><b>135</b><span>多步大题</span></div>
+            <div class="stat"><b>14</b><span>攻坚题</span></div>
+            <div class="stat"><b>∞</b><span>错题重练</span></div>
+          </div>
+          <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+          <div class="topbar"><span><i class="dot"></i>题库覆盖</span><span class="r">MATH · PHYS · CHEM · BIO</span></div>
+          <div class="brandline">
+            <div class="bn">格物纪元</div>
+            <div class="bs">四国远征 · 纯离线单机</div>
+          </div>
+          <div class="grain"></div>
+          <div class="vignette"></div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <header><b>02 · 题库即主菜</b><span>DATA HERO</span></header>
+        <dl>
+          <dt>主题</dt><dd>回击「答题游戏题目都很水」的偏见：直接把学科域和题量摆在最中间。</dd>
+          <dt>配色</dt><dd>
+            <span class="chips">
+              <span class="chip"><i style="background:#0a1522"></i>#0A1522</span>
+              <span class="chip"><i style="background:#ffd76a"></i>#FFD76A 主数字</span>
+              <span class="chip"><i style="background:#4aa3d8"></i>#4AA3D8 数据</span>
+            </span></dd>
+          <dt>布局</dt><dd>正中央 340px 金色巨字「18」压在同心雷达环上，下方一行标题，底部三栏数据（等宽字 + 青色上边线）；整体严格居中对称。</dd>
+          <dt>文案</dt><dd>主：题库不是配菜，是主菜　／　数据：18 学科域 · 135 多步大题 · 14 攻坚题 · 错题无限重练</dd>
+          <dt>图形</dt><dd>三层同心环（实线 / 虚线 / 暗金）、青色点阵（中心亮四周散）、数据分隔线、等宽数字。</dd>
+        </dl>
+      </div>
+    </article>
+
+    <!-- ============ 03 ============ -->
+    <article class="item">
+      <div class="frame">
+        <div class="poster p3">
+          <div class="glow"></div>
+          <div class="device">
+            <div class="dev-top"><span>物资箱 · 常规</span><span>第 4 区</span></div>
+            <div class="qv">函数 <b>f(x) = 2^x + x − 4</b> 的零点所在的区间是</div>
+            <div class="opt"><i>A</i>（1, 2）</div>
+            <div class="opt"><i>B</i>（3, 4）</div>
+            <div class="opt ok"><i>C</i>（0, 1）</div>
+            <div class="opt"><i>D</i>（2, 3）</div>
+            <div class="verdict">✓ 答对！箱盖弹开了</div>
+            <div class="cta">搜刮完毕 →</div>
+          </div>
+          <div class="arrow">← 真实对局界面</div>
+          <div class="topbar"><span><i class="dot"></i>实机画面</span><span class="r">960 × 540</span></div>
+          <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+          <div class="title">
+            <h2>先解题，<em>再搜刮</em></h2>
+            <p>题面、选项、判定，全在同一张卡上完成。</p>
+          </div>
+          <div class="brandline">
+            <div class="bn">格物纪元</div>
+            <div class="bs">四国远征 · 纯离线单机</div>
+          </div>
+          <div class="grain"></div>
+          <div class="vignette"></div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <header><b>03 · 实机界面</b><span>UI PROOF</span></header>
+        <dl>
+          <dt>主题</dt><dd>用真实对局截图建立信任：不是概念图，点开就是这样。</dd>
+          <dt>配色</dt><dd>
+            <span class="chips">
+              <span class="chip"><i style="background:#0d1d2f"></i>#0D1D2F</span>
+              <span class="chip"><i style="background:#e8eef8"></i>#E8EEF8 题面</span>
+              <span class="chip"><i style="background:#3fcf8e"></i>#3FCF8E 答对</span>
+              <span class="chip"><i style="background:#ffd76a"></i>#FFD76A 主按钮</span>
+            </span></dd>
+          <dt>布局</dt><dd>手机设备框倾斜 -5° 居中，左侧小字标注「真实对局界面」并用箭头指向设备；底部居中两行标题。设备框带外发光与金色细描边。</dd>
+          <dt>文案</dt><dd>主：先解题，再搜刮　／　副：题面、选项、判定，全在同一张卡上完成。</dd>
+          <dt>图形</dt><dd>设备 mockup（圆角 54px、边框 10px）、答题卡（题面 + 四选项 + 答对态 + 金色 CTA）、背景金色径向光晕。</dd>
+        </dl>
+      </div>
+    </article>
+
+    <!-- ============ 04 ============ -->
+    <article class="item">
+      <div class="frame">
+        <div class="poster p4">
+          <div class="hazard"></div>
+          <div class="topbar"><span><i class="dot"></i>跑刀模式</span><span class="r">装备价值 · 0</span></div>
+          <div class="slab"></div>
+          <div class="knife">跑刀<em>进图</em></div>
+          <div class="slab2"></div>
+          <div class="sub"><p>免票进场，<b>死在里面什么都带不回</b></p></div>
+          <div class="rules">
+            <div class="rule"><s>×</s><span>没有保底，装备全损</span></div>
+            <div class="rule"><s>×</s><span>战利品按 8 折入库</span></div>
+            <div class="rule win"><s>✓</s><span>撤出来，这一趟就是纯赚</span></div>
+          </div>
+          <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+          <div class="brandline">
+            <div class="bn">格物纪元</div>
+            <div class="bs">四国远征 · 纯离线单机</div>
+          </div>
+          <div class="grain"></div>
+          <div class="vignette"></div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <header><b>04 · 跑刀进图</b><span>RISK / REWARD</span></header>
+        <dl>
+          <dt>主题</dt><dd>讲清风险与收益：免票进场，但死了什么都带不回。给硬核玩家一个「我懂」的瞬间。</dd>
+          <dt>配色</dt><dd>
+            <span class="chips">
+              <span class="chip"><i style="background:#0a0d12"></i>#0A0D12</span>
+              <span class="chip"><i style="background:#7d1524"></i>#7D1524</span>
+              <span class="chip"><i style="background:#ff4d5e"></i>#FF4D5E</span>
+              <span class="chip"><i style="background:#ffd76a"></i>#FFD76A 收益</span>
+            </span></dd>
+          <dt>布局</dt><dd>整版 -4° 斜切的暗红条压住画面中段，白色巨字压在条上；下方 +2.4° 反向微斜的说明条，形成对冲；底部三条规则竖排。</dd>
+          <dt>文案</dt><dd>主：跑刀进图　／　副：免票进场，死在里面什么都带不回　／　规则三条</dd>
+          <dt>图形</dt><dd>45° 警示斜纹（低透明度铺底）、双斜切色块、红/金双色规则标记、四角折线。</dd>
+        </dl>
+      </div>
+    </article>
+
+  </div>
+
+  <footer>
+    <p>格物纪元 · 四国远征 — 系列宣传海报 · 1080×1920 · 与游戏内 HUD 同一套配色与描边语言</p>
+    <p>配套物料：<code>宣传物料/粒子宣传页.html</code>（动态版，可用于录屏）；竖屏/横屏商店截图见 <code>minitool/store/</code>。</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  // 海报按 1080×1920 绘制，等比缩放到容器宽度；窗口变化时重算
+  var posters = document.querySelectorAll('.poster');
+  function fit(){
+    document.querySelectorAll('.frame').forEach(function(frame, i){
+      var p = frame.querySelector('.poster');
+      if (!p) return;
+      var s = frame.clientWidth / 1080;
+      p.style.transform = 'scale(' + s + ')';
+    });
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', fit);
+  fit();
+  // 字体加载完再量一次，避免首帧按 fallback 字号缩放
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+})();
+</script>
+</body>
+</html>

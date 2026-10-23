@@ -25,6 +25,7 @@ import build_minitool as bm  # noqa: E402
 ROOT = bm.ROOT
 DIST = os.path.join(ROOT, "minitool", "dist-landscape")
 OUT_DIR = os.path.join(ROOT, "抖音上传准备材料")
+OUT_DIR_XHS = os.path.join(ROOT, "minitool")
 
 TARGET = b"(orientation:landscape) and (max-height:560px)"
 REPLACED = b"(orientation:landscape)"
@@ -35,7 +36,9 @@ ENHANCE = """<style id="landscape-pack">
    2. 宽屏容器（1280 及以上）把面板放宽，别让内容缩在中间一窄条 */
 @media (orientation:landscape){
   .news-card{width:min(1180px,100%)}
-  .panel{max-width:min(1180px,100%)}
+  /* 只放开 max-width 不够：面板自身是 width:min(560px,…)，上限再大也不会变宽。
+     宽屏横屏下显式给宽度，题面与选项才真正摊开；窄横屏由 min() 收回到 96%。 */
+  .panel{width:min(1000px,96%);max-width:min(1180px,100%)}
   #modal{padding-left:max(12px,var(--safeL));padding-right:max(12px,var(--safeR))}
   .menu-list{grid-template-columns:1fr 1fr}
 }
@@ -75,16 +78,24 @@ def main():
         print("  已跳过打包")
         return
 
-    pkg = os.path.join(OUT_DIR, "数境-横屏特供-v%s.zip" % ver)
-    if os.path.exists(pkg):
-        os.remove(pkg)
-    with zipfile.ZipFile(pkg, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-        for root, _d, fs in os.walk(DIST):
-            for f in sorted(fs):
-                full = os.path.join(root, f)
-                z.write(full, os.path.relpath(full, DIST).replace("\\", "/"))
+    # 同一份产物打两个包：抖音沿用旧名，小红书用带平台前缀的名字，避免上传时拿错
+    targets = [
+        (OUT_DIR, "数境-横屏特供-v%s.zip" % ver),
+        (OUT_DIR_XHS, "shujing-minitool-landscape-v%s.zip" % ver),
+    ]
+    for out_dir, name in targets:
+        os.makedirs(out_dir, exist_ok=True)
+        pkg = os.path.join(out_dir, name)
+        if os.path.exists(pkg):
+            os.remove(pkg)
+        with zipfile.ZipFile(pkg, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+            for root, _d, fs in os.walk(DIST):
+                for f in sorted(fs):
+                    full = os.path.join(root, f)
+                    z.write(full, os.path.relpath(full, DIST).replace("\\", "/"))
+        print("  上传包 %-42s %.2f MB" % (os.path.relpath(pkg, ROOT),
+                                          os.path.getsize(pkg) / 1048576))
 
-    print("  上传包 %s（%.2f MB）" % (os.path.basename(pkg), os.path.getsize(pkg) / 1048576))
     print("  构建时间 %s" % built_at)
 
 
