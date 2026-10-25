@@ -56,18 +56,8 @@ function selfTest(n){
   return bad;
 }
 if(/[?&]selftest=1/.test(location.search))setTimeout(()=>selfTest(800),500);
-
-/* 自动存档：每 5 秒 + 切到后台 + 关页面时各存一次 */
-setInterval(save,5000);
-const autoSave=()=>{if(!wiping)save();};
-window.addEventListener('pagehide',autoSave);
-window.addEventListener('beforeunload',autoSave);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autoSave();});
-
-/* 玩过但本机存档不见了 → 提醒可以用存档码恢复 */
-try{
-  if(localStorage.getItem(curKey+'_intro')&&!localStorage.getItem(curKey))
-    setTimeout(()=>toast('本机存档不见了，可用存档码恢复 💾'),2800);
-}catch(e){}
+/* ⚠️ 自动存档心跳（setInterval(save) / pagehide / visibilitychange）不在这里 ——
+   它们是生产逻辑，以前藏在这个文件里差点被当调试代码清掉。
+   4.1.1 起统一放在末尾的 80_boot.js（启动执行点），跟着 startGame 一起注册。 */
 
 

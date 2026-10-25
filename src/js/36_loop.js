@@ -83,7 +83,16 @@ function resize(){
     }
   }catch(e){}
 }
-window.addEventListener('resize',resize);
+/* resize 节流（4.1.1）：移动端地址栏伸缩 / 软键盘弹出会连发 resize，
+   每发都整块重建画布后备存储（cv.width 赋值 = 清屏 + 重分配）。
+   第一发立即响应保手感，连发期间合并成 200ms 一次的收尾调用；
+   真旋转屏幕另有 orientationchange 的 250ms 定档调用兜底。 */
+let lastResizeAt=0,resizeTimer=0;
+window.addEventListener('resize',()=>{
+  const now=performance.now();
+  if(now-lastResizeAt>250){lastResizeAt=now;resize();return;}
+  if(!resizeTimer)resizeTimer=setTimeout(()=>{resizeTimer=0;lastResizeAt=performance.now();resize();},200);
+});
 window.addEventListener('orientationchange',()=>setTimeout(resize,250));
 
 function walkable(x,y){

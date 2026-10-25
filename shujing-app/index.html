@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>数境</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.1.0 · 2026-10-25 17:50 · 源码摘要 a1ed5469 · 71 个模块 -->
+<!-- build: v4.1.0 · 2026-10-25 22:51 · 源码摘要 826042af · 72 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -97,6 +97,32 @@
    地址栏收起时不会把底部控件顶出可视区 */
 @supports (height:100dvh){
   :root{--vmin:min(100vw,100dvh);--vmax:max(100vw,100dvh)}
+}
+/* ============ 兼容回退：不支持 clamp()/min() 的老 WebView（4.1.1）============
+   声明基线是 Chrome 61（Android 8.1 WebView），而 :root 那批尺寸全靠
+   clamp()/min() 撑着（Chrome 79+ 才有）。不能用"先写 px 再写 clamp"的
+   层叠回退 —— 自定义属性在解析期几乎接受任何 token，clamp 那条照样
+   赢得级联，只是取值时才失效，px 那条永远轮不上。
+   所以用 @supports not 整块切换：不认 clamp 的浏览器生效，取各档的
+   "手机中档值"（就是 :root 注释里那列）；认 clamp 的看不到这个块。
+   （--vmin 本体是 min()，老浏览器里同样失效 —— 这批 px 回退不引用它，
+   其余 calc(var(--vmin)…) 的零散用法不在基线承诺内，随它去。） */
+@supports not (width:clamp(1px,1vw,2px)){
+  :root{
+    --fs-2xs:11px;
+    --fs-xs:12px;
+    --fs-sm:13.5px;
+    --fs-md:15.5px;
+    --fs-lg:17.5px;
+    --fs-xl:20px;
+    --fs-2xl:23px;
+    --fs-3xl:26.5px;
+    --gap:6px;
+    --pad:8px;
+    --r:14px;
+    --stick:132px;
+    --act:106px;
+  }
 }
 
 /* ============ 压在地图上的毛玻璃：一律不用（4.0.17） ============
@@ -263,6 +289,10 @@ body.upbar-on #modal{top:var(--upH)}
 .btn:active{transform:scale(.96);filter:brightness(.96);
   box-shadow:var(--gb-press-lift),var(--gb-hair)}
 .btn:disabled{opacity:.4}
+/* 键盘导航的焦点圈（4.1.1 a11y）：只认 :focus-visible —— 鼠标 / 手指点按不画圈，
+   Tab / 方向键导航时才出现。面板打开期间 Tab 已放行（见 35_input.js）。 */
+.btn:focus-visible,.fitbtn:focus-visible,.menu-li:focus-visible{
+  outline:2px solid #ffd76a;outline-offset:2px}
 /* 图标按钮：只有 emoji/符号，没有文字 */
 .btn.ico{padding:calc(var(--pad) * .9);justify-content:center;aspect-ratio:1}
 /* 顶栏的按钮压在地图上：换深蓝玻璃，浅色字才立得住。
@@ -1714,7 +1744,7 @@ margin-top:8px;padding:5px 0}
   <div id="pcHint"></div>
   <button id="actBtn">互动</button>
   <div id="actHint"></div>
-  <div id="toast"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
 
   <div id="modal"><div class="panel" id="panel"></div><div id="scrollTip">↓ 上下滑动看更多</div></div>
 
@@ -12791,12 +12821,14 @@ function release(){
 function isUI(target){
   return !!(target&&target.closest&&target.closest('#topbar,#actBtn,#modal,#quest'));
 }
-function down(x,y,target){
+function down(x,y,target,id){
   audioKick();
-  if(isUI(target))return;
+  /* 已有活动指针时直接忽略：小孩抱平板时虎口/拇指常搭在屏幕边缘，
+     第二个触点会把摇杆整个吸走（4.1.1 修）。摇杆只认建杆的那根手指。 */
+  if(movePointer!=null||isUI(target))return;
   /* 记下按下的起点：抬手时用它区分「拖动了」还是「只点了一下」 */
   downPt={x:x,y:y,t:performance.now(),moved:0};
-  movePointer='p';
+  movePointer=(id==null?'m':id);
   stickEl.classList.add('active');
   stickMetrics();
   stickTo(x-STICK_HALF,y-STICK_HALF);
@@ -12804,7 +12836,7 @@ function down(x,y,target){
   paintKnob(0,0);
 }
 function move(x,y){
-  if(!movePointer)return;
+  if(movePointer==null)return;
   if(downPt)downPt.moved=Math.max(downPt.moved,Math.hypot(x-downPt.x,y-downPt.y));
   paintKnob(x-cx0,y-cy0);
 }
@@ -12818,13 +12850,14 @@ function tapToWalk(){
   setGoTarget(p.x,p.y);
 }
 
-/* --- Pointer Events（现代浏览器） --- */
+/* --- Pointer Events（现代浏览器） ---
+   每个回调都按 e.pointerId 过滤：只有建杆那根指针能推动 / 松开摇杆 */
 if(window.PointerEvent){
-  appEl.addEventListener('pointerdown',e=>{ if(isUI(e.target))return; e.preventDefault(); down(e.clientX,e.clientY,e.target); },{passive:false});
-  appEl.addEventListener('pointermove',e=>{ if(!movePointer)return; e.preventDefault(); move(e.clientX,e.clientY); },{passive:false});
-  appEl.addEventListener('pointerup',e=>{ if(movePointer){tapToWalk();release();} });
-  appEl.addEventListener('pointercancel',release);
-  appEl.addEventListener('pointerleave',e=>{ if(movePointer)release(); });
+  appEl.addEventListener('pointerdown',e=>{ if(isUI(e.target))return; e.preventDefault(); down(e.clientX,e.clientY,e.target,e.pointerId); },{passive:false});
+  appEl.addEventListener('pointermove',e=>{ if(movePointer==null||e.pointerId!==movePointer)return; e.preventDefault(); move(e.clientX,e.clientY); },{passive:false});
+  appEl.addEventListener('pointerup',e=>{ if(movePointer!=null&&e.pointerId===movePointer){tapToWalk();release();} });
+  appEl.addEventListener('pointercancel',e=>{ if(movePointer!=null&&(e.pointerId===undefined||e.pointerId===movePointer))release(); });
+  appEl.addEventListener('pointerleave',e=>{ if(movePointer!=null&&e.pointerId===movePointer)release(); });
   window.addEventListener('blur',release);
 }else{
   /* --- Touch Events 兜底（老 WebView） --- */
@@ -12832,28 +12865,42 @@ if(window.PointerEvent){
     if(isUI(e.target))return;
     e.preventDefault();
     const t=e.changedTouches[0];
-    down(t.clientX,t.clientY,e.target);
+    down(t.clientX,t.clientY,e.target,t.identifier);
   },{passive:false});
   appEl.addEventListener('touchmove',e=>{
     /* 面板里也要能划：以前只看 movePointer，但手指落在面板上时
        本就不该走摇杆逻辑；配合 isUI 一起挡，滚动才不会被 preventDefault 掐掉 */
     if(isUI(e.target))return;
-    if(!movePointer)return;
     e.preventDefault();
-    const t=e.changedTouches[0];
-    move(t.clientX,t.clientY);
+    if(movePointer==null)return;
+    /* 只响应建杆那根手指：别的手指在地图上滑不推杆（identifier 过滤） */
+    for(let i=0;i<e.changedTouches.length;i++){
+      const t=e.changedTouches[i];
+      if(t.identifier===movePointer){move(t.clientX,t.clientY);return;}
+    }
   },{passive:false});
   /* touchend 上的 preventDefault 会连 click 一起吃掉（面板按钮就点不动了），
-     面板内同样跳过 */
+     面板内同样跳过；只有建杆那根手指抬起才收杆 */
   appEl.addEventListener('touchend',e=>{
     if(isUI(e.target))return;
-    e.preventDefault();tapToWalk();release();
+    e.preventDefault();
+    if(movePointer==null)return;
+    for(let i=0;i<e.changedTouches.length;i++){
+      if(e.changedTouches[i].identifier===movePointer){tapToWalk();release();return;}
+    }
   },{passive:false});
-  appEl.addEventListener('touchcancel',release);
+  appEl.addEventListener('touchcancel',e=>{
+    if(movePointer==null)return;
+    for(let i=0;i<e.changedTouches.length;i++){
+      if(e.changedTouches[i].identifier===movePointer){release();return;}
+    }
+    /* 收不到匹配 id（个别老 WebView 的 cancel 不带）就按"触点全没了"兜底 */
+    if(!e.touches||e.touches.length===0)release();
+  });
   /* --- 鼠标（桌面调试） --- */
-  appEl.addEventListener('mousedown',e=>{ if(isUI(e.target))return; down(e.clientX,e.clientY,e.target); });
-  window.addEventListener('mousemove',e=>{ move(e.clientX,e.clientY); });
-  window.addEventListener('mouseup',release);
+  appEl.addEventListener('mousedown',e=>{ if(isUI(e.target))return; down(e.clientX,e.clientY,e.target,'m'); });
+  window.addEventListener('mousemove',e=>{ if(movePointer!=='m')return; move(e.clientX,e.clientY); });
+  window.addEventListener('mouseup',e=>{ if(movePointer==='m')release(); });
 }
 
 /* =========================================================
@@ -12949,7 +12996,11 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(e.ctrlKey||e.metaKey||e.altKey)return;   // 放行浏览器快捷键（Ctrl+C 等）
   keys[k]=true;
-  if(PC_KEYS.includes(k))e.preventDefault();
+  /* 面板打开时放行 Tab 与方向键（4.1.1 a11y）：
+     Tab 让焦点在面板的按钮之间走，方向键滚面板长文；
+     空格 / 回车仍拦 —— 它们要当「确认」用，放行会连着原生激活双击按钮。 */
+  const freeKeys=panelOpen()&&(k==='tab'||k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright');
+  if(PC_KEYS.includes(k)&&!freeKeys)e.preventDefault();
 
   /* Esc：关面板。答题 / 结算这些锁住的面板按 Esc 不动，
      免得手一抖把一道正在做的题关掉（关了就白做）。 */
@@ -13110,7 +13161,16 @@ function resize(){
     }
   }catch(e){}
 }
-window.addEventListener('resize',resize);
+/* resize 节流（4.1.1）：移动端地址栏伸缩 / 软键盘弹出会连发 resize，
+   每发都整块重建画布后备存储（cv.width 赋值 = 清屏 + 重分配）。
+   第一发立即响应保手感，连发期间合并成 200ms 一次的收尾调用；
+   真旋转屏幕另有 orientationchange 的 250ms 定档调用兜底。 */
+let lastResizeAt=0,resizeTimer=0;
+window.addEventListener('resize',()=>{
+  const now=performance.now();
+  if(now-lastResizeAt>250){lastResizeAt=now;resize();return;}
+  if(!resizeTimer)resizeTimer=setTimeout(()=>{resizeTimer=0;lastResizeAt=performance.now();resize();},200);
+});
 window.addEventListener('orientationchange',()=>setTimeout(resize,250));
 
 function walkable(x,y){
@@ -13644,6 +13704,10 @@ let introShowing=false;
 /* 面板换页计数器：每次 openPanel 都 +1。
    答题收尾时用它判断「onDone 有没有自己开新面板」，见 blazeAsk 的兜底 */
 let panelSeq=0;
+/* 面板焦点宿主（4.1.1 a11y）：从"关着"到"开着"的那次 openPanel 记下触发者，
+   关闭时把焦点还回去 —— 否则面板一关焦点掉到 body，键盘 / 读屏用户就迷路了。
+   面板内翻页（已开着又 open）不换触发者。 */
+let panelOpener=null;
 /* 第二个参数 lock：只有"正在作答的题"才传 1。
    锁以前是调用方直接写 panel.dataset.lock 的，写上去就得靠 closePanel 清；
    一旦那张面板被别的入口（☰ / 顶栏 / 交易站）覆盖、没走按钮，
@@ -13659,6 +13723,7 @@ function openPanel(html,lock){
      否则人留在已经结束的战场上（BZ.active 已经是 false），
      撤离点、箱子全点不动，只能靠 ☰ 找回基地 —— 看着就像"退出不了"。 */
   try{if(CUR===BLAZE&&BZ.phase==='over'&&!BZ._finishing)blazeToLobby(true);}catch(e){}
+  if(!modal.classList.contains('show'))panelOpener=document.activeElement;
   setH(panel, html);modal.classList.add('show');SFX.open();
   panel.dataset.lock=lock?'1':'';panelSeq++;
   /* 题图里带 data-fig 的是动图：面板一挂上就把它接进全局时间线 */
@@ -13666,6 +13731,14 @@ function openPanel(html,lock){
   /* 排版自适应：面板内容刚落地，按题干/选项的实际长度选字号与对齐 */
   try{fitPanelText(panel);}catch(e){}
   syncScrollTip();
+  /* 焦点交给面板主按钮：读屏 / 键盘用户由此跟着面板走。
+     preventScroll 别让焦点把面板滚得到处跳；没有主按钮的面板就保持原样。 */
+  try{
+    const pb=panelPrimary();
+    if(pb&&pb.focus){
+      try{pb.focus({preventScroll:true});}catch(e2){pb.focus();}
+    }
+  }catch(e){}
 }
 /* ---------- 自适应排版：按文本实际长度给题干 / 选项挑字号与对齐 ----------
    同一个 .qtext 样式喂所有题，是"一大坨字"的根源：
@@ -14081,6 +14154,11 @@ function closePanel(){
   modal.classList.remove('show');setH(panel, '');
   modal.classList.remove('can-scroll','scrolled');
   panel.dataset.lock='';
+  /* 焦点还给打开面板的人（见 panelOpener）：只在它还挂在文档里时还 */
+  try{
+    if(panelOpener&&panelOpener.focus&&document.contains(panelOpener))panelOpener.focus();
+  }catch(e){}
+  panelOpener=null;
   /* intro 标记不在这里清：交给 openPanel 处理，
      这样"intro 被别的入口顶掉"也能记成已读，不会反复弹。 */
 }
@@ -19971,7 +20049,10 @@ function epicIntroHtml(){
 }
 
 /* =========================================================
-   启动
+   启动（定义层）
+   —— startGame() 等 boot 函数只在这里**定义**，执行统一在末尾的
+      80_boot.js：执行顺序 = 文件顺序，不再靠函数提升"倒着"调
+      后置模块（69/70/80…）里的函数。build.py 有断言把这条焊死。
    ========================================================= */
 
 /* 【4.0.22】默认进场改成**烽火**（原来一律进闯关）。
@@ -20031,7 +20112,6 @@ function startGame(){
     if(seen)setTimeout(()=>{if(!panelOpen())showDrill();},600);
   }
 }
-startGame();
 
 /* =========================================================
    活动公告（173.2）
@@ -20258,9 +20338,6 @@ function reviewBoot(){
   }
   if(typeof reviewGate==='function')reviewGate();
 }
-newsBoot();
-maybeIntro(700);
-setTimeout(reviewBoot,2400);
 
 /* =========================================================
    题库自检：地址栏加 ?selftest=1 打开本页，控制台会给出报告
@@ -20320,19 +20397,9 @@ function selfTest(n){
   return bad;
 }
 if(/[?&]selftest=1/.test(location.search))setTimeout(()=>selfTest(800),500);
-
-/* 自动存档：每 5 秒 + 切到后台 + 关页面时各存一次 */
-setInterval(save,5000);
-const autoSave=()=>{if(!wiping)save();};
-window.addEventListener('pagehide',autoSave);
-window.addEventListener('beforeunload',autoSave);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autoSave();});
-
-/* 玩过但本机存档不见了 → 提醒可以用存档码恢复 */
-try{
-  if(localStorage.getItem(curKey+'_intro')&&!localStorage.getItem(curKey))
-    setTimeout(()=>toast('本机存档不见了，可用存档码恢复 💾'),2800);
-}catch(e){}
+/* ⚠️ 自动存档心跳（setInterval(save) / pagehide / visibilitychange）不在这里 ——
+   它们是生产逻辑，以前藏在这个文件里差点被当调试代码清掉。
+   4.1.1 起统一放在末尾的 80_boot.js（启动执行点），跟着 startGame 一起注册。 */
 
 
 /* =========================================================
@@ -20831,8 +20898,11 @@ function spotNameOf(s){
   if(nb)nb.addEventListener('click',openNat);
 })();
 
-/* ---------------- 启动：按存档所在的国度重建地图 ---------------- */
-(function(){
+/* ---------------- 启动：按存档所在的国度重建地图 ----------------
+   以前是顶层 IIFE，靠"排在 55 的 startGame() 之后"才不踩空 —— CUR 已被
+   切走就静默返回，等于把一条关键初始化路径藏在求值顺序里。
+   现在只定义，由 80_boot.js 在 startGame() 之后显式调用（ADV 开局时才干活）。 */
+function advNationBoot(){
   if(CUR!==ADV)return;
   useNation(state.nation||'math');
   healState();
@@ -20841,7 +20911,7 @@ function spotNameOf(s){
   cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
   cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));
   updateHUD();
-})();
+}
 
 /* =========================================================
    🔥 烽火地带 · 实现
@@ -25052,7 +25122,14 @@ function guideCandidates(){
 }
 
 /* =========================================================
-   🔥 烽火地带 · 收尾：辅助函数与其余覆盖
+   🔥 烽火地带 · 收尾 + ☰ 菜单 / 存档面板 / 战术地图
+   ---------------------------------------------------------
+   名字说明：本文件 4.1.1 前叫 70_blaze_overrides.js，那时真有"同名覆盖"
+   （showMenu / maybeIntro 都有过第二份，靠加载顺序盖掉前一份——都出过事故）。
+   覆盖层后来清干净了（tools/deadcode.py 的同名检查守着，基线里 collisions=0），
+   名字随之对齐内容：这里现在是定义，不是覆盖。
+   全项目仅剩的"前插"监听（捕获阶段拦 regionChip 开烽火大厅）
+   登记在 72_cloud_save.js 的文件头。
    ========================================================= */
 
 /* =========================================================
@@ -26619,6 +26696,44 @@ fpsBadgeApply();
       '答题反馈 '+(window.__ansGap==null?'—':window.__ansGap+'ms');
   },500);
 })();
+/* =========================================================
+   启动执行点（唯一的"求值期执行"模块 · 4.1.1）
+   ---------------------------------------------------------
+   在它之前的 74 个模块只负责定义（函数声明提升 + 顶层常量），
+   真正的启动动作全部集中在这里、按固定顺序跑一遍：
+
+     startGame()      世界选择 / 读档 / 首屏渲染（定义在 55_boot_news.js）
+     advNationBoot()  ADV 开局按存档里的国度重建地图（定义在 57_multination.js；
+                      以前是个求值期 IIFE，全靠"排在 startGame 之后"才不踩空）
+     newsBoot()       公告绑定 + 未读则排入队列（定义在 55_boot_news.js）
+     maybeIntro(700)  首访说明（定义在 55_boot_news.js）
+     自动存档注册      每 5 秒心跳 + pagehide/beforeunload/visibilitychange 三路兜底
+                      （以前藏在 56_selftest.js 里，差点被当调试代码清掉）
+     存档丢失提示      玩过但本机存档没了 → 提醒可用存档码恢复
+
+   ⚠️ 本文件必须是最后一个 JS 模块 —— build.py 的 boot_last_check() 断言这条。
+      往后追加新模块时，启动语句一律写进这里，别在别处再开"执行"的口子。
+   ========================================================= */
+startGame();
+advNationBoot();
+newsBoot();
+maybeIntro(700);
+
+/* 自动存档：每 5 秒 + 切到后台 + 关页面时各存一次。
+   cloudBoot（72_cloud_save.js）已把 save() 包了一层脏标记，
+   这里注册的心跳拿到的就是包过装的版本。 */
+setInterval(save,5000);
+const autoSave=()=>{if(!wiping)save();};
+window.addEventListener('pagehide',autoSave);
+window.addEventListener('beforeunload',autoSave);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autoSave();});
+
+/* 玩过但本机存档不见了 → 提醒可以用存档码恢复。
+   startGame() 已把 curKey 切到本局世界，这里读到的是"当前世界"的键。 */
+try{
+  if(localStorage.getItem(curKey+'_intro')&&!localStorage.getItem(curKey))
+    setTimeout(()=>toast('本机存档不见了，可用存档码恢复 💾'),2800);
+}catch(e){}
 </script>
 </body>
 </html>

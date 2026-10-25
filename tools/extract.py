@@ -2,9 +2,15 @@
 """一次性抽取：把单文件 index.html 按 manifest 切成 src/ 下的模块。
 
 特性：
-  · 逐字节无损 —— 按 \r\n 切行，拼回来必须与原文 sha256 完全一致，否则报错退出。
+  · 逐字节无损 —— 按 \\r\\n 切行，拼回来必须与原文 sha256 完全一致，否则报错退出。
   · 幂等可重跑 —— 直接覆盖 src/ 下的同名文件。
   · 首次运行会把当前发布文件原样备份到 BASELINE。
+
+⚠️ 行号只对 BASELINE 那份快照（2026-10-13 拆分时刻）有效：
+  manifest.py 里的 start/end 行号自拆分当日起就冻结了（build.py 不读它们），
+  而 src/ 每周都在改。本脚本拒绝在「PUBLISH ≠ 基线」时切片 ——
+  否则会拿过期行号去切新文件，"无损校验"还给它亮假绿灯。
+  要重新拆分：把目标文件复制到 backup/、改 manifest.py 的 BASELINE 再跑。
 
 用法：python tools/extract.py
 """
@@ -28,8 +34,15 @@ def main():
     src_path = os.path.join(ROOT, PUBLISH)
     raw = open(src_path, "rb").read()
 
-    # 1. 备份基线（只在不存在时创建，避免覆盖真正的原始基线）
+    # 0. 基线一致性闸：行号只对基线快照有效，PUBLISH 已被构建刷新过就拒绝切片
     base_path = os.path.join(ROOT, BASELINE)
+    if os.path.exists(base_path) and sha(raw) != sha(open(base_path, "rb").read()):
+        raise SystemExit(
+            "%s 与基线 %s 内容不一致 —— manifest 里的行号只对基线快照有效，\n"
+            "  拿它切当前发布会得到错误的片段（无损校验会照常通过，假绿灯）。\n"
+            "  要重新拆分：先把目标文件备份到 backup/，再改 manifest.py 的 BASELINE。" % (PUBLISH, BASELINE))
+
+    # 1. 备份基线（只在不存在时创建，避免覆盖真正的原始基线）
     if not os.path.exists(base_path):
         os.makedirs(os.path.dirname(base_path), exist_ok=True)
         shutil.copy2(src_path, base_path)

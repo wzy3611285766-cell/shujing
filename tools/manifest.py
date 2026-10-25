@@ -2,7 +2,17 @@
 """拆分清单：把单文件 index.html 切成 src/ 下的模块。
 
 每项 = (输出路径, 起始行, 结束行, 说明)，行号 1-based、闭区间、按顺序拼接。
-前提：所有片段最终按此顺序拼回同一个 <style> / <script>，语义完全不变。
+
+⚠️ 行号列仅是 2026-10-13 拆分时刻的历史记录 —— build.py 只读路径列，
+   不读行号；extract.py 也只在「PUBLISH == 基线」时才按它切片。
+
+维护约定（写在这里免得口口相传）：
+  · 编号 = 拼接顺序。新文件插到功能归属的那一层末尾；41-43 是已退役的空洞，不回填。
+  · 「启动执行点」（含顶层 startGame() 调用的模块）必须是最后一个 JS 模块 ——
+    build.py 的 boot_last_check() 会断言这一条。前面所有模块只定义、不求值。
+  · 新增全局一律带模块前缀（BLAZE_ / DRILL_ / WB_ 已是先例），
+    单字母短名（F/T/S/G/P、ME/NE/… 是历史遗留）禁止再新增 ——
+    顶层 const 撞名是全页 SyntaxError，function 撞名是无声覆盖。
 """
 
 BASELINE = "backup/数境169_拆分前基线_2026-10-13.html"
@@ -84,13 +94,15 @@ PIECES = [
     ("src/js/67_market.js",            25347, 25458, "交易站"),
     ("src/js/68_quartermaster.js",     25459, 25923, "特勤处"),
     ("src/js/69_blaze_toggle.js",      25924, 26085, "进入 / 退出烽火世界"),
-    ("src/js/70_blaze_overrides.js",   26086, 26468, "烽火收尾覆盖 + ☰ 菜单 / 存档面板覆盖"),
+    ("src/js/70_blaze_menu.js",        26086, 26468, "烽火收尾 + ☰ 菜单 / 存档面板 / 战术地图（4.1.1 前名 blaze_overrides）"),
     # ---------- JS：思路灵 / 云存档 ----------
     ("src/js/71_lings.js",             26469, 26747, "思路灵（3.3.0）· 心声条 / 图鉴 / 觉醒"),
     ("src/js/72_cloud_save.js",        26748, 27251, "顶栏覆盖 + 云存档 · 账号与跨设备同步"),
     # ---------- JS：后加的模块（行号区间只对首次抽取有意义，新增模块留空） ----------
     ("src/js/73_version.js",            None,  None, "版本自检 · 更新推送（2026-10-13 新增）"),
     ("src/js/74_dbg.js",                None,  None, "调试角标 ?dbg=1（2026-10-14 新增）"),
+    # ---------- JS：启动执行点（必须是最后一个 JS 模块，见 boot_last_check） ----------
+    ("src/js/80_boot.js",               None,  None, "启动执行点：startGame/advNationBoot/newsBoot/maybeIntro/reviewBoot + 自动存档注册（4.1.1 新增）"),
     # ---------- HTML 收尾 ----------
     ("src/99_tail.html",               27252, 27254, "</script> / </body> / </html>"),
 ]

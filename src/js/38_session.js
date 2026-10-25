@@ -8,6 +8,10 @@ let introShowing=false;
 /* 面板换页计数器：每次 openPanel 都 +1。
    答题收尾时用它判断「onDone 有没有自己开新面板」，见 blazeAsk 的兜底 */
 let panelSeq=0;
+/* 面板焦点宿主（4.1.1 a11y）：从"关着"到"开着"的那次 openPanel 记下触发者，
+   关闭时把焦点还回去 —— 否则面板一关焦点掉到 body，键盘 / 读屏用户就迷路了。
+   面板内翻页（已开着又 open）不换触发者。 */
+let panelOpener=null;
 /* 第二个参数 lock：只有"正在作答的题"才传 1。
    锁以前是调用方直接写 panel.dataset.lock 的，写上去就得靠 closePanel 清；
    一旦那张面板被别的入口（☰ / 顶栏 / 交易站）覆盖、没走按钮，
@@ -23,6 +27,7 @@ function openPanel(html,lock){
      否则人留在已经结束的战场上（BZ.active 已经是 false），
      撤离点、箱子全点不动，只能靠 ☰ 找回基地 —— 看着就像"退出不了"。 */
   try{if(CUR===BLAZE&&BZ.phase==='over'&&!BZ._finishing)blazeToLobby(true);}catch(e){}
+  if(!modal.classList.contains('show'))panelOpener=document.activeElement;
   setH(panel, html);modal.classList.add('show');SFX.open();
   panel.dataset.lock=lock?'1':'';panelSeq++;
   /* 题图里带 data-fig 的是动图：面板一挂上就把它接进全局时间线 */
@@ -30,6 +35,14 @@ function openPanel(html,lock){
   /* 排版自适应：面板内容刚落地，按题干/选项的实际长度选字号与对齐 */
   try{fitPanelText(panel);}catch(e){}
   syncScrollTip();
+  /* 焦点交给面板主按钮：读屏 / 键盘用户由此跟着面板走。
+     preventScroll 别让焦点把面板滚得到处跳；没有主按钮的面板就保持原样。 */
+  try{
+    const pb=panelPrimary();
+    if(pb&&pb.focus){
+      try{pb.focus({preventScroll:true});}catch(e2){pb.focus();}
+    }
+  }catch(e){}
 }
 /* ---------- 自适应排版：按文本实际长度给题干 / 选项挑字号与对齐 ----------
    同一个 .qtext 样式喂所有题，是"一大坨字"的根源：
@@ -445,6 +458,11 @@ function closePanel(){
   modal.classList.remove('show');setH(panel, '');
   modal.classList.remove('can-scroll','scrolled');
   panel.dataset.lock='';
+  /* 焦点还给打开面板的人（见 panelOpener）：只在它还挂在文档里时还 */
+  try{
+    if(panelOpener&&panelOpener.focus&&document.contains(panelOpener))panelOpener.focus();
+  }catch(e){}
+  panelOpener=null;
   /* intro 标记不在这里清：交给 openPanel 处理，
      这样"intro 被别的入口顶掉"也能记成已读，不会反复弹。 */
 }

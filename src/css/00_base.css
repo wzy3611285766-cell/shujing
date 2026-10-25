@@ -85,6 +85,32 @@
 @supports (height:100dvh){
   :root{--vmin:min(100vw,100dvh);--vmax:max(100vw,100dvh)}
 }
+/* ============ 兼容回退：不支持 clamp()/min() 的老 WebView（4.1.1）============
+   声明基线是 Chrome 61（Android 8.1 WebView），而 :root 那批尺寸全靠
+   clamp()/min() 撑着（Chrome 79+ 才有）。不能用"先写 px 再写 clamp"的
+   层叠回退 —— 自定义属性在解析期几乎接受任何 token，clamp 那条照样
+   赢得级联，只是取值时才失效，px 那条永远轮不上。
+   所以用 @supports not 整块切换：不认 clamp 的浏览器生效，取各档的
+   "手机中档值"（就是 :root 注释里那列）；认 clamp 的看不到这个块。
+   （--vmin 本体是 min()，老浏览器里同样失效 —— 这批 px 回退不引用它，
+   其余 calc(var(--vmin)…) 的零散用法不在基线承诺内，随它去。） */
+@supports not (width:clamp(1px,1vw,2px)){
+  :root{
+    --fs-2xs:11px;
+    --fs-xs:12px;
+    --fs-sm:13.5px;
+    --fs-md:15.5px;
+    --fs-lg:17.5px;
+    --fs-xl:20px;
+    --fs-2xl:23px;
+    --fs-3xl:26.5px;
+    --gap:6px;
+    --pad:8px;
+    --r:14px;
+    --stick:132px;
+    --act:106px;
+  }
+}
 
 /* ============ 压在地图上的毛玻璃：一律不用（4.0.17） ============
    为什么：这层模糊的底是**每帧都在变**的地图 canvas，所以合成器每帧都得
@@ -250,6 +276,10 @@ body.upbar-on #modal{top:var(--upH)}
 .btn:active{transform:scale(.96);filter:brightness(.96);
   box-shadow:var(--gb-press-lift),var(--gb-hair)}
 .btn:disabled{opacity:.4}
+/* 键盘导航的焦点圈（4.1.1 a11y）：只认 :focus-visible —— 鼠标 / 手指点按不画圈，
+   Tab / 方向键导航时才出现。面板打开期间 Tab 已放行（见 35_input.js）。 */
+.btn:focus-visible,.fitbtn:focus-visible,.menu-li:focus-visible{
+  outline:2px solid #ffd76a;outline-offset:2px}
 /* 图标按钮：只有 emoji/符号，没有文字 */
 .btn.ico{padding:calc(var(--pad) * .9);justify-content:center;aspect-ratio:1}
 /* 顶栏的按钮压在地图上：换深蓝玻璃，浅色字才立得住。

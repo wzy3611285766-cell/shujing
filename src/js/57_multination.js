@@ -494,8 +494,11 @@ function spotNameOf(s){
   if(nb)nb.addEventListener('click',openNat);
 })();
 
-/* ---------------- 启动：按存档所在的国度重建地图 ---------------- */
-(function(){
+/* ---------------- 启动：按存档所在的国度重建地图 ----------------
+   以前是顶层 IIFE，靠"排在 55 的 startGame() 之后"才不踩空 —— CUR 已被
+   切走就静默返回，等于把一条关键初始化路径藏在求值顺序里。
+   现在只定义，由 80_boot.js 在 startGame() 之后显式调用（ADV 开局时才干活）。 */
+function advNationBoot(){
   if(CUR!==ADV)return;
   useNation(state.nation||'math');
   healState();
@@ -504,5 +507,5 @@ function spotNameOf(s){
   cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
   cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));
   updateHUD();
-})();
+}
 

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""一条命令的回归检查：构建 → 与基线比对 → 无头浏览器冒烟。
+"""一条命令的回归检查：构建 → 静态分析 → 基线比对 → 无头浏览器冒烟。
 
 用法：
-  python tools/check.py            日常必跑（差异只报告，不拦截）
-  python tools/check.py --strict   差异中出现"代码行"就失败（改动前后对拍用）
-  python tools/check.py --nosmoke  只做构建 + 基线比对（快）
+  python tools/check.py            日常必跑（基线差异只报告，不拦截）
+  python tools/check.py --strict   静态分析新问题、差异中出现"代码行"就失败（对拍用）
+  python tools/check.py --nosmoke  只做构建 + 静态分析 + 基线比对（快）
 
 「代码行」= 去掉整行注释、空行、行首尾空白之后仍然存在的行。
 注释与排版变动不算代码改动；反过来，任何真实逻辑改动都会被抓出来。
@@ -79,7 +79,21 @@ def main():
 
     print()
     print("=" * 72)
-    print("② 与拆分前基线比对（%s）" % BASELINE)
+    print("② 静态分析（同名覆盖 / 未引用函数 / 孤儿 CSS，按基线放行）")
+    print("=" * 72)
+    r = run([os.path.join(TOOLS, "deadcode.py"), "--check"])
+    if r.returncode != 0:
+        print("→ 静态分析发现基线外的问题：先确认是否有意为之，")
+        print("  有意就跑 python tools/deadcode.py --save 记进基线，再重跑本检查")
+        if strict:
+            return r.returncode
+        print("（非 --strict 模式：只报告，不拦截）")
+    else:
+        print("静态分析通过 ✅")
+
+    print()
+    print("=" * 72)
+    print("③ 与拆分前基线比对（%s）" % BASELINE)
     print("=" * 72)
     base_path = os.path.join(ROOT, BASELINE)
     pub_path = os.path.join(ROOT, "shujing-app/index.html")
@@ -113,18 +127,18 @@ def main():
         return 0
     print()
     print("=" * 72)
-    print("③ 无头浏览器冒烟（模块 %d 个）" % len(PIECES))
+    print("④ 无头浏览器冒烟（模块 %d 个）" % len(PIECES))
     print("=" * 72)
     rc = run([os.path.join(TOOLS, "smoke.py"), "--http"]).returncode
     if rc != 0:
         return rc
 
-    # ④ 汇报页的自查（存在就跑，查的是汇报 HTML，不是游戏本体）
+    # ⑤ 汇报页的自查（存在就跑，查的是汇报 HTML，不是游戏本体）
     imgcheck = os.path.join(ROOT, "汇报", "_imgcheck.py")
     if os.path.exists(imgcheck):
         print()
         print("=" * 72)
-        print("④ 汇报页自查（文字/图片是否都内联，无外链）")
+        print("⑤ 汇报页自查（文字/图片是否都内联，无外链）")
         print("=" * 72)
         run([imgcheck])
     return 0

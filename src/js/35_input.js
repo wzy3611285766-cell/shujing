@@ -63,12 +63,14 @@ function release(){
 function isUI(target){
   return !!(target&&target.closest&&target.closest('#topbar,#actBtn,#modal,#quest'));
 }
-function down(x,y,target){
+function down(x,y,target,id){
   audioKick();
-  if(isUI(target))return;
+  /* 已有活动指针时直接忽略：小孩抱平板时虎口/拇指常搭在屏幕边缘，
+     第二个触点会把摇杆整个吸走（4.1.1 修）。摇杆只认建杆的那根手指。 */
+  if(movePointer!=null||isUI(target))return;
   /* 记下按下的起点：抬手时用它区分「拖动了」还是「只点了一下」 */
   downPt={x:x,y:y,t:performance.now(),moved:0};
-  movePointer='p';
+  movePointer=(id==null?'m':id);
   stickEl.classList.add('active');
   stickMetrics();
   stickTo(x-STICK_HALF,y-STICK_HALF);
@@ -76,7 +78,7 @@ function down(x,y,target){
   paintKnob(0,0);
 }
 function move(x,y){
-  if(!movePointer)return;
+  if(movePointer==null)return;
   if(downPt)downPt.moved=Math.max(downPt.moved,Math.hypot(x-downPt.x,y-downPt.y));
   paintKnob(x-cx0,y-cy0);
 }
@@ -90,13 +92,14 @@ function tapToWalk(){
   setGoTarget(p.x,p.y);
 }
 
-/* --- Pointer Events（现代浏览器） --- */
+/* --- Pointer Events（现代浏览器） ---
+   每个回调都按 e.pointerId 过滤：只有建杆那根指针能推动 / 松开摇杆 */
 if(window.PointerEvent){
-  appEl.addEventListener('pointerdown',e=>{ if(isUI(e.target))return; e.preventDefault(); down(e.clientX,e.clientY,e.target); },{passive:false});
-  appEl.addEventListener('pointermove',e=>{ if(!movePointer)return; e.preventDefault(); move(e.clientX,e.clientY); },{passive:false});
-  appEl.addEventListener('pointerup',e=>{ if(movePointer){tapToWalk();release();} });
-  appEl.addEventListener('pointercancel',release);
-  appEl.addEventListener('pointerleave',e=>{ if(movePointer)release(); });
+  appEl.addEventListener('pointerdown',e=>{ if(isUI(e.target))return; e.preventDefault(); down(e.clientX,e.clientY,e.target,e.pointerId); },{passive:false});
+  appEl.addEventListener('pointermove',e=>{ if(movePointer==null||e.pointerId!==movePointer)return; e.preventDefault(); move(e.clientX,e.clientY); },{passive:false});
+  appEl.addEventListener('pointerup',e=>{ if(movePointer!=null&&e.pointerId===movePointer){tapToWalk();release();} });
+  appEl.addEventListener('pointercancel',e=>{ if(movePointer!=null&&(e.pointerId===undefined||e.pointerId===movePointer))release(); });
+  appEl.addEventListener('pointerleave',e=>{ if(movePointer!=null&&e.pointerId===movePointer)release(); });
   window.addEventListener('blur',release);
 }else{
   /* --- Touch Events 兜底（老 WebView） --- */
@@ -104,28 +107,42 @@ if(window.PointerEvent){
     if(isUI(e.target))return;
     e.preventDefault();
     const t=e.changedTouches[0];
-    down(t.clientX,t.clientY,e.target);
+    down(t.clientX,t.clientY,e.target,t.identifier);
   },{passive:false});
   appEl.addEventListener('touchmove',e=>{
     /* 面板里也要能划：以前只看 movePointer，但手指落在面板上时
        本就不该走摇杆逻辑；配合 isUI 一起挡，滚动才不会被 preventDefault 掐掉 */
     if(isUI(e.target))return;
-    if(!movePointer)return;
     e.preventDefault();
-    const t=e.changedTouches[0];
-    move(t.clientX,t.clientY);
+    if(movePointer==null)return;
+    /* 只响应建杆那根手指：别的手指在地图上滑不推杆（identifier 过滤） */
+    for(let i=0;i<e.changedTouches.length;i++){
+      const t=e.changedTouches[i];
+      if(t.identifier===movePointer){move(t.clientX,t.clientY);return;}
+    }
   },{passive:false});
   /* touchend 上的 preventDefault 会连 click 一起吃掉（面板按钮就点不动了），
-     面板内同样跳过 */
+     面板内同样跳过；只有建杆那根手指抬起才收杆 */
   appEl.addEventListener('touchend',e=>{
     if(isUI(e.target))return;
-    e.preventDefault();tapToWalk();release();
+    e.preventDefault();
+    if(movePointer==null)return;
+    for(let i=0;i<e.changedTouches.length;i++){
+      if(e.changedTouches[i].identifier===movePointer){tapToWalk();release();return;}
+    }
   },{passive:false});
-  appEl.addEventListener('touchcancel',release);
+  appEl.addEventListener('touchcancel',e=>{
+    if(movePointer==null)return;
+    for(let i=0;i<e.changedTouches.length;i++){
+      if(e.changedTouches[i].identifier===movePointer){release();return;}
+    }
+    /* 收不到匹配 id（个别老 WebView 的 cancel 不带）就按"触点全没了"兜底 */
+    if(!e.touches||e.touches.length===0)release();
+  });
   /* --- 鼠标（桌面调试） --- */
-  appEl.addEventListener('mousedown',e=>{ if(isUI(e.target))return; down(e.clientX,e.clientY,e.target); });
-  window.addEventListener('mousemove',e=>{ move(e.clientX,e.clientY); });
-  window.addEventListener('mouseup',release);
+  appEl.addEventListener('mousedown',e=>{ if(isUI(e.target))return; down(e.clientX,e.clientY,e.target,'m'); });
+  window.addEventListener('mousemove',e=>{ if(movePointer!=='m')return; move(e.clientX,e.clientY); });
+  window.addEventListener('mouseup',e=>{ if(movePointer==='m')release(); });
 }
 
 /* =========================================================
@@ -221,7 +238,11 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(e.ctrlKey||e.metaKey||e.altKey)return;   // 放行浏览器快捷键（Ctrl+C 等）
   keys[k]=true;
-  if(PC_KEYS.includes(k))e.preventDefault();
+  /* 面板打开时放行 Tab 与方向键（4.1.1 a11y）：
+     Tab 让焦点在面板的按钮之间走，方向键滚面板长文；
+     空格 / 回车仍拦 —— 它们要当「确认」用，放行会连着原生激活双击按钮。 */
+  const freeKeys=panelOpen()&&(k==='tab'||k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright');
+  if(PC_KEYS.includes(k)&&!freeKeys)e.preventDefault();
 
   /* Esc：关面板。答题 / 结算这些锁住的面板按 Esc 不动，
      免得手一抖把一道正在做的题关掉（关了就白做）。 */
