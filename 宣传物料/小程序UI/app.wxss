@@ -1,0 +1,102 @@
+/* =====================================================================
+   数境 · 夜航 —— 微信小程序三层玻璃拟态 UI（全局层 app.wxss）
+   来源：宣传物料/小程序UI提示词.md，令牌与规则逐条对应，颜色透明度未做发挥。
+
+   三层玻璃（每颗按键 / 卡片 = 三层叠加）：
+     ① 底面 face   —— 半透明渐变玻璃
+     ② 边缘 edge   —— 上亮下暗两道发丝线（模拟玻璃厚度）
+     ③ 高光 sheen  —— 自上而下衰减的镜面渐变
+   实现约束：镜面用【多背景叠加】（background-image 第一层在最上），
+   不用伪元素、不用负 z-index —— WebView 与 Skyline 两种渲染器都稳。
+   ===================================================================== */
+
+page {
+  /* —— 设计令牌 —— */
+  --gb-face: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.08));  /* ① 底面：浮层内白玻璃 */
+  --gb-face-deep: linear-gradient(180deg, rgba(24,46,74,.82), rgba(10,24,40,.72));  /* ① 底面·深蓝款：压在重绘画面上时用它（红线 1） */
+  --gb-edge-hi: inset 0 1rpx 0 rgba(255,255,255,.18);  /* ② 边缘：上缘受光亮线 */
+  --gb-edge-lo: inset 0 -1rpx 0 rgba(0,0,0,.34);       /* ② 边缘：下缘背光暗线 */
+  --gb-hair: 0 0 0 1rpx rgba(255,255,255,.10);         /* ② 边缘：外圈发丝线（1rpx，不用 2rpx） */
+  --gb-drop: 0 2rpx 4rpx rgba(0,0,0,.34), 0 16rpx 40rpx -20rpx rgba(0,0,0,.55);  /* 投影：贴地 + 悬浮两层 */
+  --gb-sheen: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.04) 42%, rgba(255,255,255,0) 62%);  /* ③ 镜面 */
+  --gb-press: inset 0 4rpx 12rpx rgba(0,0,0,.40);      /* 按压：内阴影顶替整套边缘 + 投影 */
+  --gold: #ffd76a;
+
+  /* 文字三档 + 状态色 */
+  --tx-1: #eaf4ff;   /* 主 */
+  --tx-2: #9cc0e0;   /* 次 */
+  --tx-3: #8fb4d6;   /* 弱 */
+  --tx-ok: rgba(52,199,123,1);
+  --tx-err: rgba(255,107,107,1);
+
+  /* 全局：去点击高亮、禁长按选中（输入框在下面单独放开） */
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+
+  background: #0d1b2a;   /* 夜航底色（真实项目里 UI 压在游戏地图 canvas 之上） */
+  color: var(--tx-1);
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+/* 输入框单独放开选中 */
+input, textarea { user-select: text; }
+
+/* =====================================================================
+   胶囊按钮 .btn —— 一律自绘 view + hover-class，不用原生 button
+   （原生 button 自带默认样式与 ::after 边框；实在要用先剥干净：
+     button::after { border: none; }）
+   ===================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  min-width: 208rpx;
+  height: 88rpx;
+  padding: 0 40rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #eaf4ff;
+  /* ③ 镜面 sheen 叠在 ① 玻璃底 face 之上、文字之下（多背景第一层在最上） */
+  background-image: var(--gb-sheen), var(--gb-face);
+  /* ② 边缘：上亮 + 下暗 + 外圈发丝，再加投影，一道 box-shadow 叠满 */
+  box-shadow: var(--gb-edge-hi), var(--gb-edge-lo), var(--gb-hair), var(--gb-drop);
+  transition: transform .12s ease-out, filter .15s, box-shadow .15s;
+}
+
+/* 按压态：WXML 里配 hover-class="pressed"，不用 :active（开发者工具里 :active 会粘滞） */
+.pressed {
+  transform: scale(.96);
+  filter: brightness(.96);
+  box-shadow: var(--gb-press), var(--gb-hair);
+}
+
+/* 禁用态 */
+.btn[disabled], .btn.is-off { opacity: .4; }
+
+/* 图标键：正方形、只有 emoji、无文字 */
+.btn--ico {
+  min-width: 0;
+  width: 88rpx;
+  height: 88rpx;
+  padding: 0;
+  font-size: 40rpx;
+}
+
+/* =====================================================================
+   金色主键 .btn-gold —— 每屏至多一颗
+   ① 底面换成金色双径向渐变（底部反光 + 左上高光塑金属感），③ sheen 仍叠最上，
+   亮金之上压深色文字。
+   ===================================================================== */
+.btn-gold {
+  color: #4a2f07;
+  font-size: 30rpx;
+  background-image: var(--gb-sheen),
+    radial-gradient(circle at 50% 116%, rgba(255,255,255,.30), transparent 60%),
+    radial-gradient(122% 122% at 30% 16%, #FFE39A 0%, #FFD76A 30%, #F5A623 62%, #B3651A 100%);
+  box-shadow: inset 0 1rpx 0 rgba(255,255,255,.42), 0 0 0 1rpx rgba(255,214,110,.42),
+    0 16rpx 44rpx -16rpx rgba(245,159,43,.55);
+}

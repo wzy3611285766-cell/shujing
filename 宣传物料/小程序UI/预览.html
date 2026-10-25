@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数境 · 夜航 —— 三层玻璃 UI 预览（预览专用，交付物是 app.wxss / page.wxss / 示例.wxml）</title>
+<style>
+  /* 预览专用：rpx 按 375 设计稿换算成 px（1rpx = 0.5px），令牌值与 WXSS 逐字一致 */
+
+  :root {
+    --gb-face: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.08));
+    --gb-face-deep: linear-gradient(180deg, rgba(24,46,74,.82), rgba(10,24,40,.72));
+    --gb-edge-hi: inset 0 .5px 0 rgba(255,255,255,.18);
+    --gb-edge-lo: inset 0 -.5px 0 rgba(0,0,0,.34);
+    --gb-hair: 0 0 0 .5px rgba(255,255,255,.10);
+    --gb-drop: 0 1px 2px rgba(0,0,0,.34), 0 8px 20px -10px rgba(0,0,0,.55);
+    --gb-sheen: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.04) 42%, rgba(255,255,255,0) 62%);
+    --gb-press: inset 0 2px 6px rgba(0,0,0,.40);
+    --gold: #ffd76a;
+    --tx-1: #eaf4ff; --tx-2: #9cc0e0; --tx-3: #8fb4d6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+  body {
+    background: #060b12;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 28px 16px 60px;
+  }
+  .cap { color: #4a6480; font-size: 12px; letter-spacing: .1em; }
+
+  /* —— 手机画框：模拟地图 canvas 在最底层 —— */
+  .phone {
+    position: relative;
+    width: 375px; height: 668px;
+    border-radius: 28px;
+    overflow: hidden;
+    background: #0d1b2a;                       /* 夜航底色 */
+    box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px -30px rgba(0,0,0,.9);
+  }
+  /* 地图占位（真实项目是持续重绘的 canvas 2d —— 压在其上的 HUD 全部禁 backdrop-filter） */
+  .map {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(90% 60% at 70% 12%, rgba(90,140,200,.20), transparent 60%),
+      radial-gradient(70% 50% at 15% 80%, rgba(40,90,150,.22), transparent 60%),
+      radial-gradient(120% 90% at 50% 0%, #16304f 0%, #0d1b2a 58%, #081420 100%);
+  }
+  .stars { position: absolute; inset: 0; pointer-events: none; }
+  .stars i {
+    position: absolute; width: 2px; height: 2px; border-radius: 50%;
+    background: #cfe4ff; opacity: .5;
+    box-shadow: 40px 60px 0 -0.4px #cfe4ff, 120px 30px 0 -0.6px #cfe4ff,
+      220px 90px 0 -0.2px #9cc0e0, 300px 40px 0 -0.5px #cfe4ff,
+      60px 200px 0 -0.6px #9cc0e0, 260px 260px 0 -0.3px #cfe4ff,
+      160px 320px 0 -0.6px #cfe4ff, 330px 380px 0 -0.4px #9cc0e0,
+      90px 470px 0 -0.5px #cfe4ff, 300px 560px 0 -0.6px #cfe4ff;
+  }
+
+  /* —— 顶栏 HUD —— */
+  .topbar {
+    position: absolute; top: 14px; left: 12px; right: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 28px; padding: 0 12px;
+    border-radius: 999px;
+    font-size: 11px; font-weight: 600; color: #9cc0e0;
+    background-image: var(--gb-sheen), var(--gb-face-deep);
+    box-shadow: var(--gb-edge-hi), var(--gb-hair), 0 1px 4px rgba(0,0,0,.30);
+  }
+  .chip .n { color: #eaf4ff; font-weight: 700; }
+
+  /* —— 按键 —— */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    min-width: 104px; height: 44px; padding: 0 20px;
+    border-radius: 999px;
+    font-size: 14px; font-weight: 600; color: #eaf4ff;
+    background-image: var(--gb-sheen), var(--gb-face);
+    box-shadow: var(--gb-edge-hi), var(--gb-edge-lo), var(--gb-hair), var(--gb-drop);
+    transition: transform .12s ease-out, filter .15s, box-shadow .15s;
+    cursor: pointer;
+  }
+  .btn:active, .chip:active {
+    transform: scale(.96); filter: brightness(.96);
+    box-shadow: var(--gb-press), var(--gb-hair);
+  }
+  .btn--ico { min-width: 0; width: 44px; height: 44px; padding: 0; font-size: 20px; margin-left: auto; }
+  .btn-gold {
+    color: #4a2f07; font-size: 15px;
+    background-image: var(--gb-sheen),
+      radial-gradient(circle at 50% 116%, rgba(255,255,255,.30), transparent 60%),
+      radial-gradient(122% 122% at 30% 16%, #FFE39A 0%, #FFD76A 30%, #F5A623 62%, #B3651A 100%);
+    box-shadow: inset 0 .5px 0 rgba(255,255,255,.42), 0 0 0 .5px rgba(255,214,110,.42),
+      0 8px 22px -8px rgba(245,159,43,.55);
+  }
+
+  /* —— 面板 —— */
+  .body-col { position: absolute; left: 12px; right: 12px; top: 72px; display: flex; flex-direction: column; gap: 12px; }
+  .panel {
+    border-radius: 12px; padding: 16px; color: #9cc0e0;
+    background-image: var(--gb-sheen), var(--gb-face-deep);
+    box-shadow: var(--gb-edge-hi), var(--gb-edge-lo), var(--gb-hair), var(--gb-drop);
+  }
+  .panel-t { font-size: 15px; font-weight: 700; color: #eaf4ff; margin-bottom: 4px; }
+  .panel-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+
+  /* —— 反馈状态玻璃 —— */
+  .glass-ok {
+    background-image: var(--gb-sheen), linear-gradient(180deg, rgba(52,199,123,.36), rgba(52,199,123,.22));
+    box-shadow: var(--gb-edge-hi), 0 0 0 .5px rgba(110,231,183,.42);
+  }
+  .glass-err {
+    background-image: var(--gb-sheen), linear-gradient(180deg, rgba(255,107,107,.32), rgba(255,107,107,.20));
+    box-shadow: var(--gb-edge-hi), 0 0 0 .5px rgba(255,138,128,.42);
+  }
+  .fb-row { display: flex; gap: 10px; }
+  .fb-row .btn { flex: 1; min-width: 0; }
+
+  /* —— 底部操作坞 —— */
+  .dock { position: absolute; left: 12px; right: 12px; bottom: 22px; display: flex; justify-content: center; }
+
+  /* —— 全屏浮层：全站唯一允许 backdrop-filter 的地方 —— */
+  .overlay {
+    position: absolute; inset: 0; z-index: 9;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(6,16,28,.45);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+  .overlay.on { display: flex; }
+  .overlay .panel { width: 240px; }
+  .overlay .btn { margin-top: 12px; width: 100%; }
+</style>
+</head>
+<body>
+  <div class="cap">数境 · 夜航 —— 三层玻璃拟态 UI 预览（点按键看按压态；点 ⚙️ 看唯一允许模糊的全屏浮层）</div>
+
+  <div class="phone">
+    <div class="map"></div>
+    <div class="stars"><i style="left:30px;top:40px"></i></div>
+
+    <!-- 顶栏 HUD：两颗 chip + 图标键 -->
+    <div class="topbar">
+      <div class="chip">⚓️ 灯塔 <span class="n">3</span></div>
+      <div class="chip">🌪️ 风力 <span class="n">2 级</span></div>
+      <div class="btn btn--ico" id="openOverlay" role="button" aria-label="设置">⚙️</div>
+    </div>
+
+    <div class="body-col">
+      <!-- 面板卡片 -->
+      <div class="panel">
+        <div class="panel-t">夜航日志</div>
+        <div class="panel-row"><span>航程</span><span>128 海里</span></div>
+        <div class="panel-row"><span>灯油</span><span>64%</span></div>
+        <div class="panel-row"><span>罗盘</span><span>北北东</span></div>
+      </div>
+
+      <!-- 反馈状态玻璃 -->
+      <div class="fb-row">
+        <div class="btn glass-ok" role="button">✅ 正确</div>
+        <div class="btn glass-err" role="button">❌ 再试一次</div>
+      </div>
+    </div>
+
+    <!-- 金色主键（每屏至多一颗） -->
+    <div class="dock">
+      <div class="btn btn-gold" role="button">⛵️ 出航</div>
+    </div>
+
+    <!-- 全屏浮层 -->
+    <div class="overlay" id="overlay">
+      <div class="panel">
+        <div class="panel-t">停泊设置</div>
+        <div class="panel-row"><span>自动收帆</span><span>开</span></div>
+        <div class="panel-row"><span>夜视滤镜</span><span>关</span></div>
+        <div class="btn" id="closeOverlay" role="button">继续航行</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cap">交付物：app.wxss（令牌 + .btn/.btn-gold/.pressed）· page.wxss（.chip/.panel/反馈玻璃/.overlay）· 示例.wxml</div>
+
+<script>
+  document.getElementById('openOverlay').addEventListener('click', function () {
+    document.getElementById('overlay').classList.add('on');
+  });
+  document.getElementById('closeOverlay').addEventListener('click', function () {
+    document.getElementById('overlay').classList.remove('on');
+  });
+</script>
+</body>
+</html>

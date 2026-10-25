@@ -1,0 +1,46 @@
+<!-- =====================================================================
+     数境 · 夜航 —— 三层玻璃 UI 示例页（片段，贴进任意页面即可看效果）
+     结构：顶栏（两颗 chip + 一颗图标键）+ 金色主键 + 面板卡片
+     规则：所有按键 = view + hover-class="pressed"，不用原生 button；
+           金色主键每屏至多一颗；emoji 当图标，不引图标库。
+     ===================================================================== -->
+<view class="page-demo">
+
+  <!-- 地图占位：真实项目这里是持续重绘的 canvas 2d（同层渲染原生组件）。
+       顶栏 chip / 图标键 / 面板全压在它上面 —— 所以它们一律不用 backdrop-filter（红线 1），
+       玻璃质感来自 face-deep 底面 + 发丝边缘 + 镜面叠加。 -->
+  <view class="map-holder">…canvas 2d 地图…</view>
+
+  <!-- 顶栏 HUD：容器 pointer-events:none 放行地图拖拽，可点元素单独恢复 -->
+  <view class="topbar">
+    <view class="chip">⚓️ 灯塔 <text class="n">3</text></view>
+    <view class="chip">🌪️ 风力 <text class="n">2 级</text></view>
+    <!-- 图标键：正方形、只有 emoji、无文字 -->
+    <view class="btn btn--ico" hover-class="pressed" hover-start-time="0" aria-role="button" aria-label="设置">⚙️</view>
+  </view>
+
+  <!-- 面板卡片（压在地图上的深蓝玻璃） -->
+  <view class="panel">
+    <view class="panel-t">夜航日志</view>
+    <view class="panel-row"><text>航程</text><text>128 海里</text></view>
+    <view class="panel-row"><text>灯油</text><text>64%</text></view>
+    <view class="panel-row"><text>罗盘</text><text>北北东</text></view>
+  </view>
+
+  <!-- 反馈状态玻璃：答题 / 操作反馈时把 glass-ok / glass-err 叠在按键上 ——
+  <view class="btn glass-ok">✅ 正确</view>
+  <view class="btn glass-err">❌ 再试一次</view>
+  -->
+
+  <!-- 金色主键（每屏至多一颗）：底部操作坞 -->
+  <view class="dock">
+    <view class="btn btn-gold" hover-class="pressed" hover-start-time="0">⛵️ 出航</view>
+  </view>
+
+  <!-- 全屏浮层（默认不展示，需要时 wx:if 挂上）：
+       全站唯一允许 backdrop-filter 的地方（红线 2），同屏最多一层 ——
+  <view class="overlay">
+    <view class="panel">…结算 / 设置…</view>
+  </view>
+  -->
+</view>
