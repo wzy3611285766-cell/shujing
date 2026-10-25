@@ -12,7 +12,7 @@
        合成器完全不碰地形。见 36_loop.js 的 draw 与 34_engine_core.js 的 buildStatic。 -->
   <canvas id="game"></canvas>
   <div id="ents"></div>
-  <div id="fx"></div>
+  <div id="fx" aria-hidden="true"></div>
 
   <!-- ============ 新版本通知栏（4.0.6）============
        玩家手里那份是缓存里的旧版时，光弹一句"刷新一下"等于没说 ——
@@ -50,7 +50,7 @@
 
   <div id="quest">目标：<b id="questText">……</b></div>
 
-  <div id="banner"><div class="t"></div><div class="s"></div></div>
+  <div id="banner" role="status"><div class="t"></div><div class="s"></div></div>
 
   <div id="stick"><div id="knob"></div></div>
   <div id="moveHint">👆 在屏幕上按住拖动即可移动</div>

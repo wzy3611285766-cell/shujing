@@ -5,6 +5,8 @@
    —— 零损失：提示免费、答错不扣结晶、不降档、不算失败，随时可退出
    —— 后台按「科 → 知识点」累计对错，自动排出薄弱点；
       开「专攻薄弱」时抽题优先命中低命中率的知识点
+   —— 4.1.1 拆分：存档面板在 41_save_panel.js，自习室 / 母题阶梯在
+      42_study_ladder.js；商行与传送阵留在这里（跟着练枪场的世界走）
    ========================================================= */
 const WRONG_CAP=200;                 // 错题本容量（1.5.15 起 30 → 200）
 const DRILL_SUBJ=[
@@ -334,183 +336,6 @@ function showDrill(){
     closePanel();drillSession(s.id,{tier:4,focus:false,tid:'all'});};});
 }
 
-/* =========================================================
-   📚 自习室（173.5）
-   —— "打开就知道该学什么"的窗口。
-   ---------------------------------------------------------
-   练枪场解决的是"我想练某一块"，自习室补另一半：
-   **不知道该练哪块的时候，替你排好序**。
-   排序依据只有两条，全部来自真实做题记录（state.drill）：
-     ① 做过但正确率低的专题 —— 真短板，排最前
-     ② 一次都没碰过的专题 —— 盲区，排在其次
-   已掌握的不列出来（做过 3 题以上且正确率 ≥ 80%），
-   否则列表会越用越长、又变回"一大坨"。
-   点进去仍然走 drillSession，所以思路详解、提示免费、
-   错题自动归档这一整套机制原样复用 —— 这里只负责指路。
-   ========================================================= */
-function studyTopicStats(){
-  const acc={};
-  DRILL_SUBJ.forEach(s=>{
-    const d=drillStat(s.id);
-    if(!d||!d.t)return;
-    Object.keys(d.t).forEach(topic=>{
-      const rec=d.t[topic]||{};
-      let hit=null;
-      (DRILL_RIDS[s.id]||[]).forEach(rid=>{
-        if(hit)return;
-        const t=topicBest(rid,topic);
-        if(t)hit=t;
-      });
-      if(!hit)return;
-      /* topicBest 返回的是专题 **id 字符串**（不是对象），
-         一开始按 hit.id 取，统计全落到了 undefined 这个键上，
-         结果"动过 0 块"永远出不来 —— 这种"返回类型记岔了"的坑，
-         写的时候一定要看一眼被调函数的 return。 */
-      const a=acc[hit]||(acc[hit]={n:0,r:0,w:0,sid:s.id});
-      const r=rec.r||0,w=rec.w||0;
-      a.n+=r+w;a.r+=r;a.w+=w;
-    });
-  });
-  return acc;
-}
-function studyAllTopics(){
-  const st=studyTopicStats(),out=[];
-  Object.keys(DRILL_TOPICS).forEach(rid=>{
-    const sid=subjOfRid(rid);
-    (DRILL_TOPICS[rid]||[]).forEach(t=>{
-      const a=st[t.id];
-      const n=a?a.n:0,r=a?a.r:0;
-      out.push({id:t.id,nm:t.n,rid:rid,sid:sid,t:t,cnt:n,
-        rate:n?r/n:null,done:n>=3&&(r/n)>=0.8});
-    });
-  });
-  return out;
-}
-function showStudyRoom(){
-  /* 和练枪场同一条规矩：自习记录写在 state.drill 里，跟着世界走，
-     所以要真的切到练枪场这个世界才能落账（理由见 showDrill 的注释） */
-  if(CUR!==ADV&&CUR!==DRILL){
-    switchTo(DRILL);
-    if(CUR!==DRILL)return;
-    toast('📚 已切到练枪场 · ☰ 菜单可切回原来的世界');
-  }
-  const all=studyAllTopics();
-  const total=all.length;
-  const mastered=all.filter(x=>x.done).length;
-  const touched=all.filter(x=>x.cnt>0).length;
-  const weak=all.filter(x=>x.cnt>0&&!x.done).sort((a,b)=>(a.rate-b.rate)||(b.cnt-a.cnt));
-  const fresh=all.filter(x=>x.cnt===0);
-  const rec=weak.slice(0,3).concat(fresh.slice(0,2)).slice(0,5);
-  function markOf(x){
-    if(x.cnt===0)return {e:'⬜',c:'#7d94ab',t:'还没练过 · 点开就能开始'};
-    const p=Math.round(x.rate*100);
-    if(x.rate<0.6)return {e:'🔥',c:'#ff8a5c',t:'正确率 '+p+'% · 这是短板'};
-    return {e:'🟡',c:'#ffd76a',t:'正确率 '+p+'% · 再练几题就掌握'};
-  }
-  function card(x,cid){
-    const m=markOf(x);
-    const s=DRILL_OF[x.sid]||{name:''};
-    return `<button class="menu-li" id="${cid}">
-      <span class="e">${m.e}</span>
-      <span class="tx">${esc(x.nm)}<span style="font-size:var(--fs-xs);color:#9cc0e0"> · ${s.name}</span>
-        <div class="d" style="color:${m.c}">${m.t}${x.cnt?' · 做过 '+x.cnt+' 题':''}</div>
-      </span></button>`;
-  }
-  const recHtml=rec.map((x,i)=>card(x,'sr_r'+i)).join('');
-  const groups=DRILL_SUBJ.map(s=>{
-    const list=all.filter(x=>x.sid===s.id&&!x.done);
-    if(!list.length)return '';
-    /* 两列网格 + 每科最多 8 块：专题一共六十多个，全铺成竖排长条
-       又会变成"一大坨"，滚动条拉半天才到底 */
-    const show=list.slice(0,8),more=list.length-show.length;
-    return `<div class="sub" style="text-align:left;margin:13px 0 8px">${s.emoji} ${s.name}
-      <span style="color:#7d94ab;font-weight:600">　还有 ${list.length} 块没掌握</span></div>
-      <div class="bz-grid2">${show.map((x,i)=>card(x,'sr_'+s.id+'_'+i)).join('')}
-      ${more?`<div class="center" style="grid-column:1/-1;font-size:var(--fs-xs);color:#7d94ab;padding:2px">
-        …还有 ${more} 块没列出，去 🎯 练枪场能挑全部专题</div>`:''}</div>`;
-  }).join('');
-  openPanel(`
-    <h2>📚 自习室</h2>
-    <div class="sub">打开就知道该补哪一块 · 提示免费 · 答错不扣分</div>
-    <div class="center" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-      border-radius:14px;padding:11px;margin-bottom:12px;line-height:var(--lh-base)">
-      已掌握 <b style="color:#84e3a6">${mastered}</b> / ${total} 块 · 动过 <b style="color:#ffd76a">${touched}</b> 块<br>
-      <span style="font-size:var(--fs-xs);color:#9cc0e0">算掌握 = 做过 3 题以上且正确率 ≥ 80%</span>
-    </div>
-    ${rec.length?`<div class="sub" style="text-align:left;margin:2px 0 8px">🔥 最该补的几块</div>
-      <div class="menu-list" style="margin-bottom:4px">${recHtml}</div>`:''}
-    <div class="sub" style="text-align:left;margin:14px 0 4px">按科目看</div>
-    ${groups||'<div class="center" style="color:#84e3a6;padding:12px 0">全部专题都掌握了 🎉</div>'}
-    <div class="row"><button class="btn" id="srDrill">🎯 去练枪场</button>
-      <button class="btn primary" id="ok">关闭</button></div>
-  `);
-  function go(x){
-    closePanel();
-    const last=state.drillTier&&state.drillTier[x.sid];
-    const arr=x.t.t||[2];
-    const tier=last||arr[arr.length-1]||2;
-    drillSession(x.sid,{tier:tier,focus:true,tid:x.id});
-  }
-  rec.forEach((x,i)=>{const b=$('sr_r'+i);if(b)b.onclick=()=>go(x);});
-  DRILL_SUBJ.forEach(s=>{
-    all.filter(x=>x.sid===s.id&&!x.done).slice(0,8).forEach((x,i)=>{
-      const b=$('sr_'+s.id+'_'+i);if(b)b.onclick=()=>go(x);
-    });
-  });
-  const d=$('srDrill');if(d)d.onclick=()=>{closePanel();showDrill();};
-  $('ok').onclick=closePanel;
-}
-
-/* ---------- 🧗 母题阶梯：挑一个模型，从母题一格格往上爬 ---------- */
-function showLadder(){
-  /* 和练枪场 / 自习室同一条规矩：进度写在 state.lad 里、跟着世界走，
-     所以要真的切到练枪场这个世界才能落账 */
-  if(CUR!==ADV&&CUR!==DRILL){
-    switchTo(DRILL);
-    if(CUR!==DRILL)return;
-    toast('🧗 已切到练枪场 · ☰ 菜单可切回原来的世界');
-  }
-  const all=ladderList(null);
-  const full=all.filter(L=>ladStat(L.id).lv>=2).length;
-  function card(L,cid){
-    const st=ladStat(L.id);
-    const s=DRILL_OF[L.s]||{name:''};
-    /* 三格进度：● 过了 · ◉ 正在这一级 · ○ 还没到 */
-    const dots=[0,1,2].map(k=>st.lv>k?'●':(st.lv>=k||st.n===0?'○':'○')).join('');
-    return `<button class="menu-li" id="${cid}">
-      <span class="e">${ladMark(L.id)}</span>
-      <span class="tx" style="white-space:normal">${esc(L.n)}<span style="font-size:var(--fs-xs);color:#9cc0e0"> · ${s.name}</span>
-        <div class="d" style="color:#9cc0e0;white-space:normal;overflow:visible;text-overflow:clip">核心方法：${esc(L.model)}</div>
-        <div class="d" style="color:${st.lv>=2?'#84e3a6':'#7d94ab'};white-space:normal;overflow:visible;text-overflow:clip">
-          母题 → 变式 → 出其不意　<b>${dots}</b>${st.n?' · 过 '+Math.max(st.lv+1,0)+'/3':''}</div>
-      </span></button>`;
-  }
-  const groups=DRILL_SUBJ.map(s=>{
-    const list=ladderList(s.id);
-    if(!list.length)return '';
-    return `<div class="sub" style="text-align:left;margin:13px 0 8px">${s.emoji} ${s.name}
-      <span style="color:#7d94ab;font-weight:600">　${list.length} 个模型</span></div>
-      <div class="bz-grid2">${list.map((L,i)=>card(L,'ld_'+s.id+'_'+i)).join('')}</div>`;
-  }).join('');
-  openPanel(`
-    <h2>🧗 母题阶梯</h2>
-    <div class="sub">课本原型 → 换皮 → 出其不意 · 三级<b>按顺序</b>连刷 · 提示免费</div>
-    <div class="center" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-      border-radius:14px;padding:11px;margin-bottom:12px;line-height:var(--lh-loose)">
-      <b style="font-size:var(--fs-lg)">${full} / ${all.length}</b> 个模型三级全过
-      <div style="color:#9cc0e0;font-size:var(--fs-xs);margin-top:4px">
-        创新题不会做，多半是跳级了 —— 从母题一格格往上爬，爬到第三级你会发现自己已经能做那种题了</div>
-    </div>
-    ${groups||'<div class="center" style="color:#7d94ab;padding:20px">阶梯题库还没装进来</div>'}
-    <div class="row"><button class="btn" id="ok">关闭</button></div>`);
-  DRILL_SUBJ.forEach(s=>{
-    ladderList(s.id).forEach((L,i)=>{
-      const el=$('ld_'+s.id+'_'+i);
-      if(el)el.onclick=()=>{closePanel();audioKick();ladderSession(L.id);};
-    });
-  });
-  $('ok').onclick=closePanel;
-}
 
 /* ---------- 选难度 + 看薄弱清单 ---------- */
 function drillPick(sid,pickTid){
@@ -739,12 +564,7 @@ function drillSession(sid,opt){
       <div style="text-align:center"><span class="qtag">${esc(q.topic||subj.name)} · ${tier>=4?'🔥 攻坚档':TIER_NAME[tier]+'档'}${topic?' · '+esc(topic.n):''}</span>${srcBadge(q.src,q.qt)}</div>
       <div class="qtext">${esc(q.text)}</div>${qFigHtml(q)}`;
   }
-  function apprRecapHtml(){
-    if(!ap||!ap.done)return '';
-    if(ap.picked==null)return `<div class="appr-recap skip">🧭 跳过了思路环节</div>`;
-    return `<div class="appr-recap ${ap.ok?'ok':'no'}">🧭 ${ap.ok?'切入点正确':'切入点偏了'} · ${esc(ap.picked)}
-      ${ap.ok?'':`<div class="rk">更好的入手：${esc(ap.r)}</div>`}</div>`;
-  }
+  /* 思路小结用共享件 apprRecapHtmlOf（39_hints.js） */
 
   /* ---------- 第一步：选思路 ---------- */
   function renderApproach(){
@@ -769,13 +589,7 @@ function drillSession(sid,opt){
     if(ap.done)return;
     ap.done=true;ap.picked=ap.opts[idx];ap.ok=ap.opts[idx]===ap.r;
     recordApproach(q.topic,ap.ok);
-    panel.querySelectorAll('.opt').forEach(el=>{
-      const k=+el.dataset.i;
-      el.classList.add('locked');
-      if(ap.opts[k]===ap.r)el.classList.add('right');
-      else if(k===idx)el.classList.add('wrong');
-      else el.classList.add('dim');
-    });
+    paintOptsJudge(panel,ap.opts,ap.r,idx);
     const fb=$('feedback');
     /* 思路详解：正确入手 + 为什么这么想 + 第一步落点（hints[0]，没有就退到 steps[0]）。
        只给到「怎么下手」为止，具体计算仍留给答题环节 —— 练枪卖的就是这段详解。 */
@@ -801,7 +615,7 @@ function drillSession(sid,opt){
     if(ap&&!ap.done){ap.done=true;ap.picked=null;ap.ok=false;}
     hintChain=buildHintChain(q,ap);hintLv=0;
     openPanel(`${headHtml()}
-      ${apprRecapHtml()}
+      ${apprRecapHtmlOf(ap)}
       ${lingStrip(q)}
       <div class="qmeta">第二步 · 选出正确答案（提示免费，答错不扣任何东西）</div>
       <div class="opts">${opts.map((o,k)=>`<div class="opt" data-i="${k}">${esc(o)}</div>`).join('')}</div>
@@ -829,13 +643,8 @@ function drillSession(sid,opt){
   }
   function answer(idx){
     const correct=opts[idx]===q.ansText;
-    panel.querySelectorAll('.opt').forEach(el=>{
-      const k=+el.dataset.i;
-      el.classList.add('locked');
-      if(opts[k]===q.ansText)el.classList.add('right');
-      else if(k===idx)el.classList.add('wrong');
-      else el.classList.add('dim');
-    });
+    paintOptsJudge(panel,opts,q.ansText,idx);
+    const tPaint=performance.now();
     n++;
     const didAp=!!(ap&&ap.done&&ap.picked!=null);
     if(didAp){apN++;if(ap.ok)apR++;}
@@ -852,13 +661,11 @@ function drillSession(sid,opt){
     const fb=$('feedback');
     if(correct){
       right++;streak++;best=Math.max(best,streak);state.totalRight++;
-      SFX.right();
       fb.className='ok';
       setH(fb, `✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q));
       if(streak>0&&streak%5===0)toast('🔥 连对 '+streak+' 题，手感正好');
     }else{
       wrong++;streak=0;state.totalWrong++;
-      SFX.wrong();
       /* 存进错题本的那份快照：字段名按错题本的写法（ans 不是 ansText），
          这样"马上重做"能原样喂给 sessionFixed，不用再转一道手。
          攻坚题记 hardIdx、带图的记 fig —— 重做时才画得出那张图。 */
@@ -884,9 +691,9 @@ function drillSession(sid,opt){
         +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 📕 ${wbMissWord(kind)}</div>`
         +fbExpHtml(q,true));
     }
-    /* 思路灵：练枪场提示免费，但点开过就不算独立解出 */
-    try{lingJudge(q,correct,hintLv>0);}catch(e){}
-    save();updateHUD();
+    /* 音效 / 思路灵 / 落盘 / HUD 走共享的「先画后算」（quizSideFx）——
+       4.0.21 只给闯关做了这件事，练枪漏了；练枪提示免费，点开过就不算独立解出 */
+    afterPaint(()=>quizSideFx(tPaint,correct,q,hintLv>0));
     $('nextBtn').style.display='block';
   }
   function nextQ(){
@@ -1048,7 +855,7 @@ $('btnShop').onclick=()=>{
   else showShop();
 };
 
-$('btnSound').onclick=()=>{state.sound=!state.sound;try{EPIC_STATE.sound=ADV_STATE.sound=state.sound;}catch(e){}$('btnSound').textContent=state.sound?'🔊':'🔇';save();if(state.sound){audioKick();SFX.toggle(true);}};
+$('btnSound').onclick=()=>{state.sound=!state.sound;try{EPIC_STATE.sound=ADV_STATE.sound=state.sound;}catch(e){}$('btnSound').textContent=state.sound?'🔊':'🔇';try{$('btnSound').setAttribute('aria-pressed',state.sound?'true':'false');}catch(e){}save();if(state.sound){audioKick();SFX.toggle(true);}};
 /* 🎯 目标：手动召回任务条。任务条平时是闪现的（显示几秒后淡出），
    需要看目标时点这里，或答完题、换域时它也会自动闪一下。 */
 $('btnGoal').onclick=()=>{audioKick();flashQuest(true);};
@@ -1062,162 +869,5 @@ $('btnMenu').onclick=()=>{audioKick();showMenu();};
 $('btnDrill').onclick=()=>{audioKick();showDrill();};
 $('btnWb').onclick=()=>{audioKick();showWrongBook();};
 
-/* ---------------- 存档面板（手动存/读档） ---------------- */
-let saveCodeCache='';
-const TA_STYLE='width:100%;height:150px;background:rgba(255,255,255,.06);color:#cfe6ff;'+
-  'border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:10px;font-size:var(--fs-xs);'+
-  'line-height:1.5;resize:none;word-break:break-all;user-select:text;-webkit-user-select:text;'+
-  'touch-action:auto;'+
-  '-webkit-touch-callout:default;font-family:ui-monospace,Menlo,Consolas,monospace';
-
-function copyText(t){
-  return new Promise(res=>{
-    if(navigator.clipboard&&window.isSecureContext){
-      navigator.clipboard.writeText(t).then(()=>res(true),()=>res(false));
-    }else{
-      try{
-        const ta=document.createElement('textarea');
-        ta.value=t;ta.style.position='fixed';ta.style.top='0';ta.style.opacity='0';
-        ta.setAttribute('readonly','');
-        document.body.appendChild(ta);ta.focus();ta.select();ta.setSelectionRange(0,t.length);
-        const ok=document.execCommand('copy');document.body.removeChild(ta);res(ok);
-      }catch(e){res(false);}
-    }
-  });
-}
-function downloadFile(name,text){
-  try{
-    const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);a.download=name;
-    document.body.appendChild(a);a.click();
-    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
-    return true;
-  }catch(e){return false;}
-}
-function showSavePanel(){
-  const st=storageOK
-    ? '<span style="color:#8ef0b8">正常（自动存档已开启）</span>'
-    : '<span style="color:#ffb0b0">不可用（无痕模式 / 存储被禁用）<br>请务必用存档码保存进度</span>';
-  openPanel(`
-    <h2>💾 存档管理</h2>
-    <div class="sub">本机自动存档：${st}</div>
-    <div class="center" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-      border-radius:14px;padding:12px;margin-bottom:10px;font-size:var(--fs-sm);line-height:var(--lh-loose)">${saveSummary()}</div>
-    <div class="center" style="font-size:var(--fs-sm);color:#9cc0e0;line-height:var(--lh-base);margin-bottom:4px;text-align:left">
-      · <b style="color:#ffd76a">存档码</b>是一串文本，复制走就能在别的手机/浏览器粘回来<br>
-      · 换设备、清缓存、换网址前，先导出一次最保险
-    </div>
-    <div class="row">
-      <button class="btn primary" id="sv1">💾 立即存档</button>
-      <button class="btn" id="sv2">📤 导出存档码</button>
-    </div>
-    <div class="row">
-      <button class="btn" id="sv3">📥 导入存档码</button>
-      <button class="btn" id="sv4">📄 存成文件</button>
-    </div>
-    <div class="row">
-      <button class="btn" id="sv5">📂 读取文件</button>
-      <button class="btn" id="sv6">🗑️ 清空重来</button>
-    </div>
-    <div class="row"><button class="btn primary" id="ok">关闭</button></div>
-  `);
-  $('ok').onclick=closePanel;
-  $('sv1').onclick=()=>{save()?toast('已保存到本机 ✅'):toast('本机存不了，请用存档码');updateHUD();};
-  $('sv2').onclick=async()=>{
-    toast('生成中…');
-    saveCodeCache=await exportCode();
-    showExportView();
-  };
-  $('sv3').onclick=showImportView;
-  $('sv4').onclick=async()=>{
-    toast('生成中…');
-    const code=await exportCode();   // 每次都重新生成，避免存到旧进度
-    saveCodeCache=code;
-    downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',
-      '数境 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code);
-    toast('已存成文件 ✅');
-  };
-  $('sv5').onclick=()=>{
-    const inp=document.createElement('input');
-    inp.type='file';inp.accept='.txt,.json,text/plain';
-    inp.onchange=async()=>{
-      const f=inp.files&&inp.files[0];if(!f)return;
-      const txt=await f.text().catch(()=>null);
-      if(txt==null){toast('读取失败');return;}
-      const r=await importCode(txt);
-      if(!r.ok){alert('❌ '+r.msg);return;}
-      if(!confirm('用文件里的存档覆盖当前进度？'))return;
-      applySave(r.adv,r.epic,r.blaze,r.drill);toast('导入成功，正在载入…');setTimeout(()=>location.reload(),600);
-    };
-    inp.click();
-  };
-  $('sv6').onclick=()=>{
-    /* 用 CUR 判断而不是读按钮文字 —— 按钮文案随时可能改，读了就错 */
-    if(!confirm('清空【'+(CUR===BLAZE?'烽火地带':(CUR===EPIC?'科学编年史':(CUR===DRILL?'练枪场':'闯关')))+'模式】的进度？另外三个模式不受影响。\n此操作不可恢复。\n（建议先导出存档码留底）'))return;
-    if(confirm('再确认一次：真的清空吗？'))resetSave();
-  };
-}
-function showExportView(){
-  openPanel(`
-    <h2>📤 导出存档码</h2>
-    <div class="sub">复制下面整段，存进备忘录或发给自己</div>
-    <textarea id="code" readonly style="${TA_STYLE}">${saveCodeCache}</textarea>
-    <div class="center" id="msg" style="min-height:20px;color:#ffd76a;font-weight:700;font-size:var(--fs-sm)"></div>
-    <div class="row">
-      <button class="btn primary" id="cp">📋 复制</button>
-      <button class="btn" id="dl">⬇️ 文件</button>
-      <button class="btn" id="bk">返回</button>
-    </div>
-  `);
-  const ta=$('code');
-  ta.addEventListener('focus',()=>ta.select());
-  $('cp').onclick=async()=>{
-    const ok=await copyText(saveCodeCache);
-    $('msg').textContent=ok?'已复制到剪贴板 ✅':'复制失败，请手动长按全选复制';
-    if(!ok){ta.focus();ta.select();}
-  };
-  $('dl').onclick=()=>{
-    downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',saveCodeCache);
-    $('msg').textContent='已存成文件 ✅';
-  };
-  $('bk').onclick=showSavePanel;
-}
-function showImportView(){
-  openPanel(`
-    <h2>📥 导入存档码</h2>
-    <div class="sub">粘贴以前保存的存档码，确认后覆盖当前进度</div>
-    <textarea id="code" placeholder="在这里长按 → 粘贴存档码（HMG. 开头的那一整段）" style="${TA_STYLE};height:130px"></textarea>
-    <div class="center" id="msg" style="min-height:20px;color:#ffd76a;font-weight:700;font-size:var(--fs-sm)"></div>
-    <div class="row">
-      <button class="btn primary" id="im">✅ 确认导入</button>
-      <button class="btn" id="bk">返回</button>
-    </div>
-  `);
-  $('bk').onclick=showSavePanel;
-  $('im').onclick=async()=>{
-    const v=$('code').value;
-    if(!v.trim()){$('msg').textContent='请先粘贴存档码';return;}
-    $('msg').textContent='校验中…';
-    const r=await importCode(v);
-    if(!r.ok){$('msg').textContent='❌ '+r.msg;return;}
-    const adv=r.adv||{},epic=r.epic||{},bz=r.blaze||{},aid=r.aid||null,dr=r.drill||{};
-    const got=Object.keys(adv.caught||{}).length;
-    const bd=Object.keys(adv.badges||{}).length;
-    const rd=Object.keys(epic.read||{}).length;
-    const bst=bz.bstat||{};
-    const drN=Object.keys(dr.drill||{}).length;
-    if(!confirm(`用这个存档覆盖四个模式的进度？\n\n闯关：${bd} 枚徽章 · ${got} 只精灵 · ${adv.crystals||0} 结晶\n史诗：已读 ${rd} 篇卷宗\n烽火：撤离 ${bst.exfil||0} 次 · 仓库 ${bz.crystals||0} 结晶\n练枪：${drN?drN+' 科有练枪记录':'暂无记录'}`
-      +(aid?`\n支援券：${AID_ITEMS.filter(it=>(aid[it.id]|0)>0).map(it=>it.e+it.n+'×'+(aid[it.id]|0)).join(' · ')||'无'}`:''))){
-      $('msg').textContent='已取消';return;
-    }
-    applySave(r.adv,r.epic,r.blaze,r.drill);
-    if(aid){Object.assign(AID_STATE,aid);AID_ITEMS.forEach(it=>{
-      const v=Math.floor(Number(AID_STATE[it.id]));AID_STATE[it.id]=(isFinite(v)&&v>0)?v:0;});saveAid();}
-    $('msg').textContent='导入成功，正在载入…';
-    setTimeout(()=>location.reload(),600);
-  };
-}
-$('btnSave').onclick=()=>{audioKick();showSavePanel();};
 $('btnMode').onclick=()=>{audioKick();switchMode();};
 

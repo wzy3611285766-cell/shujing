@@ -203,7 +203,7 @@
   letter-spacing:.6px;text-align:center;padding-top:clamp(15px,calc(var(--vmin) * .0590),23px);
   padding-bottom:clamp(15px,calc(var(--vmin) * .0590),23px)}
 .qtext.f-sm{font-size:calc(var(--fs-2xl) * var(--qs,1));line-height:1.44;font-weight:700;text-align:center}
-.qtext.f-md{font-size:calc(var(--fs-xl) * var(--qs,1));line-height:1.58;font-weight:700;text-align:center}
+.qtext.f-md{font-size:calc(var(--fs-xl) * var(--qs,1));line-height:1.58;font-weight:700}
 /* 居中是给"一两行的短句"用的：行一多，每行起点都不同，眼睛没法顺着扫。
    实际折到三行以上的题（大字 + 中等长度最容易撞上）自动改左对齐 */
 .qtext.fl{text-align:left;padding-left:clamp(15px,calc(var(--vmin) * .0513),22px);
@@ -233,30 +233,30 @@
   scrollbar-color:rgba(255,215,106,.4) transparent}
 .qtext.scrollable::-webkit-scrollbar{width:4px}
 .qtext.scrollable::-webkit-scrollbar-thumb{background:rgba(255,215,106,.4);border-radius:99px}
-.qmeta{text-align:center;color:#8fb4d6;font-size:var(--fs-xs);margin-bottom:14px}
+/* 旧 .qmeta 规则已并入下方新版（锚点 + 左对齐），4.1.1 删掉整条 */
 /* 长题干时把标题、统计行、徽章压一压：省下的高度全给题干本身 */
 .panel.long-q h2{font-size:var(--fs-xl);margin-bottom:2px}
 .panel.long-q .sub{font-size:var(--fs-xs);margin-bottom:8px;line-height:1.4}
 .panel.long-q .qtag,.panel.long-q .qsrc{margin-bottom:7px}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:clamp(8px,calc(var(--vmin) * .0308),12px)}
 .opt{background:var(--gb-face);border:2px solid rgba(255,255,255,.16);border-radius:16px;
-  padding:clamp(13px,calc(var(--vmin) * .0513),20px) clamp(6px,calc(var(--vmin) * .0256),10px);
-  color:#fff;font-size:calc(var(--fs-xl) * var(--qs,1));font-weight:700;text-align:center;
+  color:#fff;font-size:calc(var(--fs-xl) * var(--qs,1));font-weight:700;
   cursor:pointer;overflow-wrap:anywhere;line-height:var(--lh-snug);
-  display:flex;align-items:center;justify-content:center;min-height:2.6em;
+  display:flex;align-items:center;min-height:2.6em;
+  /* padding / text-align / justify-content 由下方现行规则统一裁定（4.1.1 清理） */
   position:relative;isolation:isolate;
   -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-drop);
   transition:transform .12s ease-out,box-shadow .2s,filter .15s,background .2s,border-color .2s}
 .opt::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
-.opt:active{transform:scale(.96);box-shadow:var(--gb-press-lift)}
-.opt.right{background:var(--gb-tint-green);border-color:rgba(110,231,183,.8)}
-.opt.wrong{background:var(--gb-tint-red);border-color:rgba(255,138,128,.75)}
+.opt:active{box-shadow:var(--gb-press-lift)}
+.opt.right{background:var(--gb-tint-green)}
+.opt.wrong{background:var(--gb-tint-red)}
 .opt.locked{pointer-events:none}
 /* 思路选项：虚线边框 + 小一号字，和答案选项在视觉上一眼分开。
    思路文本比答案长（常见 15~24 字），字号降一档、行高放宽，才不会挤成两行半 */
-.opt.appr{border-style:dashed;font-size:calc(var(--fs-md) * var(--qs,1));line-height:var(--lh-snug);
+.opt.appr{font-size:calc(var(--fs-md) * var(--qs,1));line-height:var(--lh-snug);
   min-height:2.9em;padding:clamp(11px,calc(var(--vmin) * .0436),17px) clamp(7px,calc(var(--vmin) * .0282),11px)}
 /* 选项也按长度分档：短的继续大字双列（扫码式作答才快），
    长的自动单列 + 降字号 + 左对齐 —— 半屏宽里塞 40 个字，谁看都是一坨。

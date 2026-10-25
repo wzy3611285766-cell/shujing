@@ -277,8 +277,9 @@ body.upbar-on #modal{top:var(--upH)}
   box-shadow:var(--gb-press-lift),var(--gb-hair)}
 .btn:disabled{opacity:.4}
 /* 键盘导航的焦点圈（4.1.1 a11y）：只认 :focus-visible —— 鼠标 / 手指点按不画圈，
-   Tab / 方向键导航时才出现。面板打开期间 Tab 已放行（见 35_input.js）。 */
-.btn:focus-visible,.fitbtn:focus-visible,.menu-li:focus-visible{
+   Tab / 方向键导航时才出现。面板打开期间 Tab 已放行（见 35_input.js），
+   选项 .opt 也补了 role=button + tabindex，同样吃这条圈。 */
+.btn:focus-visible,.opt:focus-visible,.fitbtn:focus-visible,.menu-li:focus-visible{
   outline:2px solid #ffd76a;outline-offset:2px}
 /* 图标按钮：只有 emoji/符号，没有文字 */
 .btn.ico{padding:calc(var(--pad) * .9);justify-content:center;aspect-ratio:1}

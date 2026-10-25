@@ -43,6 +43,16 @@ function openPanel(html,lock){
       try{pb.focus({preventScroll:true});}catch(e2){pb.focus();}
     }
   }catch(e){}
+  /* 选项的可及性（4.1.1）：.opt 是 div，读屏不报、键盘进不来。
+     统一在这里补 role/tabindex（Tab 已在面板打开期间放行，见 35_input.js）；
+     Enter/Space 激活走 35_input.js 的按键分支；锁定态的 aria-disabled
+     在 paintOptsJudge 里写。读屏语义取 role=button（每题单选，radio 组
+     的 checked 状态维护成本更高，按钮已把"可点、点完锁定"说清楚）。 */
+  try{
+    panel.querySelectorAll('.opt').forEach(o=>{
+      if(o.getAttribute('role')!=='button'){o.setAttribute('role','button');o.tabIndex=0;}
+    });
+  }catch(e){}
 }
 /* ---------- 自适应排版：按文本实际长度给题干 / 选项挑字号与对齐 ----------
    同一个 .qtext 样式喂所有题，是"一大坨字"的根源：

@@ -267,8 +267,17 @@ window.addEventListener('keydown',e=>{
        回到地图上 A / D 仍然是左右移动 */
     const ab='abcd'.indexOf(k);
     if(k.length===1&&ab>=0&&pickOpt(ab))return;
-    /* 空格 / 回车 = 继续、收好、确认 */
+    /* 空格 / 回车 = 继续、收好、确认。
+       焦点落在选项上时优先激活那个选项（4.1.1：openPanel 给 .opt 补了
+       role=button + tabindex，这是它的键盘路径）。
+       ⚠️ 锁定态必须在这里挡 —— .opt.locked 的 pointer-events:none 只挡
+       鼠标，程序化 click() 拦不住，放过去键盘会把同一题判两次分。 */
     if(k===' '||k==='enter'){
+      const ae=document.activeElement;
+      if(ae&&ae.classList&&ae.classList.contains('opt')){
+        if(!ae.classList.contains('locked')){e.preventDefault();ae.click();}
+        return;
+      }
       const b=panelPrimary();
       if(b){e.preventDefault();b.click();}
       return;
@@ -291,7 +300,17 @@ window.addEventListener('blur',()=>{
   for(const k in keys)keys[k]=false;
   goTarget=null;
 });
-document.addEventListener('gesturestart',e=>e.preventDefault());
+/* 双指捏合（iOS gesturestart）：地图上拦掉（防误缩 / 防摇杆误触），
+   面板 / 公告 / 看图器里放行 —— iOS Safari 本来就不理 viewport 的
+   user-scalable=no（a11y 强制），真正把缩放掐死的是这条 gesturestart。
+   放行后低视力学生可以放大题面与公告（4.1.1）。
+   安卓 webview 仍被 viewport meta 拦着，放开它要连按钮防双击一起做，
+   另行一轮真机测试再说。 */
+document.addEventListener('gesturestart',e=>{
+  const t=e.target;
+  if(t&&t.closest&&t.closest('#modal,#news,#imgView'))return;
+  e.preventDefault();
+});
 
 /* 点地图走过去：屏幕坐标 → 世界坐标 */
 function setGoTarget(sx,sy){

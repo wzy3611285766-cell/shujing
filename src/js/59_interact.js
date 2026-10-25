@@ -109,12 +109,7 @@ function blazeAsk(o){
       if(locked)return;locked=true;
       if(hb)hb.disabled=true;   // 已经下笔了就不再卖思路
       const i=+el.dataset.i, ok=opts[i]===q.ansText;
-      panel.querySelectorAll('.opt').forEach(e2=>{
-        const k=+e2.dataset.i;e2.classList.add('locked');
-        if(opts[k]===q.ansText)e2.classList.add('right');
-        else if(k===i)e2.classList.add('wrong');
-        else e2.classList.add('dim');
-      });
+      paintOptsJudge(panel,opts,q.ansText,i);
       const fb=$('feedback');
       /* 【4.0.21】先画反馈，再做副作用 —— 这是"按下去要立刻变色"的关键。
          这一段全是 DOM 写入（标记选项 + 写 #feedback），浏览器下一帧就能画出来。

@@ -44,6 +44,7 @@ function startGame(){
   state.region=reg?reg.id:REGIONS[0].id;
   updateHUD();
   $('btnSound').textContent=state.sound?'🔊':'🔇';
+  try{$('btnSound').setAttribute('aria-pressed',state.sound?'true':'false');}catch(e){}
   syncModeButtons();
   cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
   cam.y=clamp(state.y-VH/SCALE/2,0,Math.max(0,H-VH/SCALE));

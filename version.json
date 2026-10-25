@@ -1,9 +1,9 @@
 {
   "name": "数境",
-  "version": "4.1.0",
-  "released": "2026-10-25",
+  "version": "4.1.2",
+  "released": "2026-10-26",
   "file": "index.html",
   "note": "版本号由 tools/release.py 递增，构建时写进产物并同步到 shujing-app/version.json；更新公告由 news.json 提供，构建时渲染进产物并自动生成 NEWS_VER",
-  "news_ver": "v4.1.0-0203297e",
-  "news_hash": "8a26d5de2c39676bffd36c5e30fb89064382583177dc8459ddc3ca3708463eb9"
+  "news_ver": "v4.1.2-7c670a91",
+  "news_hash": "86d38dbd09fc9e47a72eedb4e9d905cfc847f7df3fc135aa3631a93ad0a22d91"
 }
