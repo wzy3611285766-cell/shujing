@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>数境</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: minitool v4.0.28 · 2026-10-23 23:00 · 小工具离线包 -->
+<!-- build: minitool v4.0.28 · 2026-10-23 23:24 · 小工具离线包 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -1815,7 +1815,29 @@ margin-top:8px;padding:5px 0}
   .panel{padding:7px 11px}
   .panel h2{font-size:var(--fs-sm)}
 }
+/* ==== 竖屏容器里强制横屏 ====
+   小红书的小工具容器多数按竖屏加载，此时 orientation 永远是 portrait，
+   上面的横屏规则一条都不生效。这里把整个 app 旋转 90°：视觉上变成横屏，
+   用户把手机横过来玩即可。旋转后：
+     · --vmin/--vmax 在 portrait 下本来就是「短边=100vw / 长边=100vh」，
+       正好等于旋转后的高度 / 宽度，字号与间距不用另算；
+     · #app 自身的宽高要与视口互换，否则内容会按竖屏尺寸排。
+   触摸坐标必须自己换算：clientX/clientY 报的是视口坐标，CSS 变换不会改它们，
+   直接用会得到「上滑变右滑」的方向错乱 —— 由 rotate-input.js 在捕获阶段换算。 */
+@media (orientation:portrait){
+  html,body{height:100%;overflow:hidden;background:#060b14}
+  #app{
+    position:fixed;left:0;top:0;
+    width:100vh;height:100vw;
+    transform:rotate(90deg) translateY(-100%);
+    transform-origin:top left;
+    /* 覆盖基础样式里的四边 0 与 height:100vh */
+    right:auto;bottom:auto;
+    height:100vw;
+  }
+}
 </style>
+<script src="./assets/rotate-input.js"></script>
 </head>
 <body>
 <div id="app">

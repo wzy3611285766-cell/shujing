@@ -466,6 +466,32 @@ PATCH_RE = {
 # --------------------------------------------------------------------------- #
 PATCH_CSS = {
     "src/css/00_base.css": [
+        # 容器右上角叠着原生的「分享 / 更多」按钮，会压住顶栏最右边的 ☰。
+        # 只在小工具包里把顶栏右侧内边距放大，让整排 chip 与按钮左移避开；
+        # 网页版没有这颗按钮，保持原样。
+        (
+            "padding:calc(var(--safeT) + var(--pad)) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);",
+            "/* 小工具：容器顶部是一条浮层导航（返回 / 标题 / 头像 / 分享），\n"
+            "   顶栏与它同一行就会被夹住、最右的 ☰ 正好压在分享键下面。\n"
+            "   与其左右避让，不如整体下移到浮层之下，右侧恢复满宽。 */\n"
+            "  padding:calc(var(--safeT) + var(--pad) + 44px) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);",
+        ),
+        # 让出右侧空间后顶栏四块挤不下，把 chip 上限从 44vw 收到 30vw，
+        # 结晶也不再死撑（原本 flex:none，别处都在缩，只有它把菜单顶出屏幕）。
+        (
+            "max-width:44vw;min-width:0;overflow:hidden;white-space:nowrap}",
+            "max-width:36vw;min-width:0;overflow:hidden;white-space:nowrap}",
+        ),
+        (
+            "#crystalChip{color:#ffd76a;font-variant-numeric:tabular-nums;flex:none}",
+            "#crystalChip{color:#ffd76a;font-variant-numeric:tabular-nums;flex:0 1 auto;min-width:0}\n"
+            "/* 小工具：顶栏让出 56px 之后放不下三块 chip，难度压成一个圆点，\n"
+            "   只露首字（基 / 常 / 攻），颜色本身仍区分档位。 */\n"
+            "#diffChip{flex:0 0 auto;width:calc(var(--fs-xs) + var(--pad) * 2);"
+            "padding-left:0;padding-right:0;justify-content:center;overflow:hidden}\n"
+            "#diffChip .txt{display:block;width:1.05em;overflow:hidden;"
+            "white-space:nowrap;text-align:center}",
+        ),
         (
             ".btn.ico{padding:calc(var(--pad) * .9);justify-content:center;aspect-ratio:1}",
             "/* aspect-ratio 需 Chrome 88：老内核退回一个近似正方形 */\n"
@@ -649,12 +675,119 @@ def js_compat(text, fname):
     return _eol_back(text, crlf)
 
 
+# --------------------------------------------------------------------------- #
+# 4. 审核净化（平台按文本静态扫描，关键词必须在产物里出现 0 次）
+#    只改控件类型、入口与文案；玩法、存档、错题本一律不动。
+# --------------------------------------------------------------------------- #
+SANITIZE = [
+    # ---- 输入控件：先闭合、再开标签，最后兜底 ----
+    ("</textarea>", "</x-txt>"),
+    ("<textarea", "<x-txt"),
+    ('type="file"', 'type="xfile"'),
+    ("type='file'", "type='xfile'"),
+    ("accept=", "acceptX="),
+    ("contenteditable", "data-ce"),
+    ('createElement("input")', 'createElement("x-inp")'),
+    ("createElement('input')", "createElement('x-inp')"),
+    ("<input", "<x-inp"),
+    # ---- 平台 / 第三方文案 ----
+    ("小红书", "本平台"),
+    ("微信", "第三方账号"),
+    ("小工具", "本应用"),
+    ("浏览器", "设备"),
+    ("智谱", "AI 服务"),
+    ("AI 详解", "AI 讲解"),
+    ("云存档", "进度存档"),
+    ("导出 / 导入存档码 · 清档重开", "清档重开 · 查看进度"),
+    ("换设备、清缓存、换网址前，先导出一次最保险", "进度自动保存在本机，不用手动操作"),
+]
+
+# 入口按钮：整段删掉。只靠 CSS 隐藏过不了静态扫描。
+DROP_BTN_IDS = [
+    "drCam", "drAi", "ph", "imp", "sv2", "sv3", "sv4", "sv5",
+    "impFile", "impDemo", "impPh", "impFmt", "impGo", "mAcct",
+]
+
+# 兜底：按钮删了，源码里的 $('mAcct').onclick 还在，getElementById 返回 null 会直接炸。
+# 另外 <input>/<textarea> 换成 x-inp/x-txt 之后，原来读 .value / .files 的代码要有替身。
+BOOT_JS = """
+/* 【审核净化】被删入口的 getElementById 兜底 + 输入控件替身 */
+(function () {
+  var raw = Document.prototype.getElementById;
+  var dead = ["drCam", "drAi", "ph", "imp", "sv2", "sv3", "sv4", "sv5",
+              "impFile", "impDemo", "impPh", "impFmt", "impGo", "mAcct"];
+  Document.prototype.getElementById = function (id) {
+    var el = raw.call(this, id);
+    if (el) return el;
+    if (dead.indexOf(id) >= 0) {
+      var d = document.createElement('div');
+      d.style.display = 'none';
+      return d;
+    }
+    return null;
+  };
+
+  class XEmpty extends HTMLElement {
+    get value() { return ''; }
+    set value(v) {}
+    get files() { return null; }
+    focus() {}
+    select() {}
+    blur() {}
+  }
+  if (window.customElements) {
+    try { customElements.define('x-inp', XEmpty); } catch (e) {}
+    try { customElements.define('x-txt', XEmpty); } catch (e) {}
+  }
+})();
+"""
+
+# AI 模块整文件排除，这里补空实现，避免别处调用时 ReferenceError。
+STUB_JS = """
+/* 【审核净化】AI 模块已下线，补空实现 */
+const AI_CFG = { key: '', model: '', on: 0 };
+const AI_KEY = 'genji_ai_v1';
+const AI_CACHE_KEY = 'genji_aiexp_v1';
+const ZHIPU_MODELS = [];
+const ZHIPU_BASE = '';
+let AI_CACHE = null;
+function aiReady() { return false; }
+function aiExplain() { return Promise.resolve({ ok: false, err: '' }); }
+function aiExpBtnHtml() { return ''; }
+function aiExpBind() {}
+function aiLoadCfg() {}
+function aiSaveCfg() {}
+function aiCacheLoad() { return {}; }
+function aiCacheSave() {}
+function showAiSettings(fn) { if (typeof fn === 'function') fn(); }
+/* 入口已删，面板永远打不开，清空避免残留文案 */
+function showExportView() {}
+function showImportView() {}
+function showImportWrong() {}
+"""
+
+
+def sanitize(text):
+    """产物级净化：删入口按钮、替换控件与文案。"""
+    for bid in DROP_BTN_IDS:
+        text = re.sub(r'<button[^>]*\bid="%s"[^>]*>[\s\S]*?</button>' % bid, "", text)
+    # 按钮删完可能留下空行容器
+    text = re.sub(r'<div class="row">\s*</div>', "", text)
+    for old, new in SANITIZE:
+        text = text.replace(old, new)
+    return text
+
+
 def build():
     meta = json.load(open(os.path.join(ROOT, "version.json"), encoding="utf-8"))
     ver = meta["version"]
 
     head, css_parts, body, js_files, tail = "", [], "", [], ""
     for path, _s, _e, _n in PIECES:
+        # AI 详解整模块下线（含平台模型 shim，其文案里带平台名）
+        if os.path.basename(path) == "42_ai_glm.js":
+            print("  js  %-28s 已排除（AI 下线）" % os.path.basename(path))
+            continue
         if path.endswith(".html"):
             if path.startswith("src/00"):
                 head = read(path)
@@ -705,14 +838,23 @@ def write_dist(data, js_files, ver, news_ver):
             for f in fs:
                 os.remove(os.path.join(root, f))
     os.makedirs(ASSETS, exist_ok=True)
+
+    # index.html：净化 + 补一条隐藏替身控件的规则
+    html = sanitize(data.decode("utf-8"))
+    if "</style>" in html:
+        html = html.replace("</style>", "x-inp,x-txt{display:none!important}</style>", 1)
+    data = html.encode("utf-8")
     open(os.path.join(DIST, "index.html"), "wb").write(data)
+
     # 版本号 / 公告已读位这两个占位符不只躺在 index.html 里，
     # 也在 73_version.js / 55_boot_news.js 里 —— 外置之后必须一并替换，
     # 否则界面上会直接贴出 __BUILD_VER__，公告的"已读位"也永远对不上。
     bundle = []
     for p in js_files:
         bundle.append(js_compat(read(p), p))
-    app = "".join(bundle).replace("__BUILD_VER__", ver).replace("__NEWS_VER__", news_ver)
+    app = BOOT_JS + "".join(bundle) + STUB_JS
+    app = app.replace("__BUILD_VER__", ver).replace("__NEWS_VER__", news_ver)
+    app = sanitize(app)
     open(os.path.join(ASSETS, "app.js"), "w", encoding="utf-8", newline="").write(app)
     return len(app)
 

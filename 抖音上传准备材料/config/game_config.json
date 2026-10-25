@@ -60,8 +60,10 @@
     "font_note": "界面使用系统字体，无需随包分发；接入方式见 assets/fonts/README_font.txt"
   },
   "submission": {
-    "package": "数境-横屏特供-v4.0.28.zip",
-    "package_portrait": "数境-v4.0.28.zip（竖屏备用，若后台改回竖屏再用）",
+    "package": "数境-抖音特供-v4.0.28.zip",
+    "package_portrait": "数境-v4.0.28.zip（竖屏通用版，含输入功能，不能提交抖音）",
+    "package_landscape": "数境-横屏特供-v4.0.28.zip（横屏但未阉割输入，不要提交）",
+    "input_policy": "无账号注册 / 无图片上传 / 无自定义输入；打包时把 input、textarea、type=file 全部替换为不可用的自定义元素",
     "package_root": "index.html",
     "privacy_policy": "documents/privacy_policy.txt",
     "game_intro": "documents/game_description.txt"

@@ -210,8 +210,8 @@
     <div class="kicker">小红书 Vibe Coding 小工具 · 发布前准备</div>
     <h1>数境 · 四国远征<small>上传指南与交付清单：技术要求、素材、自检、提审流程</small></h1>
     <div class="hero-meta">
-      <span class="pill"><i></i>版本 v4.0.28</span>
-      <span class="pill"><i></i>2026-10-18 构建</span>
+      <span class="pill"><i></i>版本 v4.1.0</span>
+      <span class="pill"><i></i>2026-10-25 构建</span>
       <span class="pill"><i></i>包体 0.67 MiB</span>
       <span class="pill ok"><i></i>官方脚本审计 PASS</span>
     </div>
@@ -252,15 +252,15 @@
           <tbody>
             <tr>
               <td><b>竖屏包</b></td>
-              <td><code>minitool/shujing-minitool-v4.0.28.zip</code></td>
+              <td><code>minitool/shujing-minitool-v4.1.0.zip</code></td>
               <td><span class="tag ok">已就绪</span></td>
-              <td class="num">682.8 KB · 2 个文件 · 审计 0 warning</td>
+              <td class="num">659.3 KB · 2 个文件 · 审计 0 warning</td>
             </tr>
             <tr>
-              <td><b>横屏包</b></td>
-              <td><code>minitool/shujing-minitool-landscape-v4.0.28.zip</code></td>
-              <td><span class="tag ok">已就绪</span></td>
-              <td class="num">683.1 KB · 2 个文件 · 审计 0 warning</td>
+              <td><b>横屏包</b>（已归档）</td>
+              <td><code>minitool/_old/shujing-minitool-landscape-v4.0.28.zip</code></td>
+              <td><span class="tag no">未采用</span></td>
+              <td class="num">684.6 KB · 3 个文件 · 审计 0 warning</td>
             </tr>
             <tr>
               <td>应用图标</td>
@@ -468,14 +468,14 @@
             <tr><td>截图 1</td><td>竖屏、无系统状态栏、无调试角标</td><td class="num">750×1334</td><td><span class="tag ok">达标</span></td></tr>
             <tr><td>截图 2</td><td>展示核心答题玩法，答案高亮可见</td><td class="num">750×1334</td><td><span class="tag ok">达标</span></td></tr>
             <tr><td>截图 3</td><td>展示战术地图 / 系统深度</td><td class="num">750×1334</td><td><span class="tag ok">达标</span></td></tr>
-            <tr><td>截图统一性</td><td>同一版本、同一套 UI、无版本号冲突</td><td class="num">均取自 v4.0.28 产物</td><td><span class="tag ok">达标</span></td></tr>
+            <tr><td>截图统一性</td><td>同一版本、同一套 UI、无版本号冲突</td><td class="num">均取自 v4.1.0 产物</td><td><span class="tag ok">达标</span></td></tr>
           </tbody>
         </table>
       </div>
       <p class="small muted">截图直接用 <code>minitool/dist/index.html</code> 在 Chrome 560×996 视口渲染，再等比缩放到 750×1334；引导横幅、任务条与帧率角标已在截图前隐藏，未改动包内代码。</p>
 
       <h3>2.2 横屏版素材与差异</h3>
-      <p>横屏包复用同一份源码，只在构建时改两处：把「仅矮屏横屏」的媒体查询放宽成「所有横屏」，再把面板宽度从 560px 放到 1000px。竖屏包一字未动。</p>
+      <p><b>横屏方案已归档，当前交付不含。</b>下面保留这段说明，只为你日后想重做时少走弯路。横屏包复用同一份源码，只在构建时改两处：把「仅矮屏横屏」的媒体查询放宽成「所有横屏」，再把面板宽度从 560px 放到 1000px。竖屏包一字未动。</p>
 
       <div class="assets landrow">
         <figure class="asset land" data-full="minitool/store/landscape/01_战场.png">
@@ -494,7 +494,7 @@
 
       <div class="note warn">
         <b>两个包怎么选</b>
-        小工具容器按上传页登记的朝向加载。登记竖屏就传 <code>shujing-minitool-v4.0.28.zip</code>；登记横屏（或容器本身是横屏）就传 <code>shujing-minitool-landscape-v4.0.28.zip</code>。传错不会导致白屏，但会一边留大片空白、另一边被裁切。不确定时先传竖屏，在模拟器里旋转设备看一眼再定。
+        小工具容器按上传页登记的朝向加载。登记竖屏就传 <code>shujing-minitool-v4.1.0.zip</code>；登记横屏（或容器本身是横屏）就传 <code>shujing-minitool-landscape-v4.1.0.zip</code>。传错不会导致白屏，但会一边留大片空白、另一边被裁切。不确定时先传竖屏，在模拟器里旋转设备看一眼再定。
       </div>
       <p class="small muted">横屏截图取自 <code>minitool/dist-landscape</code>，视口 1334×750，同样隐藏了引导浮层与帧率角标；URL 带 <code>?pc=0</code> 强制走触摸分支，避免截图里出现 <code>WASD</code> / <code>Shift</code> 这类手机上做不到的键位提示。</p>
     </section>
@@ -611,8 +611,8 @@
       <ol class="steps">
         <li class="step">
           <h4>确认产物与版本</h4>
-          <p>确认 <code>minitool/dist/index.html</code> 内的 <code>NEWS_VER</code> 与公告内容一致（小工具版为 <code>v4.0.28-3f17d760</code>）。它和网页版的 <code>653a052c</code> 不同是正常的——小工具版不渲染「怎么开全屏」区块，卡片内容变了，哈希自然变。</p>
-          <p>再确认一次拿的是哪个朝向的包：竖屏 <code>shujing-minitool-v4.0.28.zip</code>，横屏 <code>shujing-minitool-landscape-v4.0.28.zip</code>。两个文件大小几乎一样，别只凭体积判断。</p>
+          <p>确认 <code>minitool/dist/index.html</code> 内的 <code>NEWS_VER</code> 与公告内容一致（小工具版为 <code>v4.1.0-90db4d41</code>）。它和网页版的 <code>653a052c</code> 不同是正常的——小工具版不渲染「怎么开全屏」区块，卡片内容变了，哈希自然变。</p>
+          <p>再确认一次拿的是哪个朝向的包：竖屏 <code>shujing-minitool-v4.1.0.zip</code>，横屏 <code>shujing-minitool-landscape-v4.1.0.zip</code>。两个文件大小几乎一样，别只凭体积判断。</p>
           <div class="note info"><b>不要重新压缩</b>本仓库的 zip 已是“压缩目录内容”的方式，<code>index.html</code> 在根。若要自己压，进入 <code>minitool/dist</code> 后压缩当前目录内容，别压缩 <code>dist</code> 文件夹本身。</div>
         </li>
         <li class="step">
@@ -626,7 +626,7 @@
         </li>
         <li class="step">
           <h4>上传 zip 并填写应用信息</h4>
-          <p>在上传页第二步选择 <code>minitool/shujing-minitool-v4.0.28.zip</code>。按第 03 节填入名称、简介、标签；图标与截图用 <code>minitool/store/</code> 内的文件，若页面提示尺寸不符，按提示等比导出。</p>
+          <p>在上传页第二步选择 <code>minitool/shujing-minitool-v4.1.0.zip</code>。按第 03 节填入名称、简介、标签；图标与截图用 <code>minitool/store/</code> 内的文件，若页面提示尺寸不符，按提示等比导出。</p>
         </li>
         <li class="step">
           <h4>平台模拟器完整验证</h4>
@@ -694,7 +694,7 @@
 
       <div class="note ok" style="margin-top:18px">
         <b>下一步只有三件事</b>
-        ① 上传 <code>minitool/shujing-minitool-v4.0.28.zip</code> 到创服平台；② 在模拟器、Android 真机、iOS 真机各走一遍完整流程；③ 用第 03 节文案提交审核。素材与自检已备好，不需要再改包。
+        ① 上传 <code>minitool/shujing-minitool-v4.1.0.zip</code> 到创服平台；② 在模拟器、Android 真机、iOS 真机各走一遍完整流程；③ 用第 03 节文案提交审核。素材与自检已备好，不需要再改包。
       </div>
     </section>
 
@@ -704,7 +704,7 @@
 
 <footer>
   <div class="foot">
-    <p><b>数境 · 四国远征</b> — 小红书 Vibe Coding 小工具上传指南 · 对应版本 v4.0.28（2026-10-18）· 本页更新于 2026-10-22</p>
+    <p><b>数境 · 四国远征</b> — 小红书 Vibe Coding 小工具上传指南 · 对应版本 v4.1.0（2026-10-25）· 本页更新于 2026-10-22</p>
     <p class="muted">本页为项目内部交付文档，不是平台官方文档。容器规则以官方在线文档为准；图标 / 截图规格等未公开项以实际上传页提示为准。</p>
     <div class="src">
       <a href="https://miniapp-sandbox.xiaohongshu.com/minitool/doc" target="_blank" rel="noopener">小工具在线文档（容器能力清单）</a>

@@ -200,7 +200,7 @@ function showImportWrong(initTxt){
       <div class="center" id="impMsg" style="min-height:20px;color:#ffd76a;font-weight:700;font-size:var(--fs-sm)"></div>
       <div class="row"><button class="btn" id="impFile">📂 选文件</button><button class="btn" id="impDemo">📋 填示例</button></div>
       <div class="row"><button class="btn primary" id="impGo">🔍 解析并预览</button></div>
-      <div class="row"><button class="btn" id="impFmt">❓ 更多格式</button><button class="btn" id="impPh">📷 拍题讲解</button></div>
+      <div class="row"><button class="btn" id="impFmt">❓ 更多格式</button></div>
       <div class="row"><button class="btn" id="ok">关闭</button></div>
     `);
     const ta=$('impTa');
@@ -212,7 +212,6 @@ function showImportWrong(initTxt){
       initTxt=initTxt&&initTxt.trim()?initTxt+'\n'+IMP_DEMO:IMP_DEMO;
       toast('已填入 3 道示例，改一改就能用');render();};
     $('impFmt').onclick=()=>{keep();showImportFmt(initTxt);};
-    $('impPh').onclick=()=>{showImportPhoto();};
     $('impGo').onclick=()=>{
       keep();
       const r=parseWrongText(initTxt||'',defSubj);

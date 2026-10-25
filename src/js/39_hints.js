@@ -78,11 +78,22 @@ function qSolveHtml(q,open){
   return '<details class="ai-sec"'+(open?' open':'')+'><summary>📖 摊开完整讲解'
     +(st.length?'（'+st.length+' 步）':'')+(ag.length?' · '+ag.length+' 种解法':'')+'</summary>'+inner+'</details>';
 }
+/* 错题列表 / 重练面板里展示「几步思路」（题目自带的 steps：
+   攻坚大题的 3~4 步求解，或导入题里自己写的步骤；没有就不显示） */
+function stepsHtml(q,open){
+  const st=(q&&q.steps)||[];
+  if(!st.length)return '';
+  const inner='<div class="ai-steps"><div class="hd">🧠 这道题该怎么想</div><ol>'
+    +st.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol></div>';
+  if(open)return inner;
+  return '<details class="ai-sec wb-ai"><summary>🧠 看这 '+st.length
+    +' 步思路</summary>'+inner+'</details>';
+}
 function splitSents(s){
   return String(s||'').split(/[。！？；\n]/).map(x=>x.trim()).filter(Boolean);
 }
 function buildHintChain(q,ap){
-  /* 攻坚题 / AI 讲过的题自带 hints：那是按「先做什么 → 再做什么」排好的，
+  /* 攻坚题 / 导入题自带 hints：那是按「先做什么 → 再做什么」排好的，
      直接用，别再用解析的句子去拼（拼出来的是散句，不是台阶） */
   if(q&&q.hints&&q.hints.length>=2)return q.hints.slice(0,4);
 
@@ -497,14 +508,13 @@ function sessionFixed(list,title,onFinish){
           fb.className='ok';
           setH(fb, (gr==='done'?'✅ 答对！🎓 满星毕业，收进「已掌握」'
             :(gr==='up'?'✅ 答对！⬆️ 熟炼度 +1'+(nx&&nx.due?'，'+esc(nx.due)+' 再见':'')
-              :'✅ 答对！'))+' 🪙+'+coin2+stepsHtml(q,false)+aiExpBtnHtml(q));}
+              :'✅ 答对！'))+' 🪙+'+coin2+stepsHtml(q,false));}
         else{state.totalWrong++;state.streak=0;SFX.wrong();
           wbGrade(q,false);
-          fb.className='no';setH(fb, `❌ 正确答案：<b>${esc(q.ans)}</b><div class="exp">💡 ${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">📌 熟炼度归零，明天再来一遍</div>`+aiExpBtnHtml(q));}
+          fb.className='no';setH(fb, `❌ 正确答案：<b>${esc(q.ans)}</b><div class="exp">💡 ${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">📌 熟炼度归零，明天再来一遍</div>`);}
         save();updateHUD();
         $('nextBtn').style.display='block';
         $('nextBtn').textContent=(i+1>=list.length)?'完成 ✓':'继续 →';
-        try{aiExpBind(q);}catch(e){}
         bindNext();
       });
     });
@@ -683,19 +693,17 @@ function showWrongBook(tab0,subj0){
   if(tab0&&WB_TABS.some(x=>x.id===tab0))tab=tab0;
   else if(tab0){tab='all';subj=tab0;}
   if(subj0)subj=subj0;
-  /* 空本子：给一条最短的路（拍照 / 文字导入），别让人对着空面板发呆 */
+  /* 空本子：给一条最短的路（文字导入），别让人对着空面板发呆 */
   if(!state.wrongBook.length&&!state.wrongDone.length){
     openPanel(`<h2>📕 错题中心</h2><div class="sub">还没有错题</div>
       <div class="center" style="font-size:44px;margin:10px 0">🎉</div>
       <div class="center">闯关与练枪答错的题会自动收进这里，
         并按熟炼度排好复习日程 —— 到期就练，连对 5 次毕业。<br>
         <span style="color:#9cc0e0;font-size:var(--fs-xs)">容量 ${WRONG_CAP} 题 · 也可以把作业、卷子上的错题导入进来</span></div>
-      <div class="row"><button class="btn primary" id="ph">📷 拍一道题（AI 自动解析）</button></div>
-      <div class="row"><button class="btn" id="imp">📥 文字导入</button></div>
+      <div class="row"><button class="btn primary" id="imp">📥 导入错题</button></div>
       <div class="row"><button class="btn" id="ok">关闭</button></div>`);
     $('ok').onclick=closePanel;
     $('imp').onclick=showImportWrong;
-    $('ph').onclick=showImportPhoto;
     return;
   }
   function match(w){
@@ -905,14 +913,12 @@ function showWrongBook(tab0,subj0){
       foot='<div class="row"><button class="btn" id="exp">📤 导出</button>'
         +'<button class="btn primary" id="ok">关闭</button></div>';
     }else if(tab==='done'){
-      foot='<div class="row"><button class="btn" id="imp">📥 文字</button>'
-        +'<button class="btn" id="ph">📷 AI 拍题</button>'
+      foot='<div class="row"><button class="btn" id="imp">📥 导入</button>'
         +'<button class="btn" id="dr">🔁 抽 5 题复习</button>'
         +'<button class="btn" id="clrD">🗑 清空归档</button></div>'
         +'<div class="row"><button class="btn primary" id="ok">关闭</button></div>';
     }else{
-      foot='<div class="row"><button class="btn" id="imp">📥 文字</button>'
-        +'<button class="btn" id="ph">📷 AI 拍题</button>'
+      foot='<div class="row"><button class="btn" id="imp">📥 导入</button>'
         +'<button class="btn" id="exp">📤 导出</button>'
         +'<button class="btn" id="dr">🔁 重练</button></div>'
         +'<div class="row"><button class="btn" id="clr">🗑 清空本子</button>'
@@ -979,9 +985,8 @@ function showWrongBook(tab0,subj0){
       };
     }
     $('ok').onclick=closePanel;
-    const gi=$('imp'),gp=$('ph'),ge=$('exp'),gd=$('dr'),gc=$('clr'),gcd=$('clrD');
+    const gi=$('imp'),ge=$('exp'),gd=$('dr'),gc=$('clr'),gcd=$('clrD');
     if(gi)gi.onclick=showImportWrong;
-    if(gp)gp.onclick=showImportPhoto;
     if(ge)ge.onclick=showExportWrong;
     if(gd)gd.onclick=()=>{
       const src=(tab==='done')?state.wrongDone:state.wrongBook;
@@ -1010,61 +1015,6 @@ function showWrongBook(tab0,subj0){
   render();
 }
 
-/* 让 AI 重新解析一道已入库的错题（得有图才行）。
-   认错了题干、步骤给得不对，都能靠这一下救回来。 */
-async function aiReParse(w){
-  if(!w||!w.img)return;
-  if(OCR_CFG.mode!=='ai'||!(OCR_CFG.aiBase||'').trim()||!(OCR_CFG.aiModel||'').trim()){
-    toast('先到「⚙️ 识别设置」填好 AI 接口');return;
-  }
-  let url=shotMem[w.img];
-  if(!url){try{url=await shotGet(w.img);}catch(e){url=null;}}
-  if(!url){
-    toast('这张图已经不在本机存图库里了');return;
-  }
-  openPanel('<h2>🤖 AI 重新解析</h2><div class="sub">正在看图并解析…</div>'
-    +'<div class="center" style="font-size:40px;margin:10px 0">🧠</div>'
-    +'<div class="center" id="aiMsg" style="color:#9cc0e0;font-size:var(--fs-sm)">这要几秒钟</div>');
-  const setSt=t=>{const m=$('aiMsg');if(m)m.textContent=t;};
-  const r=await aiDeepPhoto(url,setSt);
-  if(!r.ok||!r.text){
-    openPanel('<h2>🤖 解析失败</h2><div class="sub">'+esc(r.err||'没认出来')+'</div>'
-      +'<div class="center" style="font-size:40px;margin:10px 0">😵</div>'
-      +'<div class="center" style="color:#9cc0e0;font-size:var(--fs-sm);line-height:var(--lh-loose)">'
-      +'可以换一个模型试试，或者自己编辑这道题</div>'
-      +'<div class="row"><button class="btn" id="ed">✏️ 自己改</button>'
-      +'<button class="btn primary" id="ok">好</button></div>');
-    $('ok').onclick=closePanel;
-    $('ed').onclick=()=>showWbEdit(w);
-    return;
-  }
-  const ch=[];
-  if(r.text&&r.text!==w.text){w.text=r.text;ch.push('题干');}
-  if(r.ans){ch.push('答案');w.ans=r.ans;}
-  if(r.opts&&r.opts.length>=2){
-    const p=aiPickOpt(w.ans,r.opts);
-    if(p.ok){w.ans=p.ans;w.opts=r.opts.slice(0,6);w.text=aiStripOpts(w.text,r.opts);ch.push('选项');}
-  }
-  if(r.topic){w.topic=r.topic;ch.push('知识点');}
-  if(r.subject){w.subject=impSubj(r.subject)||w.subject;ch.push('科目');}
-  if(r.explain){w.exp=r.explain;ch.push('解析');}
-  if(r.steps&&r.steps.length){w.steps=r.steps;ch.push('思路步骤');}
-  if(r.appr){w.appr=r.appr;ch.push('思路层');}
-  save();
-  openPanel('<h2>🤖 解析完成</h2><div class="sub">改了：'+(ch.length?esc(ch.join(' · ')):'没有变化')+'</div>'
-    +'<div class="center" style="font-size:40px;margin:8px 0">✨</div>'
-    +'<div class="wb-card">'
-    +'<div class="wb-kv"><span style="flex:1">答案</span><b style="color:#ffd76a">'+esc(w.ans)+'</b></div>'
-    +'<div class="wb-kv"><span>知识点</span><b>'+esc(w.topic||'—')+'</b></div>'
-    +'</div>'
-    +'<div class="wb-e" style="color:#9cc0e0">'+esc(w.exp||'')+'</div>'
-    +stepsHtml(w,true)
-    +'<div class="row"><button class="btn" id="ed">✏️ 再改改</button>'
-    +'<button class="btn primary" id="ok">好</button></div>');
-  $('ok').onclick=closePanel;
-  $('ed').onclick=()=>showWbEdit(w);
-}
-
 /* ---------- 编辑一条错题 ----------
    认错的题干、记错的答案、自己总结的坑，都能在这儿改回来；
    「我的笔记」只有你自己看得到，适合写"我为什么错"。 */
@@ -1088,16 +1038,12 @@ function showWbEdit(w){
       +'<textarea id="eN" style="'+TA_STYLE+';height:58px">'+esc(w.note||'')+'</textarea>'
       +'<div class="imp-box" style="margin:10px 0 5px">🧠 思路步骤（一行一步，最多 4 步）</div>'
       +'<textarea id="eS" style="'+TA_STYLE+';height:70px">'+esc((w.steps||[]).join('\n'))+'</textarea>'
-      +(w.img?'<div class="row" style="margin-top:10px"><button class="btn" id="eAi" '
-        +'style="flex:1;justify-content:center">🤖 让 AI 重新解析这张图</button></div>':'')
       +'<div class="imp-box" style="margin:10px 0 5px">科目</div>'
       +'<div class="row" style="margin-top:0;gap:6px;justify-content:center;flex-wrap:wrap">'
         +picks+'</div>'
       +'<div class="row"><button class="btn primary" id="eOk">保存</button>'
         +'<button class="btn" id="eCn">取消</button></div>');
     panel.querySelectorAll('[data-s]').forEach(b=>{b.onclick=()=>{subj=b.dataset.s;render();};});
-    const ea=$('eAi');
-    if(ea)ea.onclick=()=>aiReParse(w);
     $('eCn').onclick=()=>showWrongBook('all');
     $('eOk').onclick=()=>{
       const t=$('eT').value.trim();

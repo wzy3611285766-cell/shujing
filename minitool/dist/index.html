@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>数境</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: minitool v4.0.28 · 2026-10-23 23:00 · 小工具离线包 -->
+<!-- build: minitool v4.1.0 · 2026-10-25 17:54 · 本应用离线包 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -172,7 +172,7 @@
   --gb-tint-red:linear-gradient(180deg,rgba(255,107,107,.32) 0%,rgba(255,107,107,.20) 100%);
   --gb-tint-red-edge:0 0 0 .5px rgba(255,138,128,.42);
 }}
-/* 支持 dvh 的浏览器（iOS 15.4+ / Chrome 108+）改用动态视口，
+/* 支持 dvh 的设备（iOS 15.4+ / Chrome 108+）改用动态视口，
    地址栏收起时不会把底部控件顶出可视区 */
 @supports (height:100dvh){
   :root{--vmin:100vw;--vmin:min(100vw,100dvh);--vmax:100vw;--vmax:max(100vw,100dvh)}
@@ -305,7 +305,10 @@ body.upbar-on #modal{top:var(--upH)}
    窄屏一行放不下 7 个入口，以前会挤成 3~4 行压住地图。
    现在：位置 / 难度 / 结晶 / ☰ 常驻，其余功能收进 ☰ 菜单；宽屏才全部平铺。 */
 #topbar{position:absolute;top:var(--upH);left:0;right:0;
-  padding:calc(var(--safeT) + var(--pad)) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
+  /* 本应用：容器顶部是一条浮层导航（返回 / 标题 / 头像 / 分享），
+   顶栏与它同一行就会被夹住、最右的 ☰ 正好压在分享键下面。
+   与其左右避让，不如整体下移到浮层之下，右侧恢复满宽。 */
+  padding:calc(var(--safeT) + var(--pad) + 44px) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
   display:flex;gap:var(--gap);align-items:center;pointer-events:none;z-index:20}
 /* 4.0.17：chip 浮在活地图上，不能带 backdrop-filter（每帧重算 → 60fps 变 30fps）。
    没了模糊就得补不透明度，否则半透明底"糊在图上"、字立不住。 */
@@ -316,14 +319,18 @@ body.upbar-on #modal{top:var(--upH)}
   color:#eaf4ff;font-size:var(--fs-sm);font-weight:600;display:flex;align-items:center;gap:5px;
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop);
   line-height:var(--lh-tight);
-  max-width:44vw;min-width:0;overflow:hidden;white-space:nowrap}
+  max-width:36vw;min-width:0;overflow:hidden;white-space:nowrap}
 .chip::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
 .chip .txt{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .chip.small{padding:calc(var(--pad) * .8) calc(var(--pad) * 1.3);font-size:var(--fs-xs)}
 #topRight{margin-left:auto;display:flex;gap:var(--gap);align-items:center;flex-wrap:nowrap;
   min-width:0;justify-content:flex-end}
-#crystalChip{color:#ffd76a;font-variant-numeric:tabular-nums;flex:none}
+#crystalChip{color:#ffd76a;font-variant-numeric:tabular-nums;flex:0 1 auto;min-width:0}
+/* 本应用：顶栏让出 56px 之后放不下三块 chip，难度压成一个圆点，
+   只露首字（基 / 常 / 攻），颜色本身仍区分档位。 */
+#diffChip{flex:0 0 auto;width:calc(var(--fs-xs) + var(--pad) * 2);padding-left:0;padding-right:0;justify-content:center;overflow:hidden}
+#diffChip .txt{display:block;width:1.05em;overflow:hidden;white-space:nowrap;text-align:center}
 /* ---- iOS 玻璃胶囊按钮（.btn 族，照搬工作台）----
    结构 = 半透明玻璃底面 + backdrop 模糊 + 发丝描边 + 顶部高光 + 镜面渐变层
    按下 = 轻微缩小 + 下沉内阴影 + 高光收敛（iOS 的「压下去」） */
@@ -723,7 +730,7 @@ body.pc #stick.active{opacity:1}
      f-xs 极短（口诀级）→ 最大号居中      f-sm 短题 → 大号居中
      f-md 中等 → 中号居中                 f-lg 长题 → 小号左对齐 + 拆条
      f-xl 超长（大题）→ 正文号左对齐 + 拆条，行距最松 */
-/* text-wrap 是浏览器原生的一段排版智慧，不支持的浏览器直接忽略：
+/* text-wrap 是设备原生的一段排版智慧，不支持的设备直接忽略：
    · balance —— 居中短句各行的长度会尽量拉平，不再出现"第一行满、第二行两三个字"的
      倒三角；中文居中题面最常见这个毛病
    · pretty  —— 长段落避开"尾行只剩两三个字"的孤儿行 */
@@ -1220,13 +1227,10 @@ margin-top:8px;padding:5px 0}
 .tp.off{opacity:.55;outline:1px dashed rgba(255,255,255,.30);outline-offset:-1.5px}
 .tp-all{margin-bottom:8px}
 
-/* ============ AI 深度解析（1.8.0）============
-   导入卡片里的解析 / 步骤 / 思路层，以及重练时的思路展开 */
+/* ============ 完整讲解 / 解题步骤的折叠区 ============
+   答完题摊开的解析与分步，以及错题列表里折叠的思路 */
 .ai-sec{border-radius:12px;background:rgba(94,214,255,.07);
   border:1px solid rgba(94,214,255,.24);padding:8px 10px;margin-top:6px}
-.ai-sec .ai-hd{color:#9fe4ff;font-size:var(--fs-xs);font-weight:800;margin-bottom:5px;
-  display:flex;align-items:center;gap:5px}
-.ai-sec .shot-inp{background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.12)}
 .ai-sec[open] summary{color:#9fe4ff}
 .ai-sec summary{color:#8fb4d6;font-size:var(--fs-xs);font-weight:700;cursor:pointer;
   list-style:none;padding:1px 0}
@@ -1356,43 +1360,12 @@ margin-top:8px;padding:5px 0}
 .ang-s{color:#c9b6f0;font-size:var(--fs-sm);margin-top:4px;line-height:var(--lh-base)}
 .ang-tip{color:#9cc0e0;font-size:var(--fs-xs);margin-top:8px;
   padding-top:7px;border-top:1px dashed rgba(255,255,255,.14);line-height:var(--lh-base)}
-/* AI 讲解卡（拍题后生成） */
-.tc{border:1px solid rgba(94,214,255,.34);background:rgba(94,214,255,.08);
-  border-radius:16px;padding:12px 13px;margin-top:10px;text-align:left}
-.tc .hd{font-weight:800;color:#9fe4ff;font-size:var(--fs-md);margin-bottom:6px}
-.tc-step{background:rgba(255,255,255,.06);border-radius:10px;padding:8px 11px;
-  margin-top:7px;font-size:var(--fs-sm);line-height:var(--lh-base);color:#dbeafe;
-  overflow-wrap:anywhere}
-.tc-step b{color:#ffd76a}
-.tc-lv{display:inline-block;border-radius:999px;padding:2px 9px;font-size:var(--fs-xs);
-  font-weight:700;margin-left:6px;vertical-align:middle}
 /* 答题面板里的大图 */
 .qimg{margin:2px 0 10px;text-align:center}
 .qimg-i{display:block;max-width:100%;max-height:34vh;object-fit:contain;
   border-radius:10px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:zoom-in}
 .qimg-s{display:block;max-width:100%;max-height:74vh;object-fit:contain;
   border-radius:12px;background:#fff}
-/* 导入照片：一张图一张卡片 */
-.shot{display:flex;gap:10px;background:rgba(255,255,255,.05);
-  border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px;margin-bottom:9px}
-.shot .pic{width:66px;height:66px;flex:none;border-radius:8px;object-fit:cover;
-  background:#fff;cursor:zoom-in}
-.shot .fd{flex:1;min-width:0;display:grid;gap:5px}
-.shot .st{font-size:var(--fs-xs);font-weight:700;line-height:1.5;color:#9cc0e0}
-.shot .st.ok{color:#8ef0b8}
-.shot .st.no{color:#ffb0b0}
-.shot .st.run{color:#ffd76a}
-.shot .del{align-self:flex-start;background:var(--gb-tint-red);
-  border:none;color:#ffd0d0;border-radius:999px;
-  padding:3px 10px;font-size:var(--fs-xs);font-weight:700;cursor:pointer;
-  box-shadow:var(--gb-edge-hi),var(--gb-tint-red-edge),var(--gb-drop);
-  transition:transform .12s ease-out,filter .15s}
-.shot .del:active{transform:scale(.94);filter:brightness(.96)}
-.shot-inp{width:100%;background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.14);
-  border-radius:9px;padding:7px 9px;color:#eaf4ff;font-size:var(--fs-sm);
-  font-family:inherit;line-height:1.5;resize:vertical;user-select:text;
-  -webkit-user-select:text;touch-action:auto}
-.shot-inp::placeholder{color:#7f9cba}
 /* 全屏看图 */
 #imgView{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;background:rgba(2,8,16,.94);z-index:60;
   display:none;align-items:center;justify-content:center;padding:14px;
@@ -1596,7 +1569,7 @@ margin-top:8px;padding:5px 0}
   /* 2. 题面面板切成两栏 —— 只对"答题面板"生效（它才有 .qtext + .opts）。
      用 :has() 判定：面板里同时存在题面和选项时才是答题面板，
      菜单 / 图鉴 / 商行这些面板没有 .opts，保持单列不受影响。
-     浏览器不支持 :has() 时整条规则被忽略，自动退回竖屏单列，不会坏掉。 */
+     设备不支持 :has() 时整条规则被忽略，自动退回竖屏单列，不会坏掉。 */
   .panel:has(> .qtext):has(> .opts){
     display:grid;
     grid-template-columns:minmax(0,1.06fr) minmax(0,1fr);
@@ -1797,7 +1770,7 @@ margin-top:8px;padding:5px 0}
 @keyframes lfRing{0%{transform:translate(-50%,-50%) scale(.03);opacity:.95}
   100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
 @keyframes lfVeil{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
-</style>
+x-inp,x-txt{display:none!important}</style>
 </head>
 <body>
 <div id="app">
@@ -1872,16 +1845,18 @@ margin-top:8px;padding:5px 0}
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新 · v4.0.28</span>
-        <div class="news-title">云存档改显示「玩了多久」</div>
-        <div class="news-sub">只算看得见的时候 · 从这一版开始记</div>
+        <span class="news-badge">📣 版本更新 · v4.1.0</span>
+        <div class="news-title">AI 相关功能已全部移除，题解回到题目自带</div>
+        <div class="news-sub">离线可用 · 不再需要填任何 Key</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
           <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">⏱️</span><span>云存档面板上那行改成<b>玩了多久</b>：切后台、锁屏、合盖子都不算，只有页面在眼前才计时</span></div>
-          <div class="news-li"><span class="e">🌱</span><span>时长<b>从这一版开始累计</b>，以前玩的时间没有记录，所以刚更新完会显示「不到 1 分钟」</span></div>
+          <div class="news-li"><span class="e">🧹</span><span>移除<b>「🤖 AI 讲解」</b>、<b>「⚙️ AI 设置」</b>与「AI 服务 GLM」整套接口 —— 答题后不再出现那颗按钮，也不用再填 API Key、不会发生任何联网请求</span></div>
+          <div class="news-li"><span class="e">📷</span><span>移除<b>拍照识别 / AI 拍题导入</b>：错题本里改成只走<b>文字导入</b>（粘贴或选文件，格式不变）</span></div>
+          <div class="news-li"><span class="e">📖</span><span>题目自带的<b>完整解析、分步思路、阶梯提示</b>全部保留 —— 攻坚大题、练枪、错题复习的讲解一个字没少</span></div>
+          <div class="news-li"><span class="e">⚠️</span><span>以前 AI 生成过的讲解不会再显示；错题本里的题目、熟炼度、复习日程<b>完全不受影响</b></span></div>
         </div>
       </div>
 

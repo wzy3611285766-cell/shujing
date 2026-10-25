@@ -47,7 +47,70 @@ ENHANCE = """<style id="landscape-pack">
   .panel{padding:7px 11px}
   .panel h2{font-size:var(--fs-sm)}
 }
+/* ==== 竖屏容器里强制横屏 ====
+   小红书的小工具容器多数按竖屏加载，此时 orientation 永远是 portrait，
+   上面的横屏规则一条都不生效。这里把整个 app 旋转 90°：视觉上变成横屏，
+   用户把手机横过来玩即可。旋转后：
+     · --vmin/--vmax 在 portrait 下本来就是「短边=100vw / 长边=100vh」，
+       正好等于旋转后的高度 / 宽度，字号与间距不用另算；
+     · #app 自身的宽高要与视口互换，否则内容会按竖屏尺寸排。
+   触摸坐标必须自己换算：clientX/clientY 报的是视口坐标，CSS 变换不会改它们，
+   直接用会得到「上滑变右滑」的方向错乱 —— 由 rotate-input.js 在捕获阶段换算。 */
+@media (orientation:portrait){
+  html,body{height:100%;overflow:hidden;background:#060b14}
+  #app{
+    position:fixed;left:0;top:0;
+    width:100vh;height:100vw;
+    transform:rotate(90deg) translateY(-100%);
+    transform-origin:top left;
+    /* 覆盖基础样式里的四边 0 与 height:100vh */
+    right:auto;bottom:auto;
+    height:100vw;
+  }
+}
 </style>
+<script src="./assets/rotate-input.js"></script>
+""".encode("utf-8")
+
+# 竖屏容器旋转 90° 之后，clientX/clientY 仍是视口坐标，与元素内部坐标差一次旋转。
+# 这里在捕获阶段把坐标换算到元素坐标系，再让事件继续冒泡给游戏。
+# 必须是外置脚本：容器 CSP 不允许内联 <script>。
+ROT_JS = """/* 竖屏容器里把 app 旋转 90° 后，事件坐标的换算层。
+   clientX/clientY 报的是视口坐标，浏览器不会因为 CSS 变换而改变它；
+   游戏内部按元素坐标算方向与落点，直接用就会出现「上滑变右滑」。
+   映射（顺时针 90°）：元素 x = 视口高 - clientY，元素 y = clientX。 */
+(function () {
+  var mq = window.matchMedia('(orientation:portrait)');
+
+  function fix(t) {
+    if (!t) return;
+    var x = t.clientX, y = t.clientY;
+    if (typeof x !== 'number' || typeof y !== 'number') return;
+    var u = window.innerHeight - y;
+    var v = x;
+    try {
+      Object.defineProperty(t, 'clientX', { value: u, configurable: true });
+      Object.defineProperty(t, 'clientY', { value: v, configurable: true });
+      Object.defineProperty(t, 'pageX', { value: u + window.pageXOffset, configurable: true });
+      Object.defineProperty(t, 'pageY', { value: v + window.pageYOffset, configurable: true });
+    } catch (e) { /* 某些实现不允许覆写，保持原值 */ }
+  }
+
+  function on(e) {
+    if (!mq.matches) return;                 // 真横屏时坐标本来就是对的
+    var i;
+    if (e.touches) for (i = 0; i < e.touches.length; i++) fix(e.touches[i]);
+    if (e.changedTouches) for (i = 0; i < e.changedTouches.length; i++) fix(e.changedTouches[i]);
+    if (typeof e.clientX === 'number') fix(e);
+  }
+
+  var types = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel',
+               'touchstart', 'touchmove', 'touchend', 'touchcancel',
+               'mousedown', 'mousemove', 'mouseup', 'click'];
+  for (var k = 0; k < types.length; k++) {
+    document.addEventListener(types[k], on, true);
+  }
+})();
 """.encode("utf-8")
 
 
@@ -67,6 +130,10 @@ def main():
     bm.DIST = DIST
     bm.ASSETS = os.path.join(DIST, "assets")
     bm.write_dist(data, js_files, ver, news_ver)
+
+    # 旋转层的坐标换算脚本（外置，head 里先于游戏脚本加载）
+    with open(os.path.join(bm.ASSETS, "rotate-input.js"), "wb") as f:
+        f.write(ROT_JS)
 
     total = 0
     for root, _d, fs in os.walk(DIST):

@@ -64,7 +64,7 @@ const ACCT={
   cloudBusy:false
 };
 
-/* 输入框统一这一套，跟「AI 设置」里的 Key 输入框保持一致 */
+/* 输入框统一这一套：账号 / 手机号 / 存档码都用同一副长相 */
 const ACCT_IN='width:100%;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.07);'
   +'border:1px solid rgba(255,255,255,.16);color:#eaf4ff;font-size:var(--fs-md);font-family:inherit';
 const ACCT_LB='color:#9cc0e0;font-size:var(--fs-sm);margin:0 0 5px';

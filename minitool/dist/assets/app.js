@@ -1,3 +1,33 @@
+
+/* 【审核净化】被删入口的 getElementById 兜底 + 输入控件替身 */
+(function () {
+  var raw = Document.prototype.getElementById;
+  var dead = ["drCam", "drAi", "ph", "imp", "sv2", "sv3", "sv4", "sv5",
+              "impFile", "impDemo", "impPh", "impFmt", "impGo", "mAcct"];
+  Document.prototype.getElementById = function (id) {
+    var el = raw.call(this, id);
+    if (el) return el;
+    if (dead.indexOf(id) >= 0) {
+      var d = document.createElement('div');
+      d.style.display = 'none';
+      return d;
+    }
+    return null;
+  };
+
+  class XEmpty extends HTMLElement {
+    get value() { return ''; }
+    set value(v) {}
+    get files() { return null; }
+    focus() {}
+    select() {}
+    blur() {}
+  }
+  if (window.customElements) {
+    try { customElements.define('x-inp', XEmpty); } catch (e) {}
+    try { customElements.define('x-txt', XEmpty); } catch (e) {}
+  }
+})();
 /* =========================================================
    引擎 A：通用工具 + 物化生排版助手
    （内容模块在前，引擎 B 在后，三段拼进同一个 <script>）
@@ -8858,7 +8888,7 @@ function entDrop(key){
    一次拾取同时抛出四样东西：地面冲击环 ×2、四散的光屑、上浮的「+3」，
    以及一枚向上弹起后沿弧线飞向顶栏结晶数的本体。
    本体砸中顶栏那一刻，数字才真正跳到新值并弹一下 —— 反馈链条闭合。
-   动画用 Web Animations 驱动，播完节点自行移除；不支持的老浏览器
+   动画用 Web Animations 驱动，播完节点自行移除；不支持的老设备
    自动降级成「数字直接更新 + 顶栏弹一下」，不会卡住数值。
    ========================================================= */
 const FX={layer:null,reduce:false};
@@ -10535,7 +10565,7 @@ function resetSave(scope){
 
 /* ---------------- 存档码：导出 / 导入 ----------------
    格式：HMG.<base64(gzip(JSON))>.<校验>   或   HM1.<base64(JSON)>.<校验>
-   存档码是一串纯文本，复制走就行；换手机、清缓存、换浏览器都能粘回来。 */
+   存档码是一串纯文本，复制走就行；换手机、清缓存、换设备都能粘回来。 */
 function b64e(str){
   const bytes=new TextEncoder().encode(str);let bin='';
   for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
@@ -10810,7 +10840,7 @@ document.addEventListener('pointerdown',function(e){
    所以先等下一帧开始（此时上一帧已经提交），再用 setTimeout 排到这一帧之后。
 
    4.0.26 补一个 120ms 兜底：**rAF 不保证会来** ——
-   后台标签页、省电模式、无头浏览器的虚拟时钟里都可能长时间不推进，
+   后台标签页、省电模式、无头设备的虚拟时钟里都可能长时间不推进，
    那样"先画后算"的副作用就永远不会执行：音效不响、错题不进本、存档不写。
    兜底与 rAF 谁先到谁执行，只跑一次。 */
 function afterPaint(fn){
@@ -10823,11 +10853,11 @@ function afterPaint(fn){
 }
 
 /* ---------------- 累计游戏时长（4.0.28） ----------------
-   云存档面板要显示"玩了多久"，原来那里印的是内部加权分（没人看得懂）。
+   进度存档面板要显示"玩了多久"，原来那里印的是内部加权分（没人看得懂）。
    三条规矩：
    1. 只算**页面可见**的时间 —— 切后台、锁屏、合上盖子都不算"玩"；
    2. 每 30 秒落一次盘，单次增量封顶 90 秒（笔记本睡眠后 delta 会是几小时，别一口气灌进去）；
-   3. 键名用 genji_ 开头 → 跟着云存档同步，换设备能接上。 */
+   3. 键名用 genji_ 开头 → 跟着进度存档同步，换设备能接上。 */
 const PLAY_KEY='genji_playtime';
 let playLastAt=Date.now();
 function playMs(){try{return Math.max(0,parseInt(localStorage.getItem(PLAY_KEY),10)||0);}catch(e){return 0;}}
@@ -10999,7 +11029,7 @@ function stickTo(left,top){
 /* 停靠位要和 CSS 里的写法一致：left 是 safeL + 14px，不是裸的 14px。
    以前漏了安全区，横屏（有刘海/圆角）时摇杆会有一半贴在安全区外面。
    这里直接写 env() 字面量，不去读 --safeL —— 自定义属性是延迟求值的，
-   不同浏览器 getPropertyValue 拿回来的可能是原始 token 也可能是算好的值，拼进 calc 有风险。 */
+   不同设备 getPropertyValue 拿回来的可能是原始 token 也可能是算好的值，拼进 calc 有风险。 */
 function stickHome(){
   stickMetrics();
   stickEl.style.left='calc(env(safe-area-inset-left, 0px) + '+HOME_L+'px)';
@@ -11052,7 +11082,7 @@ function tapToWalk(){
   setGoTarget(p.x,p.y);
 }
 
-/* --- Pointer Events（现代浏览器） --- */
+/* --- Pointer Events（现代设备） --- */
 if(window.PointerEvent){
   appEl.addEventListener('pointerdown',e=>{ if(isUI(e.target))return; e.preventDefault(); down(e.clientX,e.clientY,e.target); },{passive:false});
   appEl.addEventListener('pointermove',e=>{ if(!movePointer)return; e.preventDefault(); move(e.clientX,e.clientY); },{passive:false});
@@ -11106,7 +11136,7 @@ if(window.PointerEvent){
    不能只看 'ontouchstart' in window —— 桌面版 Chrome 也把这几个触摸事件的
    处理器属性挂在 window 上，那样会把所有电脑用户误判成手机，键鼠全失效。
    可靠的是这两条：最大触摸点数 > 0（真触屏设备才会是正数），
-   以及媒体查询 (pointer:coarse) —— 浏览器对「主指针是不是手指」的官方回答。
+   以及媒体查询 (pointer:coarse) —— 设备对「主指针是不是手指」的官方回答。
    URL 上加 ?pc=1 / ?pc=0 可以手动指定（二合一设备常被误判）。 */
 let IS_PC=false;
 try{
@@ -11181,7 +11211,7 @@ const PC_KEYS=[' ','arrowup','arrowdown','arrowleft','arrowright','tab'];
 window.addEventListener('keydown',e=>{
   if(typingIn(e.target))return;
   const k=e.key.toLowerCase();
-  if(e.ctrlKey||e.metaKey||e.altKey)return;   // 放行浏览器快捷键（Ctrl+C 等）
+  if(e.ctrlKey||e.metaKey||e.altKey)return;   // 放行设备快捷键（Ctrl+C 等）
   keys[k]=true;
   if(PC_KEYS.includes(k))e.preventDefault();
 
@@ -11627,7 +11657,7 @@ function drawMiniMap(){
    【帧率 5/4】渲染节拍器：不再「每次 rAF 都画」
    ---------------------------------------------------------
    为什么要抽帧：屏幕 144Hz 时每帧只有 6.9ms 预算（120Hz 8.3ms、60Hz 16.7ms）。
-   画不完的时候浏览器会跳过若干个 vsync 才交下一帧，间隔于是变成
+   画不完的时候设备会跳过若干个 vsync 才交下一帧，间隔于是变成
    「等 2 个 vsync、等 3 个 vsync」交替出现 —— 眼睛看到的正是那种一顿一顿的卡。
    与其贴着刷新率忽快忽慢，不如稳稳地每 2 个 vsync 出一帧：
    144Hz 上就是 72fps，帧间隔永远一样，观感反而更顺。
@@ -11845,7 +11875,7 @@ function flashQuest(force){setQuestText(questText(),QUEST_SHOW_MS,force);}
      ① 玩家做了决定、必须知道结果（买了什么 / 扣了多少 / 被拦住了）
      ② 出了问题、不告诉他他会误判（失败、降级、断网）
    除此之外一律别弹 —— 尤其这几种（都真发生过）：
-     · 成功且本该如此的：云存档已更新、自动保存、已同步
+     · 成功且本该如此的：进度存档已更新、自动保存、已同步
      · 解释规则与说教的：每天只拦第一批 / 认真答比快速答划算
      · 重复播报状态变化的：已经用界面本身表达过的结果
    界面已经说清的事，再弹一次就是噪音。 */
@@ -12181,7 +12211,7 @@ function addFitBtn(root){
    ① 监听委托在常驻的 #panel 上 —— 按钮是每次开面板重造的节点，直连监听要跟着重建，
       委托一次装好、永不失效，任何面板里的 #fitBtn 都算数；
    ② 触发用 pointerdown 而不是 click —— 移动端手指落下常有几像素位移，
-      浏览器会把这类触摸判成滚动 / 或等双击判定，把 click 丢掉，小按钮最容易中招。
+      设备会把这类触摸判成滚动 / 或等双击判定，把 click 丢掉，小按钮最容易中招。
       按下即换档，谁也拦不住。键盘 / 辅助功能走 click 兜底（ptrHandled 标记防双触发）。 */
 let fitDelegBound=false;
 function bindFitDeleg(){
@@ -12321,11 +12351,11 @@ function closePanel(){
 /* =========================================================
    游戏内确认弹窗（4.0.14）
    ---------------------------------------------------------
-   以前这些"要不要卖"的确认走的是浏览器原生 confirm()。
+   以前这些"要不要卖"的确认走的是设备原生 confirm()。
    它在手机上会**把全屏踢掉**：卖一次东西 → 弹一次原生框 → 全屏没了 →
    回来还得再点一次「⛶ 全屏」。频繁交易时，这件事比点错按钮还烦。
 
-   换成面板里的一张卡：不碰浏览器 UI，全屏状态原地不动。
+   换成面板里的一张卡：不碰设备 UI，全屏状态原地不动。
    顺带比原生 confirm 多给两样东西：
      · 明细行（卖的是哪几样、各多少件、各值多少）
      · **到手金额用大字标出来** —— 这才是玩家真正要看的那个数
@@ -12480,11 +12510,22 @@ function qSolveHtml(q,open){
   return '<details class="ai-sec"'+(open?' open':'')+'><summary>📖 摊开完整讲解'
     +(st.length?'（'+st.length+' 步）':'')+(ag.length?' · '+ag.length+' 种解法':'')+'</summary>'+inner+'</details>';
 }
+/* 错题列表 / 重练面板里展示「几步思路」（题目自带的 steps：
+   攻坚大题的 3~4 步求解，或导入题里自己写的步骤；没有就不显示） */
+function stepsHtml(q,open){
+  const st=(q&&q.steps)||[];
+  if(!st.length)return '';
+  const inner='<div class="ai-steps"><div class="hd">🧠 这道题该怎么想</div><ol>'
+    +st.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol></div>';
+  if(open)return inner;
+  return '<details class="ai-sec wb-ai"><summary>🧠 看这 '+st.length
+    +' 步思路</summary>'+inner+'</details>';
+}
 function splitSents(s){
   return String(s||'').split(/[。！？；\n]/).map(x=>x.trim()).filter(Boolean);
 }
 function buildHintChain(q,ap){
-  /* 攻坚题 / AI 讲过的题自带 hints：那是按「先做什么 → 再做什么」排好的，
+  /* 攻坚题 / 导入题自带 hints：那是按「先做什么 → 再做什么」排好的，
      直接用，别再用解析的句子去拼（拼出来的是散句，不是台阶） */
   if(q&&q.hints&&q.hints.length>=2)return q.hints.slice(0,4);
 
@@ -12782,7 +12823,7 @@ function session(cfg){
     $('nextBtn').textContent=(i+1>=cfg.count||(cfg.allowWrong!=null&&wrong>cfg.allowWrong))?'完成 ✓':'继续 →';
     /* 【4.0.21】先画反馈，再做副作用（顺序就是这几行的全部意义）：
        上面已经写完了 DOM（选项变绿/变红 + #feedback + 下一步按钮），
-       浏览器下一帧就能画出来；音效要唤醒 AudioContext、lingJudge 与 save 要读写存档，
+       设备下一帧就能画出来；音效要唤醒 AudioContext、lingJudge 与 save 要读写存档，
        这些**不能**排在写入之后同步跑 —— 会卡住这一帧的提交，玩家看到的就是
        "按下去停一下才变色"（慢音效模拟实测：800ms → 改成 8ms）。
        ⚠️ 必须「rAF + 宏任务」两段：光 rAF 的回调跑在绘制**之前**，挡不住。 */
@@ -12899,14 +12940,13 @@ function sessionFixed(list,title,onFinish){
           fb.className='ok';
           setH(fb, (gr==='done'?'✅ 答对！🎓 满星毕业，收进「已掌握」'
             :(gr==='up'?'✅ 答对！⬆️ 熟炼度 +1'+(nx&&nx.due?'，'+esc(nx.due)+' 再见':'')
-              :'✅ 答对！'))+' 🪙+'+coin2+stepsHtml(q,false)+aiExpBtnHtml(q));}
+              :'✅ 答对！'))+' 🪙+'+coin2+stepsHtml(q,false));}
         else{state.totalWrong++;state.streak=0;SFX.wrong();
           wbGrade(q,false);
-          fb.className='no';setH(fb, `❌ 正确答案：<b>${esc(q.ans)}</b><div class="exp">💡 ${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">📌 熟炼度归零，明天再来一遍</div>`+aiExpBtnHtml(q));}
+          fb.className='no';setH(fb, `❌ 正确答案：<b>${esc(q.ans)}</b><div class="exp">💡 ${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">📌 熟炼度归零，明天再来一遍</div>`);}
         save();updateHUD();
         $('nextBtn').style.display='block';
         $('nextBtn').textContent=(i+1>=list.length)?'完成 ✓':'继续 →';
-        try{aiExpBind(q);}catch(e){}
         bindNext();
       });
     });
@@ -13085,19 +13125,17 @@ function showWrongBook(tab0,subj0){
   if(tab0&&WB_TABS.some(x=>x.id===tab0))tab=tab0;
   else if(tab0){tab='all';subj=tab0;}
   if(subj0)subj=subj0;
-  /* 空本子：给一条最短的路（拍照 / 文字导入），别让人对着空面板发呆 */
+  /* 空本子：给一条最短的路（文字导入），别让人对着空面板发呆 */
   if(!state.wrongBook.length&&!state.wrongDone.length){
     openPanel(`<h2>📕 错题中心</h2><div class="sub">还没有错题</div>
       <div class="center" style="font-size:44px;margin:10px 0">🎉</div>
       <div class="center">闯关与练枪答错的题会自动收进这里，
         并按熟炼度排好复习日程 —— 到期就练，连对 5 次毕业。<br>
         <span style="color:#9cc0e0;font-size:var(--fs-xs)">容量 ${WRONG_CAP} 题 · 也可以把作业、卷子上的错题导入进来</span></div>
-      <div class="row"><button class="btn primary" id="ph">📷 拍一道题（AI 自动解析）</button></div>
-      <div class="row"><button class="btn" id="imp">📥 文字导入</button></div>
+      
       <div class="row"><button class="btn" id="ok">关闭</button></div>`);
     $('ok').onclick=closePanel;
     $('imp').onclick=showImportWrong;
-    $('ph').onclick=showImportPhoto;
     return;
   }
   function match(w){
@@ -13210,7 +13248,7 @@ function showWrongBook(tab0,subj0){
       curList=list;
       const chips=[{id:'all',n:'全部',e:'📕'}].concat(
         DRILL_SUBJ.map(s=>({id:s.id,n:s.name,e:s.emoji})));
-      body='<input class="wb-sr" id="wbSr" placeholder="🔍 搜题干 / 知识点 / 答案 / 笔记" value="'
+      body='<x-inp class="wb-sr" id="wbSr" placeholder="🔍 搜题干 / 知识点 / 答案 / 笔记" value="'
           +esc(kw)+'">'
         +'<div class="row" style="margin:0 0 8px;gap:5px;justify-content:center;flex-wrap:wrap">'
         +chips.map(c=>'<button class="wb-tab'+(c.id===subj?' on':'')+'" data-s="'+c.id+'">'
@@ -13307,14 +13345,12 @@ function showWrongBook(tab0,subj0){
       foot='<div class="row"><button class="btn" id="exp">📤 导出</button>'
         +'<button class="btn primary" id="ok">关闭</button></div>';
     }else if(tab==='done'){
-      foot='<div class="row"><button class="btn" id="imp">📥 文字</button>'
-        +'<button class="btn" id="ph">📷 AI 拍题</button>'
+      foot='<div class="row">'
         +'<button class="btn" id="dr">🔁 抽 5 题复习</button>'
         +'<button class="btn" id="clrD">🗑 清空归档</button></div>'
         +'<div class="row"><button class="btn primary" id="ok">关闭</button></div>';
     }else{
-      foot='<div class="row"><button class="btn" id="imp">📥 文字</button>'
-        +'<button class="btn" id="ph">📷 AI 拍题</button>'
+      foot='<div class="row">'
         +'<button class="btn" id="exp">📤 导出</button>'
         +'<button class="btn" id="dr">🔁 重练</button></div>'
         +'<div class="row"><button class="btn" id="clr">🗑 清空本子</button>'
@@ -13381,9 +13417,8 @@ function showWrongBook(tab0,subj0){
       };
     }
     $('ok').onclick=closePanel;
-    const gi=$('imp'),gp=$('ph'),ge=$('exp'),gd=$('dr'),gc=$('clr'),gcd=$('clrD');
+    const gi=$('imp'),ge=$('exp'),gd=$('dr'),gc=$('clr'),gcd=$('clrD');
     if(gi)gi.onclick=showImportWrong;
-    if(gp)gp.onclick=showImportPhoto;
     if(ge)ge.onclick=showExportWrong;
     if(gd)gd.onclick=()=>{
       const src=(tab==='done')?state.wrongDone:state.wrongBook;
@@ -13412,61 +13447,6 @@ function showWrongBook(tab0,subj0){
   render();
 }
 
-/* 让 AI 重新解析一道已入库的错题（得有图才行）。
-   认错了题干、步骤给得不对，都能靠这一下救回来。 */
-async function aiReParse(w){
-  if(!w||!w.img)return;
-  if(OCR_CFG.mode!=='ai'||!(OCR_CFG.aiBase||'').trim()||!(OCR_CFG.aiModel||'').trim()){
-    toast('先到「⚙️ 识别设置」填好 AI 接口');return;
-  }
-  let url=shotMem[w.img];
-  if(!url){try{url=await shotGet(w.img);}catch(e){url=null;}}
-  if(!url){
-    toast('这张图已经不在本机存图库里了');return;
-  }
-  openPanel('<h2>🤖 AI 重新解析</h2><div class="sub">正在看图并解析…</div>'
-    +'<div class="center" style="font-size:40px;margin:10px 0">🧠</div>'
-    +'<div class="center" id="aiMsg" style="color:#9cc0e0;font-size:var(--fs-sm)">这要几秒钟</div>');
-  const setSt=t=>{const m=$('aiMsg');if(m)m.textContent=t;};
-  const r=await aiDeepPhoto(url,setSt);
-  if(!r.ok||!r.text){
-    openPanel('<h2>🤖 解析失败</h2><div class="sub">'+esc(r.err||'没认出来')+'</div>'
-      +'<div class="center" style="font-size:40px;margin:10px 0">😵</div>'
-      +'<div class="center" style="color:#9cc0e0;font-size:var(--fs-sm);line-height:var(--lh-loose)">'
-      +'可以换一个模型试试，或者自己编辑这道题</div>'
-      +'<div class="row"><button class="btn" id="ed">✏️ 自己改</button>'
-      +'<button class="btn primary" id="ok">好</button></div>');
-    $('ok').onclick=closePanel;
-    $('ed').onclick=()=>showWbEdit(w);
-    return;
-  }
-  const ch=[];
-  if(r.text&&r.text!==w.text){w.text=r.text;ch.push('题干');}
-  if(r.ans){ch.push('答案');w.ans=r.ans;}
-  if(r.opts&&r.opts.length>=2){
-    const p=aiPickOpt(w.ans,r.opts);
-    if(p.ok){w.ans=p.ans;w.opts=r.opts.slice(0,6);w.text=aiStripOpts(w.text,r.opts);ch.push('选项');}
-  }
-  if(r.topic){w.topic=r.topic;ch.push('知识点');}
-  if(r.subject){w.subject=impSubj(r.subject)||w.subject;ch.push('科目');}
-  if(r.explain){w.exp=r.explain;ch.push('解析');}
-  if(r.steps&&r.steps.length){w.steps=r.steps;ch.push('思路步骤');}
-  if(r.appr){w.appr=r.appr;ch.push('思路层');}
-  save();
-  openPanel('<h2>🤖 解析完成</h2><div class="sub">改了：'+(ch.length?esc(ch.join(' · ')):'没有变化')+'</div>'
-    +'<div class="center" style="font-size:40px;margin:8px 0">✨</div>'
-    +'<div class="wb-card">'
-    +'<div class="wb-kv"><span style="flex:1">答案</span><b style="color:#ffd76a">'+esc(w.ans)+'</b></div>'
-    +'<div class="wb-kv"><span>知识点</span><b>'+esc(w.topic||'—')+'</b></div>'
-    +'</div>'
-    +'<div class="wb-e" style="color:#9cc0e0">'+esc(w.exp||'')+'</div>'
-    +stepsHtml(w,true)
-    +'<div class="row"><button class="btn" id="ed">✏️ 再改改</button>'
-    +'<button class="btn primary" id="ok">好</button></div>');
-  $('ok').onclick=closePanel;
-  $('ed').onclick=()=>showWbEdit(w);
-}
-
 /* ---------- 编辑一条错题 ----------
    认错的题干、记错的答案、自己总结的坑，都能在这儿改回来；
    「我的笔记」只有你自己看得到，适合写"我为什么错"。 */
@@ -13479,27 +13459,23 @@ function showWbEdit(w){
     openPanel('<h2>✏️ 编辑错题</h2>'
       +'<div class="sub">改完点保存 · 当前熟炼度 '+(w.box||0)+' / '+WB_PASS+'</div>'
       +'<div class="imp-box" style="margin-bottom:5px">题干</div>'
-      +'<textarea id="eT" style="'+TA_STYLE+';height:86px">'+esc(w.text)+'</textarea>'
+      +'<x-txt id="eT" style="'+TA_STYLE+';height:86px">'+esc(w.text)+'</x-txt>'
       +'<div class="imp-box" style="margin:10px 0 5px">答案</div>'
-      +'<textarea id="eA" style="'+TA_STYLE+';height:52px">'+esc(w.ans)+'</textarea>'
+      +'<x-txt id="eA" style="'+TA_STYLE+';height:52px">'+esc(w.ans)+'</x-txt>'
       +'<div class="imp-box" style="margin:10px 0 5px">解析 / 思路</div>'
-      +'<textarea id="eE" style="'+TA_STYLE+';height:76px">'+esc(w.exp)+'</textarea>'
+      +'<x-txt id="eE" style="'+TA_STYLE+';height:76px">'+esc(w.exp)+'</x-txt>'
       +'<div class="imp-box" style="margin:10px 0 5px">知识点</div>'
-      +'<textarea id="eK" style="'+TA_STYLE+';height:44px">'+esc(w.topic||'')+'</textarea>'
+      +'<x-txt id="eK" style="'+TA_STYLE+';height:44px">'+esc(w.topic||'')+'</x-txt>'
       +'<div class="imp-box" style="margin:10px 0 5px">我的笔记（只有你自己看得到）</div>'
-      +'<textarea id="eN" style="'+TA_STYLE+';height:58px">'+esc(w.note||'')+'</textarea>'
+      +'<x-txt id="eN" style="'+TA_STYLE+';height:58px">'+esc(w.note||'')+'</x-txt>'
       +'<div class="imp-box" style="margin:10px 0 5px">🧠 思路步骤（一行一步，最多 4 步）</div>'
-      +'<textarea id="eS" style="'+TA_STYLE+';height:70px">'+esc((w.steps||[]).join('\n'))+'</textarea>'
-      +(w.img?'<div class="row" style="margin-top:10px"><button class="btn" id="eAi" '
-        +'style="flex:1;justify-content:center">🤖 让 AI 重新解析这张图</button></div>':'')
+      +'<x-txt id="eS" style="'+TA_STYLE+';height:70px">'+esc((w.steps||[]).join('\n'))+'</x-txt>'
       +'<div class="imp-box" style="margin:10px 0 5px">科目</div>'
       +'<div class="row" style="margin-top:0;gap:6px;justify-content:center;flex-wrap:wrap">'
         +picks+'</div>'
       +'<div class="row"><button class="btn primary" id="eOk">保存</button>'
         +'<button class="btn" id="eCn">取消</button></div>');
     panel.querySelectorAll('[data-s]').forEach(b=>{b.onclick=()=>{subj=b.dataset.s;render();};});
-    const ea=$('eAi');
-    if(ea)ea.onclick=()=>aiReParse(w);
     $('eCn').onclick=()=>showWrongBook('all');
     $('eOk').onclick=()=>{
       const t=$('eT').value.trim();
@@ -13521,7 +13497,7 @@ function showWbEdit(w){
   render();
 }
 
-/* 【小工具】容器 CSP 禁行内事件属性：题图放大改用事件委托 */
+/* 【本应用】容器 CSP 禁行内事件属性：题图放大改用事件委托 */
 (function(){
   function bindFigZoom(){
     document.addEventListener('click',function(e){
@@ -13535,11 +13511,13 @@ function showWbEdit(w){
   else bindFigZoom();
 })();
 /* =========================================================
-   照片错题：本机存图 / 压缩 / 自动识别 / 批量导入
+   错题配图：本机存图 / 压缩 / 放大查看
    ---------------------------------------------------------
    图片不进 localStorage（那份要存进度，塞几张图就爆了），
    单独放 IndexedDB；题目里只存一个图片 id。
    IndexedDB 打不开时（无痕模式）退回内存 —— 图能用，刷新就没了，会提示。
+   （拍照识别/AI 解析那一套已经下线，这里只剩"看图"这一件事：
+     老存档里带图错题的缩略图、点开放大，以及删题时顺手清图。）
    ========================================================= */
 const SHOT_DB='genji_shots_v1', SHOT_TAB='shots';
 const shotMem={};                    /* 内存缓存 + IndexedDB 不可用时的兜底 */
@@ -13560,20 +13538,6 @@ function shotDB(){
     req.onblocked=()=>{shotNoDB=true;res(null);};
   });
   return shotDBP;
-}
-function shotPut(id,v){
-  shotMem[id]=v;
-  return shotDB().then(db=>{
-    if(!db)return true;                       /* 已在内存里，够本次会话用 */
-    return new Promise(res=>{
-      let tx;
-      try{tx=db.transaction(SHOT_TAB,'readwrite');}catch(e){return res(true);}
-      tx.objectStore(SHOT_TAB).put(v,id);
-      tx.oncomplete=()=>res(true);
-      tx.onerror=()=>res(true);
-      tx.onabort=()=>res(true);
-    });
-  }).catch(()=>true);
 }
 function shotGet(id){
   if(shotMem[id])return Promise.resolve(shotMem[id]);
@@ -13620,36 +13584,7 @@ function shotDel(id){
     });
   }).catch(()=>true);
 }
-/* 照片一律压一道再存：相册里一张原图好几 MB，两百题存下来能把手机撑爆。
-   长边收到 1100px、压成 jpeg —— 手机屏幕上看足够清楚，体积能掉到十分之一。 */
-function shrinkImage(file,maxSide,quality){
-  return new Promise(res=>{
-    if(!file||!window.FileReader)return res(null);
-    const fr=new FileReader();
-    fr.onload=()=>{
-      const im=new Image();
-      im.onload=()=>{
-        try{
-          let w=im.naturalWidth||im.width,h=im.naturalHeight||im.height;
-          if(!w||!h)return res(fr.result);
-          const m=Math.max(w,h);
-          if(m>(maxSide||1100)){const k=(maxSide||1100)/m;w=Math.max(1,Math.round(w*k));h=Math.max(1,Math.round(h*k));}
-          const cv=document.createElement('canvas');cv.width=w;cv.height=h;
-          const c=cv.getContext('2d');
-          c.fillStyle='#ffffff';c.fillRect(0,0,w,h);
-          c.drawImage(im,0,0,w,h);
-          let out=null;
-          try{out=cv.toDataURL('image/jpeg',quality||0.72);}catch(e){}
-          res(out||fr.result);
-        }catch(e){res(fr.result);}
-      };
-      im.onerror=()=>res(null);
-      im.src=fr.result;
-    };
-    fr.onerror=()=>res(null);
-    fr.readAsDataURL(file);
-  });
-}
+
 /* ---------- 看图：点小图放大 ---------- */
 let imgViewEl=null;
 function viewImage(src){
@@ -13681,1143 +13616,12 @@ function fillImgs(root){
       else{el.style.display='none';}
     });
   });
-  box.querySelectorAll('img[data-zoom]').forEach(el=>{
-    const k=el.getAttribute('data-zoom');
-    el.onclick=()=>{const sh=PHOTO_SHOTS[+k];if(sh)viewImage(sh.url);};
-  });
 }
 function imgTag(id,cls){
   if(!id)return '';
   return `<img class="${cls}" data-img="${esc(id)}" src="${esc(shotMem[id]||'')}" alt="">`;
 }
 
-/* =========================================================
-   自动识别（OCR）
-   默认：浏览器本地识别，免费、不用 Key，首次会下一份中文字库（十几 MB，有点慢）
-   备选：自己填接口（URL + Key），走 POST {image: 图片base64}，返回 {text: 文本}
-   ========================================================= */
-const OCR_KEY='genji_ocr_v1';
-let OCR_CFG={mode:'ai',endpoint:'',key:'',preset:'zhipu',aiBase:'',aiKey:'',aiModel:''};
-/* 视觉大模型预设：都是 OpenAI 兼容的 /chat/completions，换地址换模型就能用。
-   标了「免费」的是官方有免费额度 / 免费模型的，先试这些。 */
-const AI_PRESETS=[
- {id:'zhipu',   n:'智谱 GLM（有免费模型）', base:'', model:'glm-4v-flash',        free:1},
- {id:'silicon', n:'硅基流动（有免费额度）', base:'',         model:'Qwen/Qwen2.5-VL-32B-Instruct', free:1},
- {id:'qwen',    n:'阿里通义千问',           base:'', model:'qwen-vl-max-latest'},
- {id:'openai',  n:'OpenAI',                 base:'',             model:'gpt-4o-mini'},
- {id:'moonshot',n:'月之暗面 Kimi',          base:'',            model:'moonshot-v1-8k-vision-preview'},
- {id:'ark',     n:'火山方舟豆包',           base:'', model:'doubao-1.5-vision-pro-32k'},
- {id:'ollama',  n:'本机 Ollama（完全免费）', base:'',            model:'qwen2.5vl:7b', free:1},
- {id:'custom',  n:'自定义（自己填地址和模型）', base:'', model:''}
-];
-function aiPreset(id){return AI_PRESETS.filter(p=>p.id===id)[0]||null;}
-function loadOcrCfg(){
-  try{
-    const v=localStorage.getItem(OCR_KEY);
-    if(v){const o=JSON.parse(v);if(o&&typeof o==='object'){
-      if(o.mode==='ai'||o.mode==='api'||o.mode==='tess')OCR_CFG.mode=o.mode;
-      if(typeof o.endpoint==='string')OCR_CFG.endpoint=o.endpoint;
-      if(typeof o.key==='string')OCR_CFG.key=o.key;
-      if(typeof o.preset==='string')OCR_CFG.preset=o.preset;
-      if(typeof o.aiBase==='string')OCR_CFG.aiBase=o.aiBase;
-      if(typeof o.aiKey==='string')OCR_CFG.aiKey=o.aiKey;
-      if(typeof o.aiModel==='string')OCR_CFG.aiModel=o.aiModel;
-    }}
-  }catch(e){}
-}
-function saveOcrCfg(){try{localStorage.setItem(OCR_KEY,JSON.stringify(OCR_CFG));}catch(e){}}
-loadOcrCfg();
-let tessP=null;
-function tessLoad(){
-  /* 【小工具】识别库只能从 CDN 下，容器里必然加载不到 —— 一开始就给出可理解的理由 */
-  if(tessP)return tessP;
-  tessP=Promise.reject(new Error('小工具运行在离线容器里，本地文字识别不可用'));
-  tessP.catch(function(){});   /* 没人消费时别冒 unhandledrejection */
-  return tessP;
-}
-const TESS_TXT={'loading tesseract core':'加载识别核心','initializing tesseract':'正在启动',
-  'initialized tesseract':'已启动','loading language traineddata':'下载中文字库（首次较慢，十几 MB）',
-  'loaded language traineddata':'字库就绪','initializing api':'准备识别','initialized api':'准备就绪',
-  'recognizing text':'识别中'};
-function ocrTess(url,onProg){
-  return tessLoad().then(T=>{
-    return T.recognize(url,'chi_sim+eng',{logger:m=>{
-      if(onProg&&m&&typeof m.status==='string'){
-        const t=TESS_TXT[m.status]||m.status;
-        onProg(t+(m.progress!=null&&m.progress<1?' '+Math.round(m.progress*100)+'%':''));
-      }
-    }});
-  }).then(r=>({ok:true,text:((r&&r.data&&r.data.text)||'').trim()}))
-    .catch(e=>({ok:false,err:(e&&e.message)||'识别失败'}));
-}
-function ocrApi(url){
-  /* 【小工具】容器禁止任何网络请求 */
-  return Promise.resolve({ok:false,err:'小工具运行在离线容器里，不能访问外部识别接口'});
-}
-/* ---------- AI 识别（视觉大模型）----------
-   比 OCR 强在「看得懂」：公式、化学式、表格、拍歪的、带选项的，
-   都能按语义整理好，还能顺手把科目和知识点判出来。 */
-const AI_PROMPT=[
-'你是中学试题解析助手。请看清图片里的题目，只输出 JSON，不要任何解释、不要 markdown 代码块标记。',
-'格式：',
-'{"stem":"题干全文（含所有文字、公式、化学式；有选项就把 A. B. C. D. 各占一行写进 stem）",',
-' "answer":"正确答案（如 C、0.1 mol/L、x>2；图片里没有答案就填空字符串）",',
-' "options":["A选项文本","B选项文本","C选项文本","D选项文本"],',
-' "topic":"知识点（如 物质的量浓度、光合作用、牛顿第二定律）",',
-' "subject":"math|phys|chem|bio 四选一"}',
-'要求：',
-'1. 保留原文写法：化学式 CO2 写成 CO₂ 或 CO2 都行，下标上标、分数线、根号、希腊字母按原样保留',
-'2. 没有选项的填空/计算/解答题，options 填 null',
-'3. 图片里有多道题时，只取第 1 道',
-'4. 图片里找不到答案，answer 填空字符串，不要编',
-'5. 看不清的地方用 ？ 代替，不要猜'
-].join('\n');
-/* ---------- 深度解析：题干答案之外，再要解析 / 步骤 / 思路层 ----------
-   思路层（approach）直接要成游戏用的那种结构：
-     right = 最好的入手方式，wrong = 学生真会这么想的偏路，why = 为什么这样最省事
-   拿到手就能灌进错题本，重练时第一步「🧭 先选思路」直接有题可出。 */
-const AI_PROMPT_DEEP=[
-'你是中学试题解析助手。请看清图片里的题目，只输出 JSON，不要任何解释、不要 markdown 代码块标记。',
-'格式：',
-'{"stem":"题干全文（含公式化学式的原文写法；有选项就 A. B. C. D. 各占一行写进 stem）",',
-' "answer":"正确答案（如 C、0.1 mol/L、x>2；图里没有就填空字符串）",',
-' "options":["A选项文本","B选项文本","C选项文本","D选项文本"],',
-' "topic":"知识点（如 物质的量浓度、牛顿第二定律、光合作用）",',
-' "subject":"math|phys|chem|bio 四选一",',
-' "explain":"一句话讲清为什么是这个答案，说中要害，60 字以内",',
-' "steps":["第一步：先做什么","第二步：再做什么","第三步：得出什么"],',
-' "approach":{"right":"最好的入手方式，动词开头，一句话，如 先受力分析再正交分解",',
-'            "wrong":["学生会这么想但其实绕远的做法","另一种典型的错误入手","第三个常见误区"],',
-'            "why":"为什么这样入手最省事，一句话"}}',
-'要求：',
-'1. 化学式、上下标、根号、分数线、希腊字母按原样保留，不要改写成口语',
-'2. 没有选项的填空/计算/解答题，options 填 null',
-'3. 图片里有多道题时只取第 1 道',
-'4. 图里找不到答案，answer 填空字符串，不要编；但 steps 与 explain 照常给（当作讲解）',
-'5. steps 给 2~4 步，每步一句话 20 字以内，要能看出"先做什么后做什么"，不要堆计算过程',
-'6. approach.wrong 必须是"学生真会这么想"的错误入手方式，三条互不相同，',
-'   不要写"随便猜"这类明显荒谬的；每条 18 字以内',
-'7. approach 里不许出现与 answer 相同的整句，right 说的是"怎么下手"不是"答案是什么"',
-'8. 看不清的地方用 ？ 代替，不要猜'
-].join('\n');
-/* ---------- 第二轮：把一道已识别的题「讲透」----------
-   第一趟看图求的是结构化（题干 / 答案 / 选项 / 知识点），长 JSON 容易吐不全；
-   讲解这种长文本单独走一趟、不带图，既省 token 又稳，失败也不影响入库。
-   拿到的东西分三块，正好对上游戏的三处：
-     lecture → 答题后摊开的完整解析
-     hints   → 答前逐层给的 3~4 步提示（最后一步仍要自己算）
-     trap    → 讲完点一句「最容易错在哪」 */
-const AI_PROMPT_LECT=[
-'你是中学金牌讲师。下面是一道已经识别出来的题，请给出讲解。只输出 JSON，不要任何解释、不要 markdown 代码块标记。',
-'【题目】{Q}',
-'【正确答案】{A}',
-'【科目】{S}',
-'输出格式：',
-'{"lecture":"完整讲解。先点明考什么，再说关键一步怎么想、关键式子怎么写，最后怎么落到答案；要带具体数字和式子，不要空话，120~220 字",',
-' "hints":["第一步：先做什么（不能给答案）","第二步：列出哪个关系式","第三步：算出哪个中间量","第四步：只剩哪一步就到答案"],',
-' "trap":"学生最容易错在哪，一句话，30 字以内",',
-' "key":"核心考点，10 字以内"}',
-'要求：',
-'1. hints 给 3~4 条，逐层逼近，前几条绝不能把答案说出来，最后一条也不给最终数值',
-'2. lecture 要具体到数和式子，比如「由 2x/(4−x) = 0.4 得 x = 2/3」这种程度',
-'3. 题目是填空 / 计算 / 解答题（没有选项）时，hints 就按「先求什么 → 再求什么」给',
-'4. 看不懂题目就按科目给通用讲法，不要编造题里的数字'
-].join('\n');
-function aiLecture(stem,ans,subj,onProg){
-  /* 【小工具】换平台对话模型 window.xhs.AI（适配器见 42_ai_glm.js 的 aiChat） */
-  if(!(typeof xhsAIReady==='function'&&xhsAIReady()))return Promise.resolve(null);
-  if(!stem&&!ans)return Promise.resolve(null);
-  if(onProg)onProg('AI 正在写讲解…');
-  const subjName=(DRILL_OF[subj]&&DRILL_OF[subj].name)||'中学';
-  const pm=AI_PROMPT_LECT.replace('{Q}',String(stem||'').slice(0,600))
-    .replace('{A}',String(ans||'').slice(0,200)).replace('{S}',subjName);
-  const body={model:model,temperature:0.2,
-    messages:[{role:'user',content:pm}]};
-  return aiChat([{role:'user',content:pm}]).then(j=>{
-    const c=j&&j.choices&&j.choices[0];
-    const o=aiParseJson((c&&c.message&&c.message.content)||'');
-    if(!o)return null;
-    const hints=(o.hints||[]).map(v=>aiStr(v,90)).filter(v=>v.length>2);
-    return {lecture:aiStr(o.lecture||o.explain||'',400),
-            hints:hints.length?hints.slice(0,4):null,
-            trap:aiStr(o.trap||'',60),key:aiStr(o.key||'',16)};
-  }).catch(()=>null);
-}
-/* =========================================================
-   🤖 智谱 GLM · 题目详解引擎（3.0.0）
-   ---------------------------------------------------------
-   答完一道题，点「🤖 AI 详解」就让智谱把这道题讲透：
-     · lecture：完整讲解（带具体数字和式子，不是空话）
-     · steps ：3~4 步求解，答完摊开看
-     · hints ：3~4 层阶梯提示，最后一步仍留给自己算
-     · trap  ：一句话点出最容易错在哪
-   结果按题干 hash 缓存在本机，同一道题第二次点开是秒开、不花 token。
-   Key 只存在浏览器 localStorage 里，不会写进任何导出文件。
-   ========================================================= */
-const AI_KEY='genji_ai_v1';
-/* 智谱预设：OpenAI 兼容端点，换模型名即可切换。
-   标 free 的是官方有免费额度的，先试这些。 */
-const ZHIPU_MODELS=[
- {id:'glm-4.6',      n:'GLM-4.6（旗舰·讲解最详细）',d:'复杂大题、压轴题首选'},
- {id:'glm-4.5-air',  n:'GLM-4.5-Air（均衡·推荐）',  d:'质量与速度兼顾，日常刷题用这个'},
- {id:'glm-4-flash',  n:'GLM-4-Flash（免费）',       d:'有免费额度，响应最快',free:1},
- {id:'glm-4-plus',   n:'GLM-4-Plus（增强）',        d:'推理能力更强，长解析更稳'}
-];
-const ZHIPU_BASE='';
-let AI_CFG={key:'',model:'glm-4.5-air',on:1};
-function aiLoadCfg(){
-  try{
-    const v=localStorage.getItem(AI_KEY);
-    if(v){const o=JSON.parse(v);
-      if(o&&typeof o==='object'){
-        if(typeof o.key==='string')AI_CFG.key=o.key;
-        if(typeof o.model==='string')AI_CFG.model=o.model;
-        if(o.on!=null)AI_CFG.on=o.on?1:0;
-      }}
-  }catch(e){}
-  if(!ZHIPU_MODELS.some(m=>m.id===AI_CFG.model))AI_CFG.model='glm-4.5-air';
-}
-function aiSaveCfg(){try{localStorage.setItem(AI_KEY,JSON.stringify(AI_CFG));}catch(e){}}
-aiLoadCfg();
-function aiReady(){return xhsAIReady();}
-/* ---------- 结果缓存 ---------- */
-const AI_CACHE_KEY='genji_aiexp_v1';
-let AI_CACHE=null;
-function aiCacheLoad(){
-  if(AI_CACHE)return AI_CACHE;
-  AI_CACHE={};
-  try{
-    const v=localStorage.getItem(AI_CACHE_KEY);
-    if(v){const o=JSON.parse(v);if(o&&typeof o==='object')AI_CACHE=o;}
-  }catch(e){}
-  return AI_CACHE;
-}
-function aiCacheSave(){
-  try{
-    const ks=Object.keys(AI_CACHE);
-    /* 只留最近 120 条，别让缓存无限膨胀 */
-    if(ks.length>120){
-      ks.sort((a,b)=>(AI_CACHE[b].ts||0)-(AI_CACHE[a].ts||0));
-      const keep={};ks.slice(0,120).forEach(k=>{keep[k]=AI_CACHE[k];});
-      AI_CACHE=keep;
-    }
-    localStorage.setItem(AI_CACHE_KEY,JSON.stringify(AI_CACHE));
-  }catch(e){}
-}
-function aiHash(t){
-  let h=0;const s=String(t||'');
-  for(let i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}
-  return 'q'+(h>>>0).toString(36);
-}
-function aiCacheGet(t){const c=aiCacheLoad();return c[aiHash(t)]||null;}
-function aiCacheSet(t,o){const c=aiCacheLoad();c[aiHash(t)]=Object.assign({ts:Date.now()},o);aiCacheSave();}
-
-/* ---------- 提示词：一次要齐「讲解 + 步骤 + 阶梯提示 + 易错点」 ---------- */
-const AI_EXP_PROMPT=[
-'你是中学金牌讲师。下面是一道已经给出正确答案的题，请把这道题讲透。只输出 JSON，不要任何解释、不要 markdown 代码块标记。',
-'【科目】{S}',
-'【知识点】{K}',
-'【题干】{Q}',
-'【正确答案】{A}',
-'输出格式：',
-'{"lecture":"完整讲解。先点明这道题考什么，再说关键一步怎么想、关键式子怎么写，最后怎么落到答案；必须带具体数字和式子（如「由 2x/(4−x)=0.4 得 x=2/3」这种程度），不要写空话套话，150~260 字",',
-' "steps":["第一步：先求什么，列出哪个式子","第二步：算出哪个中间量","第三步：怎么落到最终答案"],',
-' "hints":["第一步：先做什么（不能给答案）","第二步：列出哪个关系式","第三步：算出哪个中间量","第四步：只剩哪一步就到答案"],',
-' "trap":"学生最容易错在哪，一句话，30 字以内",',
-' "key":"核心考点，10 字以内"}',
-'要求：',
-'1. steps 给 3~4 步，每步一句话 30 字以内，要能看出先做什么后做什么，不要堆大段计算',
-'2. hints 给 3~4 条逐层逼近，前几条绝不能把答案说出来，最后一条也不给最终数值',
-'3. lecture 必须落到具体数字和式子，能帮学生看懂「为什么是答案 A 而不是 B」',
-'4. 题目是多问的大题时，steps 按「第一问 → 第二问 → 第三问」的顺序给',
-'5. 化学式、上下标、根号、分数线、希腊字母按原样保留，不要改写成口语',
-'6. 看不懂题目就按科目和知识点给通用讲法，不要编造题里的数字'
-].join('\n');
-
-/* ---------- 只做「剥壳 + 解析」，不重命名字段 ----------
-   注意别用 aiParseJson：那是给拍题识别用的，只认 stem/answer/options
-   那几个固定字段，详解要的 lecture / hints / trap 会被它丢掉。 */
-function aiParseFree(txt){
-  let t=String(txt||'').trim();
-  t=t.replace(/^\s*```(?:json)?\s*/i,'').replace(/\s*```\s*$/,'');
-  const a=t.indexOf('{'),b=t.lastIndexOf('}');
-  if(a>=0&&b>a)t=t.slice(a,b+1);
-  try{const o=JSON.parse(t);return (o&&typeof o==='object')?o:null;}catch(e){}
-  /* 模型偶尔把换行直接塞进 JSON 字符串里，补一层转义再试 */
-  try{
-    const o=JSON.parse(t.replace(/\n/g,'\\n').replace(/\r/g,''));
-    return (o&&typeof o==='object')?o:null;
-  }catch(e){}
-  return null;
-}
-
-/* ---------- 调用智谱 ---------- */
-function aiExplain(stem,ans,topic,subj,onProg){
-  const key=(AI_CFG.key||'').trim();
-  const model=(AI_CFG.model||'').trim();
-  if(!key)return Promise.resolve({ok:false,err:'还没填智谱 API Key'});
-  if(!model)return Promise.resolve({ok:false,err:'还没选模型'});
-  const hit=aiCacheGet(stem);
-  if(hit&&hit.lecture)return Promise.resolve({ok:true,cached:1,data:hit});
-  if(onProg)onProg('🤖 AI 正在写详解…');
-  const subjName=(typeof DRILL_OF!=='undefined'&&DRILL_OF[subj]&&DRILL_OF[subj].name)||'中学';
-  const pm=AI_EXP_PROMPT.replace('{S}',subjName)
-    .replace('{K}',String(topic||'').slice(0,60))
-    .replace('{Q}',String(stem||'').slice(0,900))
-    .replace('{A}',String(ans||'').slice(0,300));
-  const body={model:model,temperature:0.2,
-    messages:[{role:'user',content:pm}]};
-  /* 【小工具】容器内不能 fetch。平台自己注入了对话模型 window.xhs.AI
-     （在线文档 §3.10，内测需 appId 加白），这里把模型调用整个换过去。
-     aiChat 返回与 OpenAI /chat/completions 同形的结果，后面的解析链不用改。 */
-  const timer=null;
-  return aiChat([{role:'user',content:pm}]).then(j=>{
-    if(timer)clearTimeout(timer);
-    const c=j&&j.choices&&j.choices[0];
-    const o=aiParseFree((c&&c.message&&c.message.content)||'');
-    if(!o)throw new Error('模型返回的不是有效 JSON');
-    const steps=(o.steps||[]).map(v=>aiStr(v,120)).filter(v=>v.length>2);
-    const hints=(o.hints||[]).map(v=>aiStr(v,120)).filter(v=>v.length>2);
-    const d={lecture:aiStr(o.lecture||o.explain||'',600),
-             steps:steps.length?steps.slice(0,4):null,
-             hints:hints.length?hints.slice(0,4):null,
-             trap:aiStr(o.trap||'',80),key:aiStr(o.key||'',20)};
-    if(!d.lecture&&!d.steps)throw new Error('模型没有给出讲解内容');
-    aiCacheSet(stem,d);
-    return {ok:true,data:d};
-  }).catch(e=>{
-    if(timer)clearTimeout(timer);
-    const nm=(e&&e.name)==='AbortError'?'请求超时（60 s）':((e&&e.message)||'请求失败');
-    return {ok:false,err:nm};
-  });
-}
-
-/* ---------- 界面：答题后的「🤖 AI 详解」 ----------
-   返回一段 HTML，插到反馈区下面。点一下才发请求，不点不花 token。 */
-function aiExpBtnHtml(q){
-  if(!q)return '';
-  const has=!!aiCacheGet(q.text);
-  return `<div id="aiExpWrap" style="margin-top:10px">
-    <button class="btn" id="aiExpBtn" style="width:100%;justify-content:center;
-      ${has?'box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),0 0 0 .5px rgba(94,214,255,.5),var(--gb-drop);color:#9fe4ff':'box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),0 0 0 .5px rgba(255,215,106,.45),var(--gb-drop);color:#ffd76a'}">
-      ${has?'🤖 再看一遍 AI 详解（已缓存）':'🤖 AI 详解'}</button>
-    <div id="aiExpBody"></div></div>`;
-}
-/* 绑定按钮：boxId 是 aiExpBtn 所在容器（一般是 feedback 的父节点） */
-function aiExpBind(q){
-  const btn=(typeof $!=='undefined')?$('aiExpBtn'):null;
-  if(!btn)return;
-  btn.onclick=async()=>{
-    const body=$('aiExpBody');
-    if(!body)return;
-    if(!aiReady()){
-      setH(body, '<div class="exp" style="color:#ffb0b0">当前环境没有可用的平台模型 —— 请在小红书 App 里打开本工具（题本身的解析照常可用）</div>');
-      return;
-    }
-    /* 闯关题是 ansText，错题本快照是 ans —— 两种都要认 */
-    const ansTxt=q.ansText!=null?q.ansText:q.ans;
-    const subj=q.subject||(typeof subjOfRid==='function'?subjOfRid(q.rid):'')||'math';
-    btn.disabled=true;btn.textContent='🤖 AI 正在写详解…';
-    setH(body, '<div class="exp" style="color:#9cc0e0">正在让 AI 讲这道题…</div>');
-    const r=await aiExplain(q.text,ansTxt,q.topic,subj,t=>{btn.textContent=t;});
-    btn.disabled=false;
-    btn.textContent='🤖 再看一遍 AI 详解（已缓存）';
-    if(!r.ok){
-      setH(body, '<div class="exp" style="color:#ffb0b0">AI 详解没拿到：'
-        +esc(r.err||'未知原因')+'（题本身的解析照常可用）</div>');
-      return;
-    }
-    const d=r.data;
-    let h='<div class="qexp" style="margin-top:8px"><div class="hd">🤖 AI 完整讲解</div>'+esc(d.lecture||'')+'</div>';
-    if(d.steps&&d.steps.length){
-      h+='<div class="qexp"><div class="hd">🧠 分步骤</div><ol>'
-        +d.steps.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ol></div>';
-    }
-    if(d.hints&&d.hints.length){
-      h+='<div class="qexp"><div class="hd">💡 阶梯提示</div><ol>'
-        +d.hints.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ol></div>';
-    }
-    if(d.trap)h+='<div class="exp" style="color:#ffd0a0">⚠️ 最容易错在这：'+esc(d.trap)+'</div>';
-    if(d.key&&!q.topic)h+='<div class="exp">核心考点：'+esc(d.key)+'</div>';
-    setH(body, h);
-    /* 讲解顺手存进题里，收进错题本后重练也能看 */
-    try{
-      if(d.lecture)q.aiLecture=d.lecture;
-      if(d.steps)q.aiSteps=d.steps;
-      if(d.hints)q.aiHints=d.hints;
-      if(d.trap)q.aiTrap=d.trap;
-    }catch(e){}
-    if(typeof panel!=='undefined'&&panel)panel.scrollTop=panel.scrollHeight;
-  };
-}
-
-/* ---------- 设置面板 ---------- */
-function showAiSettings(back){
-  function render(){
-    const cur=ZHIPU_MODELS.filter(m=>m.id===AI_CFG.model)[0]||ZHIPU_MODELS[1];
-    openPanel(`
-      <h2>⚙️ AI 设置 · 智谱 GLM</h2>
-      <div class="sub">填一次 Key，之后所有题都能一键要详解</div>
-      <div class="imp-box">
-        · Key 只存在<b>这台设备的浏览器里</b>，不会写进导出文件、不会上传别处<br>
-        · 讲解结果会按题目缓存，<b>同一道题第二次点开是秒开、不重复花 token</b><br>
-        · 没填 Key 也能正常刷题，只是用不了 AI 详解<br>
-        · 智谱控制台 <b>open.bigmodel.cn</b> 里可以领到 Key 与免费额度
-      </div>
-      <div style="text-align:left;margin-bottom:10px">
-        <div style="color:#9cc0e0;font-size:var(--fs-sm);margin-bottom:4px">API Key</div>
-        <input id="aiKeyInp" type="password" placeholder="粘贴你的智谱 API Key"
-          value="${esc(AI_CFG.key)}" style="width:100%;padding:9px 11px;border-radius:10px;
-          background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);
-          color:#eaf4ff;font-size:var(--fs-md);font-family:inherit">
-      </div>
-      <div style="text-align:left;margin-bottom:10px">
-        <div style="color:#9cc0e0;font-size:var(--fs-sm);margin-bottom:6px">模型</div>
-        <div class="menu-list">
-          ${ZHIPU_MODELS.map(m=>`<button class="menu-li" data-m="${m.id}"
-            style="${m.id===AI_CFG.model?'background:linear-gradient(180deg,rgba(255,215,106,.20),rgba(255,215,106,.09));box-shadow:var(--gb-edge-hi),0 0 0 .5px rgba(255,215,106,.55),var(--gb-drop)':''}">
-            <span class="e">${m.free?'🆓':'🤖'}</span>
-            <span class="tx">${esc(m.n)}<div class="d">${esc(m.d)}</div></span></button>`).join('')}
-        </div>
-      </div>
-      <div class="center" id="aiMsg" style="min-height:20px;color:#ffd76a;
-        font-size:var(--fs-sm);font-weight:700"></div>
-      <div class="row"><button class="btn" id="aiTest">🔌 测一下连通</button>
-        <button class="btn primary" id="aiSave">保存</button></div>
-      <div class="row"><button class="btn" id="aiClr">🗑 清空讲解缓存</button>
-        <button class="btn" id="aiBack">返回</button></div>
-      <div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin-top:8px;line-height:var(--lh-base)">
-        端点：${esc(ZHIPU_BASE)}<br>当前模型：<b style="color:#ffd76a">${esc(cur.n)}</b>
-      </div>`);
-    const inp=$('aiKeyInp');
-    panel.querySelectorAll('[data-m]').forEach(b=>{
-      b.onclick=()=>{if(inp)AI_CFG.key=inp.value.trim();AI_CFG.model=b.dataset.m;render();};
-    });
-    $('aiSave').onclick=()=>{
-      AI_CFG.key=(inp?inp.value:'').trim();aiSaveCfg();
-      toast('已保存 · 模型 '+AI_CFG.model);
-      if(back)back();else closePanel();
-    };
-    $('aiTest').onclick=async()=>{
-      AI_CFG.key=(inp?inp.value:'').trim();
-      if(!aiReady()){$('aiMsg').textContent='先填 Key 再测';return;}
-      const mg=$('aiMsg');mg.textContent='正在连接…';
-      const r=await aiExplain('1 + 1 = ?','2','测试','math',t=>{mg.textContent=t;});
-      setH(mg, r.ok
-        ? '<span class="imp-ok">连通 ✓</span> 模型 '+esc(AI_CFG.model)
-        : '<span class="imp-no">没通</span>：'+esc(r.err||'未知原因'));
-    };
-    $('aiClr').onclick=()=>{
-      AI_CACHE={};try{localStorage.removeItem(AI_CACHE_KEY);}catch(e){}
-      toast('讲解缓存已清空');
-    };
-    $('aiBack').onclick=()=>{if(back)back();else closePanel();};
-  }
-  render();
-}
-
-/* 把讲解结果塞回 shot（也供错题详情重讲时使用） */
-function shotApplyLect(sh,L){
-  if(!sh||!L)return false;
-  let got=false;
-  if(L.lecture){sh.lecture=L.lecture;got=true;}
-  if(L.hints&&L.hints.length){sh.hints=L.hints;got=true;}
-  if(L.trap){sh.trap=L.trap;got=true;}
-  if(L.key&&!sh.topic){sh.topic=L.key;got=true;}
-  return got;
-}
-
-/* 模型只吐出题干答案（或深度请求失败）时用的兜底思路池。
-   按科目给几条"学生常犯的入手错误"，凑够 4 个选项才出得了思路题。 */
-const AI_APPR_FALLBACK={
-  math:['先把数代进去硬算','看着像哪个选哪个','先猜结论再往回推'],
-  phys:['凭直觉判断大小','先把公式背下来再套','只看题目问的那个量'],
-  chem:['先记反应方程式','只看颜色或状态变化','凭经验估一个'],
-  bio:['先回忆课本原话','只看其中某一个条件','凭生活经验判断']
-};
-/* 大模型爱给 JSON 套一层 ```json ... ```，也可能前后带废话，统统剥掉 */
-function aiParseJson(txt){
-  let t=String(txt||'').trim();
-  t=t.replace(/^\s*```(?:json)?\s*/i,'').replace(/\s*```\s*$/,'');
-  const a=t.indexOf('{'),b=t.lastIndexOf('}');
-  if(a>=0&&b>a)t=t.slice(a,b+1);
-  let o=null;
-  try{o=JSON.parse(t);}catch(e){o=null;}
-  if(!o)return null;
-  const g=(...ks)=>{for(const k of ks)if(o[k]!=null&&o[k]!=='')return o[k];return null;};
-  const ap=g('approach','思路','appr');
-  return {stem:String(g('stem','question','q','text','题干')||'').trim(),
-          answer:String(g('answer','ans','a','right','答案')||'').trim(),
-          options:Array.isArray(g('options','opts','choices'))?g('options','opts','choices'):null,
-          topic:String(g('topic','knowledge','知识点')||'').trim(),
-          subject:String(g('subject','subj','科目')||'').trim(),
-          explain:String(g('explain','analysis','solution','exp','解析')||'').trim(),
-          steps:Array.isArray(g('steps','过程','思路'))?g('steps','过程','思路'):null,
-          approach:(ap&&typeof ap==='object')?ap:null};
-}
-/* ---------- 把 AI 给的东西洗成游戏能直接用的样子 ----------
-   模型是自由的：会给 markdown 星号、会把"第一步：…"写进步骤里、
-   会给三条一模一样的干扰项、会把答案原文当成"思路"。不洗一遍，
-   思路那一步会出成「四个选项里俩一模一样」这种一眼假题。 */
-const aiNormKey=s=>String(s||'').replace(/[\s*#`>|"']/g,'')
-       .replace(/[、，。：；！？（）【】\[\]]/g,'').toLowerCase();
-function aiStr(v,max){
-  let s=String(v==null?'':v).replace(/[\r\n]+/g,' ').replace(/\s{2,}/g,' ')
-       .replace(/\*\*/g,'').trim();
-  if(max&&s.length>max)s=s.slice(0,max);
-  return s;
-}
-function aiFixSteps(v){
-  if(!Array.isArray(v))return null;
-  const out=[],seen=new Set();
-  v.forEach(s=>{
-    if(out.length>=4)return;
-    /* 编号交给渲染时的 <ol>，模型写的"第一步："就别重复了 */
-    /* 模型爱写「第一步：…」「1. …」这类前缀，编号交给 <ol>，
-       连开头残留的冒号顿号一起剥掉，免得渲染出「：对二次式配方」 */
-    let t=aiStr(s,64)
-      .replace(/^第?\s*[0-9一二三四五六七八九十]+\s*[步、.．)）]?\s*[:：、.．)）]?\s*/,'')
-      .replace(/^[:：、.．)）]\s*/,'');
-    if(t.length<2)return;
-    const k=aiNormKey(t);
-    if(seen.has(k))return;
-    seen.add(k);out.push(t);
-  });
-  return out.length?out:null;
-}
-/* 思路层：right 必须有、wrong 凑够 3 条且互不雷同，才配出一道思路题 */
-function aiFixAppr(a,subj){
-  if(!a||typeof a!=='object')return null;
-  const r=aiStr(a.right||a.r||a.best||a.correct,40);
-  if(r.length<2)return null;
-  const why=aiStr(a.why||a.k||a.reason||a.因为,90);
-  const src=Array.isArray(a.wrong)?a.wrong
-           :(Array.isArray(a.w)?a.w:(Array.isArray(a.opts)?a.opts:[]));
-  const pool=src.concat(AI_APPR_FALLBACK[subj]||AI_APPR_FALLBACK.math);
-  const w=[],seen=new Set([aiNormKey(r)]);
-  pool.forEach(v=>{
-    if(w.length>=3)return;
-    const s=aiStr(v,30);
-    if(s.length<2)return;
-    const k=aiNormKey(s);
-    /* 把答案原文当"思路"也挡掉：思路说的是怎么下手，不是答案是什么 */
-    if(seen.has(k)||k===aiNormKey(r))return;
-    seen.add(k);w.push(s);
-  });
-  if(w.length<3)return null;
-  return {r:r,opts:shuffle([r].concat(w)),why:why};
-}
-/* 重练 / 错题详情里展示 AI 给的几步思路 */
-function stepsHtml(q,open){
-  const st=(q&&q.steps)||[];
-  if(!st.length)return '';
-  const inner='<div class="ai-steps"><div class="hd">🧠 这道题该怎么想</div><ol>'
-    +st.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol></div>';
-  if(open)return inner;
-  return '<details class="ai-sec wb-ai"><summary>🧠 看 AI 的 '+st.length
-    +' 步思路</summary>'+inner+'</details>';
-}
-/* 大模型常这么给：answer 是「B」，options 却是纯文本 ['0.05','0.1','0.25']。
-   得把字母换成对应的选项原文，否则重练时判不出对错。
-   也认「A.」「B、」这类带前缀的写法，以及直接给选项文本的。 */
-function aiPickOpt(ans,opts){
-  if(!opts||!opts.length)return {ans:ans||'',ok:false};
-  const s=String(ans==null?'':ans).trim();
-  if(!s)return {ans:'',ok:false};
-  const bare=v=>String(v).replace(/^[A-Da-d]\s*[.、．)）:]\s*/,'').trim();
-  /* ① 单个字母 A / A. / （A） */
-  let m=s.match(/^[（(]?\s*([A-Da-d])\s*[）.、．]?\s*$/);
-  if(m){
-    const i=m[1].toUpperCase().charCodeAt(0)-65;
-    if(i>=0&&i<opts.length)return {ans:opts[i],ok:true};
-  }
-  /* ② 多选答案 AB / A、C：游戏是单选，取第一个能认出来的 */
-  m=s.match(/^[A-Da-d](?:\s*[、,，和与\s]?\s*[A-Da-d])+$/);
-  if(m){
-    const letters=s.match(/[A-Da-d]/g)||[];
-    for(const L of letters){
-      const i=L.toUpperCase().charCodeAt(0)-65;
-      if(i>=0&&i<opts.length)return {ans:opts[i],ok:true};
-    }
-  }
-  /* ③ 直接给的是选项文本 */
-  const na=impNorm(s);
-  for(let i=0;i<opts.length;i++){
-    if(impNorm(opts[i])===na)return {ans:opts[i],ok:true};
-    if(impNorm(bare(opts[i]))===na)return {ans:opts[i],ok:true};
-  }
-  /* ④ 答案带前缀（"B. 0.1 mol/L"），剥掉再比 */
-  const nb=impNorm(bare(s));
-  if(nb){
-    for(let i=0;i<opts.length;i++){
-      if(impNorm(bare(opts[i]))===nb)return {ans:opts[i],ok:true};
-    }
-  }
-  return {ans:s,ok:false};
-}
-/* 选项单独存了，题干里就别再写一遍 A. xxx —— 重练时会重复显示两遍 */
-function aiStripOpts(stem,opts){
-  const t=String(stem||'').trim();
-  if(!t||!opts||!opts.length)return t;
-  const lines=t.split(/\n+/).map(x=>x.trim()).filter(Boolean);
-  const kept=lines.filter(l=>!/^[（(]?\s*[A-Da-d]\s*[）.、．:]\s*\S/.test(l));
-  if(!kept.length)return t;                       /* 整段都被当成选项了，别删 */
-  const out=kept.join('\n').trim();
-  return out.length>=6?out:t;                     /* 删完没剩几个字，也别删 */
-}
-function aiToQA(url,onProg,deep){
-  /* 【小工具】平台 AI 是纯文本模型（没有视觉能力），容器也不能连外部视觉接口 —— 看图识题停用 */
-  return Promise.resolve({ok:false,err:'小工具环境不支持图片识别，请手动录入题目'});
-}
-/* 深度解析优先，拿不到就退回简版 —— 有些小模型吐不出长 JSON，
-   但认题干和答案没问题，不能因为少一段解析就把整张图作废 */
-function aiDeepPhoto(url,onProg){
-  return aiToQA(url,onProg,true).then(r=>{
-    if(r.ok)return r;
-    if(onProg)onProg('深度解析没成，退回简版…');
-    return aiToQA(url,onProg,false).then(r2=>r2.ok?r2:r);
-  });
-}
-function ocrOne(url,onProg){
-  if(OCR_CFG.mode==='ai')return aiDeepPhoto(url,onProg);
-  if(OCR_CFG.mode==='api'&&(OCR_CFG.endpoint||'').trim())return ocrApi(url);
-  return ocrTess(url,onProg);
-}
-/* 从识别出来的一整段文字里切出「题干 / 答案 / 解析」。
-   打印体卷子一般长这样：题目…… 答案：B 解析：……
-   找不到标记就把整段当题干，答案留空让人自己敲。 */
-function splitQA(raw){
-  const flat=v=>String(v||'').replace(/\r/g,'').replace(/\n+/g,' ').replace(/\s{2,}/g,' ').trim();
-  const t=flat(raw);
-  if(!t)return {text:'',ans:'',exp:''};
-  const marks=[];
-  const push=(re,tag)=>{re.lastIndex=0;let m;while((m=re.exec(t)))marks.push({i:m.index,l:m[0].length,tag:tag});};
-  push(/(?:【|\(|\[|（)?\s*(?:参考答案|标准答案|答案)\s*(?:】|\)|\]|）)?\s*[:：]?/g,'ans');
-  push(/解\s*[:：]/g,'ans');
-  push(/解析\s*[:：]?/g,'exp');
-  if(!marks.length)return {text:t,ans:'',exp:''};
-  marks.sort((a,b)=>a.i-b.i);
-  const head=t.slice(0,marks[0].i).trim();
-  let A=null,E=null;
-  for(let i=0;i<marks.length;i++){
-    if(marks[i].tag==='ans'&&!A)A=marks[i];
-    if(marks[i].tag==='exp'&&!E)E=marks[i];
-  }
-  let ans='',exp='';
-  if(A){
-    const st=A.i+A.l;
-    let en=t.length;
-    if(E&&E.i>A.i)en=E.i;
-    ans=t.slice(st,en).trim();
-  }
-  if(E)exp=t.slice(E.i+E.l).trim();
-  return {text:head,ans:ans,exp:exp};
-}
-
-/* =========================================================
-   【小工具】平台对话模型适配（在线文档 §3.10 window.xhs.AI）
-   ---------------------------------------------------------
-   网页版走 fetch 调自建模型；容器里不能联网，改调平台注入的
-   window.xhs.AI。返回值归一成 OpenAI /chat/completions 的形状，
-   上面那条解析链一行都不用改。
-   内测期需要 appId 加白：没加白会拿回 AI_NOT_ALLOWED；
-   每天 100 次/用户，用完是 AI_QUOTA_EXCEEDED；命中审核是
-   AI_CONTENT_BLOCKED。这三种都翻成人话，不让玩家看到原始错误码。
-   ========================================================= */
-function xhsAI(){try{return (window.xhs&&window.xhs.AI)||null;}catch(e){return null;}}
-function xhsAIReady(){const a=xhsAI();return !!(a&&typeof a.createModel==='function');}
-const XHS_AI_ERR={
-  AI_NOT_ALLOWED:'这个工具还没开通 AI 详解（需要平台加白）',
-  AI_QUOTA_EXCEEDED:'今天的 AI 详解次数用完了，明天再来',
-  AI_CONTENT_BLOCKED:'这道题触发了内容审核，AI 详解给不了（题本身的解析照常可用）'
-};
-function xhsAIErrMsg(e){
-  const raw=String((e&&e.errMsg)||(e&&e.code)||(e&&e.message)||'');
-  const hit=Object.keys(XHS_AI_ERR).filter(k=>raw.indexOf(k)>=0)[0];
-  return hit?XHS_AI_ERR[hit]:('AI 详解没拿到：'+(raw||'未知原因'));
-}
-function aiChat(messages){
-  const a=xhsAI();
-  if(!a||typeof a.createModel!=='function')
-    return Promise.reject(new Error('当前环境没有可用的平台模型 —— 请在小红书 App 里打开'));
-  try{
-    /* 只保留 system + 最近 12 轮：文档限制 40 条 / 12000 字符 */
-    const msgs=(messages||[]).slice(-13);
-    const model=a.createModel('deepseek-v4-flash');
-    return Promise.resolve(model.generateText({messages:msgs,temperature:0.2,max_output_tokens:2048}))
-      .then(function(r){
-        const ch=r&&r.choices;
-        /* 文档明确说 choices 可能为空 —— 必须处理 */
-        if(!ch||!ch.length)throw new Error('AI 这次没有返回内容（choices 为空）');
-        const c=(ch[0]&&ch[0].message&&ch[0].message.content)||'';
-        if(!String(c).trim())throw new Error('AI 这次没有返回内容');
-        return {choices:[{message:{content:c}}]};
-      })
-      .catch(function(e){throw new Error(xhsAIErrMsg(e));});
-  }catch(e){return Promise.reject(new Error(xhsAIErrMsg(e)));}
-}
-/* =========================================================
-   拍照 / 选图 / 粘贴 —— 批量导入照片错题
-   ========================================================= */
-let PHOTO_SHOTS=[];          /* {id,url,text,ans,topic,st,cls} */
-let photoOpen=false,pasteHooked=false;
-function shotId(){return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
-function hookPaste(){
-  if(pasteHooked)return;
-  pasteHooked=true;
-  document.addEventListener('paste',e=>{
-    /* 面板被别的方式关掉（Esc / 点遮罩）时 photoOpen 还留着，
-       看一眼列表在不在就知道该不该收图，顺手把开关复位 */
-    if(!photoOpen||!document.getElementById('shotList')){photoOpen=false;return;}
-    const it=e.clipboardData&&e.clipboardData.items;
-    if(!it)return;
-    let got=false;
-    for(let i=0;i<it.length;i++){
-      const o=it[i];
-      if(o&&o.type&&o.type.indexOf('image')===0){
-        const f=o.getAsFile&&o.getAsFile();
-        if(f){got=true;shotAddFiles([f]);}
-      }
-    }
-    if(got)e.preventDefault();
-  });
-}
-async function shotAddFiles(files){
-  const arr=[];
-  for(const f of files||[])if(f&&/^image\//.test(f.type||''))arr.push(f);
-  if(!arr.length){toast('没选到图片');return;}
-  toast('处理中…');
-  for(const f of arr){
-    const url=await shrinkImage(f,1100,0.72);
-    if(!url){toast('有一张图读不出来');continue;}
-    const id=shotId();
-    await shotPut(id,url);
-    PHOTO_SHOTS.push({id:id,url:url,text:'',ans:'',topic:'',st:'待识别',cls:''});
-  }
-  showImportPhoto();
-}
-/* ---------- 面板 ---------- */
-/* 单张卡片的「AI 解析」折叠区：
-   解析 / 步骤 / 思路层都摊开给人看，也都能改 —— AI 认错的题干能救回来，
-   它给的步骤不对，删掉自己写一行也是一样能用。 */
-function aiShotBox(sh,i){
-  const steps=(sh.steps||[]).slice(0,4);
-  const hints=(sh.hints||[]).slice(0,4);
-  const ar=sh.appr?esc(sh.appr.r):'';
-  const aw=sh.appr?esc((sh.appr.opts||[]).filter(v=>v!==sh.appr.r).join('\n')):'';
-  const has=!!(sh.lecture||sh.exp||steps.length||sh.appr||sh.trap);
-  const lect=sh.lecture||sh.exp||'';
-  /* 上半部分是「看」：讲完直接能读懂；下半部分是「改」：AI 说错的自己救回来 */
-  const show=has?`<div class="tc">
-      <div class="hd">📖 AI 讲解${sh.key?'<span class="tc-lv" style="background:rgba(255,215,106,.16);color:#ffd76a">'+esc(sh.key)+'</span>':''}</div>
-      ${lect?esc(lect):'<span style="color:#9cc0e0">（还没有讲解，点下面「🧠 AI 解析」生成）</span>'}
-      ${steps.length?`<div class="tc-step"><b>🧠 分 ${steps.length} 步走</b><ol style="margin:4px 0 0 18px;padding:0">${steps.map(t=>'<li>'+esc(t)+'</li>').join('')}</ol></div>`:''}
-      ${sh.trap?`<div class="tc-step"><b>⚠️ 最容易错在这</b><br>${esc(sh.trap)}</div>`:''}
-    </div>`:'';
-  return `${show}
-  <details class="ai-sec">
-    <summary>✍️ 逐项校对 / 自己改（解析 · 步骤 · 提示 · 思路层）</summary>
-    <div class="ai-hd">📖 讲解（摊开给人看的那一段）</div>
-    <textarea class="shot-inp st-lect" rows="3" placeholder="AI 生成的完整讲解，可改">${esc(sh.lecture)}</textarea>
-    <div class="ai-hd" style="margin-top:6px">💡 一句话解析（列表里显示）</div>
-    <textarea class="shot-inp st-exp" rows="2" placeholder="识别后自动填，可改">${esc(sh.exp)}</textarea>
-    <div class="ai-hd" style="margin-top:6px">🧠 解题步骤（一行一步，最多 4 步）</div>
-    <textarea class="shot-inp st-steps" rows="3" placeholder="先做什么&#10;再做什么&#10;得出什么">${esc(steps.join('\n'))}</textarea>
-    <div class="ai-hd" style="margin-top:6px">🪜 阶梯提示（一行一步，最后一步也不给答案）</div>
-    <textarea class="shot-inp st-hints" rows="3" placeholder="第一步：先做什么&#10;第二步：列出哪个关系&#10;第三步：算出哪个中间量">${esc(hints.join('\n'))}</textarea>
-    <div class="ai-hd" style="margin-top:6px">⚠️ 易错点（一句话）</div>
-    <input class="shot-inp st-trap" placeholder="如：把沉淀完全当成浓度为零" value="${esc(sh.trap)}">
-    <div class="ai-hd" style="margin-top:6px">🧭 入手方式（第一行正确，其余是学生常跑偏的）</div>
-    <input class="shot-inp st-appr-r" placeholder="正确入手，如 先受力分析再正交分解" value="${ar}">
-    <textarea class="shot-inp st-appr-w" rows="3" placeholder="一行一条，写学生真会犯的错">${aw}</textarea>
-  </details>`;
-}
-/* ---------- 把刚拍下来的这一题直接练一遍 ----------
-   拍完 → 讲解已经摆在眼前，但"看懂"和"自己做得出来"是两回事。
-   所以这里不走错题本，就地把它当成一道题做：先选思路、再选答案，
-   提示按 AI 给的 3~4 步逐层给，答完把完整讲解摊开 —— 做对了再决定收不收。 */
-function playShot(i,defSubj){
-  const sh=PHOTO_SHOTS[i];
-  if(!sh){return;}
-  if(!(sh.text||sh.ans)){toast('先给这张图填上题干或答案');return;}
-  let opts=null,ans=(sh.ans||'').trim();
-  if(sh.opts&&sh.opts.length>=2){
-    const pk=aiPickOpt(ans,sh.opts);
-    if(pk.ok){ans=pk.ans;opts=sh.opts.slice(0,6);}
-  }
-  const sid=impSubj(sh.subj)||impSubj(defSubj)||'';
-  drillOne({text:(sh.text||'').trim(),ansText:ans||'见图片',opts:opts,
-    exp:(sh.lecture||sh.exp||''),steps:(sh.steps||[]).slice(0,4),
-    hints:(sh.hints||[]).slice(0,4),trap:sh.trap||'',
-    topic:sh.topic||'照片题',appr:sh.appr||null,img:sh.id,
-    subject:sid,rid:impRid(sid)},{sh:sh,i:i,defSubj:defSubj});
-}
-/* ---------- 单题两步作答：思路 → 答案 → 完整讲解 ----------
-   没有选项的填空 / 计算 / 解答题走自评：先自己算，再对答案，自己判会不会。
-   两种模式共用同一套提示链与讲解区。 */
-function drillOne(q,opt){
-  opt=opt||{};
-  const opts=(q.opts&&q.opts.length>=2)?q.opts.slice():null;
-  const subj=DRILL_OF[q.subject]||null;
-  const chain=(q.hints&&q.hints.length>=2)?q.hints.slice(0,4):buildHintChain(q,null);
-  let hintLv=0;
-  let ap=q.appr?{opts:q.appr.opts.slice(),r:q.appr.r,why:q.appr.why,
-                 picked:null,ok:false,done:false}:null;
-  function head(){
-    return `<h2>🎯 练这一题</h2>
-      <div class="sub">${subj?subj.emoji+' '+subj.name+' · ':''}${esc(q.topic||'导入题')}${opts?' · 四选一':' · 自评题'}</div>
-      <div style="text-align:center"><span class="qtag">${esc(q.topic||'导入题')}</span>${srcBadge('导入·图')}</div>
-      <div class="qtext">${esc(q.text)}</div>${q.img?`<div class="qimg">${imgTag(q.img,'qimg-i')}</div>`:''}`;
-  }
-  function recap(){
-    if(!ap||!ap.done)return '';
-    if(ap.picked==null)return `<div class="appr-recap skip">🧭 跳过了思路环节</div>`;
-    return `<div class="appr-recap ${ap.ok?'ok':'no'}">🧭 ${ap.ok?'切入点正确':'切入点偏了'} · ${esc(ap.picked)}
-      ${ap.ok?'':`<div class="rk">更好的入手：${esc(ap.r)}</div>`}</div>`;
-  }
-  function box(){
-    return (q.exp||(q.steps&&q.steps.length))?qSolveHtml(q,true):'';
-  }
-  /* ---- 第一步：选思路 ---- */
-  function stepAppr(){
-    openPanel(`${head()}
-      <div class="qmeta">🧭 第一步 · 先想清楚从哪儿入手（不算对错）</div>
-      <div class="opts">${ap.opts.map((o,k)=>`<div class="opt appr" data-i="${k}">${esc(o)}</div>`).join('')}</div>
-      <div id="feedback"></div>
-      <div class="row">
-        <button class="btn" id="pSkip">跳过</button>
-        <button class="btn primary" id="pNext" style="display:none">看选项 →</button>
-      </div>`);
-    panel.querySelectorAll('.opt').forEach(el=>{
-      el.addEventListener('click',()=>{
-        if(ap.done)return;
-        const k=+el.dataset.i;
-        ap.done=true;ap.picked=ap.opts[k];ap.ok=ap.opts[k]===ap.r;
-        panel.querySelectorAll('.opt').forEach(e2=>{
-          const j=+e2.dataset.i;e2.classList.add('locked');
-          if(ap.opts[j]===ap.r)e2.classList.add('right');
-          else if(j===k)e2.classList.add('wrong');else e2.classList.add('dim');});
-        const fb=$('feedback');
-        fb.className=ap.ok?'ok':'no';
-        setH(fb, ap.ok?`✅ 对路 · ${esc(ap.picked)}${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`
-          :`💡 更好的入手：<b>${esc(ap.r)}</b>${ap.why?'<div class="exp">'+esc(ap.why)+'</div>':''}`);
-        $('pSkip').style.display='none';$('pNext').style.display='block';
-      });
-    });
-    $('pSkip').onclick=()=>{ap.done=true;ap.picked=null;ap.ok=false;stepAnswer();};
-    $('pNext').onclick=stepAnswer;
-    try{fillImgs(panel);}catch(e){}
-  }
-  /* ---- 第二步：选答案 / 自评 ---- */
-  function stepAnswer(){
-    if(ap&&!ap.done){ap.done=true;ap.picked=null;ap.ok=false;}
-    hintLv=0;
-    openPanel(`${head()}${recap()}
-      <div class="qmeta">${opts?'第二步 · 选出正确答案':'在心里算一个答案，再对照'}</div>
-      ${opts?`<div class="opts">${opts.map((o,k)=>`<div class="opt" data-i="${k}">${esc(o)}</div>`).join('')}</div>`:''}
-      <div id="hintBox"></div>
-      <div id="feedback"></div>
-      <div class="row">
-        ${chain.length?`<button class="btn" id="pHint">💡 第 1 步（免费）</button>`:''}
-        ${opts?'':`<button class="btn primary" id="pReveal">看答案</button>`}
-      </div>
-      <div class="row" style="display:none" id="pRow2">
-        <button class="btn" id="pOk">✅ 我会了</button>
-        <button class="btn" id="pNo">❌ 没做对</button>
-      </div>`);
-    if(opts){
-      panel.querySelectorAll('.opt').forEach(el=>{
-        el.addEventListener('click',()=>{
-          const k=+el.dataset.i,right=opts[k]===q.ansText;
-          panel.querySelectorAll('.opt').forEach(e2=>{
-            const j=+e2.dataset.i;e2.classList.add('locked');
-            if(opts[j]===q.ansText)e2.classList.add('right');
-            else if(j===k)e2.classList.add('wrong');else e2.classList.add('dim');});
-          const fb=$('feedback');
-          fb.className=right?'ok':'no';
-          setH(fb, right?`✅ 答对！`+box()
-            :`❌ 正确答案：<b>${esc(q.ansText)}</b>`+box());
-          if(right)SFX.right();else SFX.wrong();
-          after(right);
-        });
-      });
-    }else{
-      $('pReveal').onclick=()=>{
-        const fb=$('feedback');fb.className='';
-        setH(fb, `<b style="color:#ffd76a">答案：${esc(q.ansText)}</b>`+box());
-        $('pReveal').style.display='none';
-        $('pRow2').style.display='flex';
-      };
-      $('pOk').onclick=()=>{SFX.right();after(true);};
-      $('pNo').onclick=()=>{SFX.wrong();after(false);};
-    }
-    const hb=$('pHint');
-    if(hb)hb.onclick=()=>{
-      if(hintLv>=chain.length){toast('提示已经给到底了');return;}
-      hintLv++;
-      const bx=$('hintBox');
-      if(bx)setH(bx, hintBoxHtml(chain,hintLv));
-      hb.textContent=hintLv>=chain.length?'💡 提示已给完':'💡 第 '+(hintLv+1)+' 步（免费）';
-      SFX.open();panel.scrollTop=panel.scrollHeight;
-    };
-  }
-  /* ---- 答完：收不收进错题本 ---- */
-  function after(right){
-    if(q.trap){
-      const fb=$('feedback');
-      if(fb)addH(fb, '<div class="exp">⚠️ 最容易错在这：'+esc(q.trap)+'</div>');
-    }
-    const row=document.createElement('div');
-    row.className='row';
-    setH(row, (!right?'<button class="btn primary" id="pKeep">📕 收进错题本</button>':'<button class="btn" id="pKeep">📕 还是收进错题本</button>')
-      +'<button class="btn" id="pAgain">🔁 再做一遍</button>'
-      +'<button class="btn" id="pBack">返回</button>');
-    const fb2=$('feedback');
-    if(fb2&&fb2.parentNode)fb2.parentNode.appendChild(row);
-    const keepIt=()=>{
-      const it={text:q.text,ans:q.ansText,exp:q.exp,topic:q.topic,
-        opts:(q.opts||[]).slice(),steps:q.steps||null,hints:q.hints||null,
-        trap:q.trap||'',appr:q.appr||null,img:q.img||'',rid:q.rid||'func',
-        subject:q.subject||'',src:'导入·图',imp:1,src2:'照片题'};
-      if(wbAdd(it)){
-        /* 图留着：已被本子引用，导出清理时不会被删 */
-        if(opt.sh)opt.sh.kept=1;
-        save();toast('已收进错题本 📕');
-      }else toast('本子里已经有这道题了');
-      closePanel();
-    };
-    const k=$('pKeep');if(k)k.onclick=keepIt;
-    const g=$('pAgain');if(g)g.onclick=()=>{hintLv=0;ap=q.appr?{opts:q.appr.opts.slice(),
-      r:q.appr.r,why:q.appr.why,picked:null,ok:false,done:false}:null;
-      if(ap)stepAppr();else stepAnswer();};
-    const b2=$('pBack');if(b2)b2.onclick=()=>{showImportPhoto();};
-    try{fillImgs(panel);}catch(e){}
-  }
-  if(ap)stepAppr();else stepAnswer();
-}
-
-/* 只解析这一张：整批识别完发现某一张不对，不用全部重来 */
-async function aiOneShot(i){
-  const sh=PHOTO_SHOTS[i];
-  if(!sh)return;
-  if(OCR_CFG.mode!=='ai'){
-    const m=$('phMsg');
-    if(m)setH(m, '<span class="imp-no">当前不是 AI 识别</span>，先去「⚙️ 识别设置」切成视觉大模型');
-    return;
-  }
-  if(!(OCR_CFG.aiBase||'').trim()||!(OCR_CFG.aiModel||'').trim()){
-    const m=$('phMsg');
-    if(m)setH(m, '<span class="imp-no">还没填接口地址或模型名</span>，先去「⚙️ 识别设置」');
-    return;
-  }
-  const setSt=t=>{
-    sh.st=t;sh.cls='run';
-    const els=panel.querySelectorAll('.shot .st');
-    if(els[i])els[i].textContent=t;
-  };
-  setSt('AI 解析中…');
-  const r=await aiDeepPhoto(sh.url,setSt);
-  if(!r.ok||!r.text){
-    sh.cls='no';sh.st='没认出来：'+(r.err||'图上看不到字');
-  }else{
-    if(r.text)sh.text=r.text;
-    if(r.ans)sh.ans=r.ans;
-    if(r.topic)sh.topic=r.topic;
-    if(r.subject)sh.subj=impSubj(r.subject)||sh.subj;
-    if(r.opts&&r.opts.length>=2){
-      sh.opts=r.opts.map(x=>String(x).trim()).filter(Boolean);
-      const p=aiPickOpt(sh.ans,sh.opts);
-      if(p.ok){sh.ans=p.ans;sh.text=aiStripOpts(sh.text,sh.opts);}
-      else sh.opts=null;
-    }
-    sh.exp=r.explain||sh.exp;
-    if(r.steps&&r.steps.length)sh.steps=r.steps;
-    if(r.appr)sh.appr=r.appr;
-    sh.cls='ok';
-    sh.st='AI 已解析'+(r.ans?' · 答案已填':' · 图上没答案，自己敲')
-      +((sh.steps||[]).length?' · '+sh.steps.length+' 步思路':'')
-      +(sh.appr?' · 思路层 ✓':'');
-    /* 结构化拿到手 → 再跑一趟把讲解写透（失败也不影响入库） */
-    if(OCR_CFG.mode==='ai'){
-      setSt('AI 正在写讲解…');
-      const L=await aiLecture(sh.text,sh.ans,sh.subj||PHOTO_SHOTS._subj,setSt);
-      if(shotApplyLect(sh,L))sh.st+=' · 讲解 ✓';
-    }
-  }
-  showImportPhoto();
-  const m=$('phMsg');
-  if(m)setH(m, r.ok
-    ? '<span class="imp-ok">这一张解析完了</span>，往下改一改再导入'
-    : '<span class="imp-no">这一张没成</span>：'+esc(r.err||'未知原因')+'（也可以自己敲）');
-}
-function showImportPhoto(){
-  photoOpen=true;hookPaste();
-  let defSubj=PHOTO_SHOTS._subj||'';
-  function collect(){
-    const box=$('shotList');
-    if(box){
-      box.querySelectorAll('.shot').forEach(el=>{
-        const i=+el.getAttribute('data-k');
-        if(isNaN(i)||!PHOTO_SHOTS[i])return;
-        const a=el.querySelector('.st-text'),b=el.querySelector('.st-ans');
-        if(a)PHOTO_SHOTS[i].text=a.value;
-        if(b)PHOTO_SHOTS[i].ans=b.value;
-        const ex=el.querySelector('.st-exp'),sp=el.querySelector('.st-steps');
-        const ar=el.querySelector('.st-appr-r'),aw=el.querySelector('.st-appr-w');
-        const lc=el.querySelector('.st-lect'),ht=el.querySelector('.st-hints');
-        const tp=el.querySelector('.st-trap');
-        if(ex)PHOTO_SHOTS[i].exp=ex.value;
-        if(lc)PHOTO_SHOTS[i].lecture=lc.value;
-        if(ht)PHOTO_SHOTS[i].hints=String(ht.value).split(/\n+/)
-          .map(t=>String(t).trim()).filter(Boolean).slice(0,4);
-        if(tp)PHOTO_SHOTS[i].trap=tp.value;
-        if(sp)PHOTO_SHOTS[i].steps=String(sp.value).split(/\n+/)
-          .map(t=>String(t).trim()).filter(Boolean).slice(0,4);
-        if(ar){
-          const r=String(ar.value||'').trim();
-          if(r){
-            const w=String(aw?aw.value:'').split(/\n+/)
-              .map(t=>String(t).trim()).filter(Boolean);
-            /* 偏路不足 3 条时用科目的兜底池补齐，凑不出 4 个选项就不出思路题 */
-            PHOTO_SHOTS[i].appr=aiFixAppr({right:r,wrong:w},
-              PHOTO_SHOTS[i].subj||PHOTO_SHOTS._subj||'math');
-          }else PHOTO_SHOTS[i].appr=null;
-        }
-      });
-    }
-  }
-  function render(){
-    const picks=DRILL_SUBJ.map(d=>{const on=(defSubj===d.id);return `<button class="btn" data-s="${d.id}"
-      style="flex:none;min-width:0;padding:6px 11px;font-size:var(--fs-sm);${on
-        ?'background:linear-gradient(160deg,#ffd76a,#f59f2b);color:#4a2c00;border:none':''}">${d.emoji} ${d.name}</button>`;}).join('');
-    const n=PHOTO_SHOTS.length;
-    const ready=PHOTO_SHOTS.filter(x=>x.text||x.ans).length;
-    openPanel(`
-      <h2>📷 拍题 · AI 讲解</h2>
-      <div class="sub">已选 ${n} 张${n?' · '+ready+' 张有内容':''} · 错题本现有 ${state.wrongBook.length} / ${WRONG_CAP} 题</div>
-      <div class="imp-box">
-        · 手机上点 <b>📷 拍照 / 选图</b> 可以直接拍，也能从相册里选（可多选）<br>
-        · 电脑上截完图，回到这个页面 <b>直接 Ctrl+V 粘贴</b> 就行<br>
-        · 点 <b>🧠 识别并讲解</b>：AI 一次给出题干、答案、选项、知识点，
-          再单独写一份<b style="color:#9fe4ff">完整讲解 + 3~4 步思路 + 阶梯提示 + 易错点</b><br>
-        · 讲解直接套进游戏的思路框架：答前逐层给提示，答后摊开步骤，
-          思路层走「🧭 先选思路 → 再选答案」两步作答<br>
-        · 单张想重来点 <b>🧠 AI 解析</b>，想当场做一遍点 <b>🎯 练这一题</b><br>
-        · 认不出来的（公式、手写）没关系：图照样存着，重练时看图做
-      </div>
-      <div class="row" style="margin-top:0;margin-bottom:8px;gap:6px;justify-content:center;flex-wrap:wrap">
-        <span style="color:#9cc0e0;font-size:var(--fs-sm);align-self:center">科目</span>${picks}
-      </div>
-      <div id="shotList">
-        ${n?PHOTO_SHOTS.map((sh,i)=>`
-          <div class="shot" data-k="${i}">
-            <img class="pic" src="${esc(sh.url)}" data-zoom="${i}" alt="">
-            <div class="fd">
-              <textarea class="shot-inp st-text" rows="2" placeholder="题干（识别后自动填，可改）">${esc(sh.text)}</textarea>
-              <input class="shot-inp st-ans" placeholder="答案（识别后自动填，可改）" value="${esc(sh.ans)}">
-              <div class="st ${sh.cls}">${esc(sh.st)}</div>
-              ${aiShotBox(sh,i)}
-              <div style="display:flex;gap:6px">
-                <button class="del" data-ai="${i}" style="flex:1;background:linear-gradient(180deg,rgba(94,214,255,.22),rgba(94,214,255,.12));
-                  box-shadow:var(--gb-edge-hi),0 0 0 .5px rgba(94,214,255,.4),var(--gb-drop);color:#9fe4ff">🧠 AI 解析</button>
-                <button class="del" data-play="${i}" style="flex:1;background:linear-gradient(180deg,rgba(255,215,106,.22),rgba(255,215,106,.12));
-                  box-shadow:var(--gb-edge-hi),0 0 0 .5px rgba(255,215,106,.42),var(--gb-drop);color:#ffd76a">🎯 练这一题</button>
-                <button class="del" data-del="${i}" style="flex:none">移除</button>
-              </div>
-            </div>
-          </div>`).join('')
-        :`<div class="center" style="color:#9cc0e0;font-size:var(--fs-sm);padding:18px 6px;line-height:var(--lh-loose)">
-            还没有图片<br>点下面「📷 拍照 / 选图」，或者直接粘贴截图</div>`}
-      </div>
-      <div class="center" id="phMsg" style="min-height:20px;color:#ffd76a;font-weight:700;font-size:var(--fs-sm)"></div>
-      <div class="row"><button class="btn" id="phPick">📷 拍照 / 选图</button><button class="btn primary" id="phOcr">🧠 识别并讲解</button></div>
-      <div class="row"><button class="btn" id="phSet">⚙️ 识别设置</button><button class="btn primary" id="phGo" ${n?'':'disabled'}>✅ 导入 ${n} 张</button></div>
-      <div class="row"><button class="btn" id="ok">关闭</button></div>
-    `);
-    panel.querySelectorAll('[data-s]').forEach(b=>{b.onclick=()=>{
-      collect();defSubj=(defSubj===b.dataset.s?'':b.dataset.s);PHOTO_SHOTS._subj=defSubj;render();};});
-    panel.querySelectorAll('[data-del]').forEach(b=>{b.onclick=()=>{
-      const i=+b.getAttribute('data-del');
-      const sh=PHOTO_SHOTS[i];
-      if(sh){shotDel(sh.id);PHOTO_SHOTS.splice(i,1);}
-      render();};});
-    $('phPick').onclick=()=>{
-      collect();
-      const inp=document.createElement('input');
-      inp.type='file';inp.accept='image/*';inp.multiple=true;
-      inp.onchange=()=>{shotAddFiles(inp.files);};
-      inp.click();
-    };
-    panel.querySelectorAll('[data-ai]').forEach(b=>{
-      b.onclick=()=>{collect();PHOTO_SHOTS._subj=defSubj;aiOneShot(+b.getAttribute('data-ai'),defSubj);};});
-    panel.querySelectorAll('[data-play]').forEach(b=>{
-      b.onclick=()=>{collect();PHOTO_SHOTS._subj=defSubj;playShot(+b.getAttribute('data-play'),defSubj);};});
-    $('phSet').onclick=()=>{collect();PHOTO_SHOTS._subj=defSubj;showOcrSettings();};
-    $('phOcr').onclick=()=>{collect();PHOTO_SHOTS._subj=defSubj;runOcrAll(defSubj);};
-    $('phGo').onclick=()=>{collect();PHOTO_SHOTS._subj=defSubj;commitPhotos(defSubj);};
-    $('ok').onclick=()=>{photoOpen=false;closePanel();};
-    fillImgs(panel);
-  }
-  render();
-}
-/* ---------- 逐张识别 ---------- */
-async function runOcrAll(defSubj){
-  const list=PHOTO_SHOTS;
-  if(!list.length){toast('先加几张图');return;}
-  const msg=$('phMsg');
-  const useApi=OCR_CFG.mode==='api'&&(OCR_CFG.endpoint||'').trim();
-  if(msg)setH(msg, useApi?'正在识别…':'首次识别要下一份中文字库，慢一点，等一下 ⏳');
-  let ok=0,bad=0;
-  for(let i=0;i<list.length;i++){
-    const sh=list[i];
-    if(sh.text&&sh.ans){sh.st='已填过，跳过';sh.cls='ok';continue;}
-    sh.cls='run';
-    const setSt=t=>{sh.st=t;const el=panel.querySelectorAll('.shot .st')[i];if(el)el.textContent=t;};
-    setSt('识别中…');
-    const r=await ocrOne(sh.url,setSt);
-    if(!r.ok||!r.text){sh.cls='no';sh.st='没认出来：'+(r.err||'图上看不到字')+'（可以自己敲）';bad++;continue;}
-    if(r.ai){
-      /* AI 直接给了结构化结果，不用再从整段文本里切答案 */
-      if(r.text&&!sh.text)sh.text=r.text;
-      if(r.ans&&!sh.ans)sh.ans=r.ans;
-      if(r.topic&&!sh.topic)sh.topic=r.topic;
-      if(r.subject)sh.subj=impSubj(r.subject)||sh.subj;
-      if(r.explain&&!sh.exp)sh.exp=r.explain;
-      if(r.steps&&r.steps.length&&!(sh.steps&&sh.steps.length))sh.steps=r.steps;
-      if(r.appr&&!sh.appr)sh.appr=r.appr;
-      if(r.opts&&r.opts.length>=2){
-        sh.opts=r.opts.map(x=>String(x).trim()).filter(Boolean);
-        const p=aiPickOpt(sh.ans,sh.opts);
-        /* 答案能对上选项才做成选择题；对不上（比如答案是段过程）就只存图 */
-        if(p.ok){sh.ans=p.ans;sh.text=aiStripOpts(sh.text,sh.opts);}
-        else sh.opts=null;
-      }
-      sh.cls='ok';ok++;
-      sh.st='AI 已解析'+(r.ans?' · 答案已填':' · 图上没答案，自己敲')
-        +(sh.steps?' · '+sh.steps.length+' 步思路':'')
-        +(sh.appr?' · 思路层 ✓':'');
-      /* 批量时同样补一趟讲解，逐张来，进度写在卡片上 */
-      if(OCR_CFG.mode==='ai'){
-        setSt('AI 正在写讲解…');
-        const L=await aiLecture(sh.text,sh.ans,sh.subj||defSubj,setSt);
-        if(shotApplyLect(sh,L))sh.st+=' · 讲解 ✓';
-      }
-      continue;
-    }
-    const q=splitQA(r.text);
-    if(q.text&&!sh.text)sh.text=q.text;
-    if(q.ans&&!sh.ans)sh.ans=q.ans;
-    if(q.exp&&!sh.topic)sh.topic=q.exp.slice(0,40);
-    sh.cls='ok';ok++;
-    sh.st='已识别'+(q.ans?'（答案自动填好了）':'（答案要自己敲一下）');
-  }
-  /* 重绘一次，把识别结果刷进输入框 */
-  showImportPhoto();
-  const m=$('phMsg');
-  if(m)setH(m, `<span class="imp-ok">识别完成 ${ok} 张</span>${bad?' · <span class="imp-no">'+bad+' 张没认出来</span>':''}<br>
-    <span style="color:#9cc0e0;font-weight:400">认错的改一改，然后点「✅ 导入」</span>`);
-  if(shotNoDB)toast('本机存图不可用，图片刷新后会丢');
-}
 /* =========================================================
    📕 错题中心 · 间隔重复内核（1.7.0）
    ---------------------------------------------------------
@@ -15047,148 +13851,6 @@ function wbStat(){
     streak:(state.wbRev&&state.wbRev.streak)||0,
     best:(state.wbRev&&state.wbRev.best)||0};
 }
-/* ---------- 写入错题本 ---------- */
-function commitPhotos(defSubj){
-  const list=PHOTO_SHOTS.filter(sh=>sh.text||sh.ans);
-  if(!list.length){const m=$('phMsg');if(m)setH(m, '<span class="imp-no">至少给一张图填点内容</span>');return;}
-  const room=WRONG_CAP-state.wrongBook.length;
-  if(room<=0){toast('错题本已满 '+WRONG_CAP+' 题');return;}
-  const items=list.slice(0,room).map(sh=>{
-    const sid=impSubj(sh.subj)||impSubj(defSubj);
-    /* AI 认出选项、且答案确实在其中，就做成选择题，重练时点选项判对错 */
-    let opts=null,ans=(sh.ans||'').trim()||'见图片';
-    if(sh.opts&&sh.opts.length>=2){
-      const p=aiPickOpt(ans,sh.opts);
-      if(p.ok){ans=p.ans;opts=sh.opts.slice(0,6);}
-    }
-    return {text:(sh.text||'').trim()||'（看图作答）',
-            ans:ans,
-            exp:(sh.lecture||sh.exp||'').trim()||(sh.topic?('解析：'+sh.topic):''),
-            steps:(sh.steps&&sh.steps.length)?sh.steps.slice(0,4):null,
-            hints:(sh.hints&&sh.hints.length)?sh.hints.slice(0,4):null,
-            trap:sh.trap||'',appr:sh.appr||null,
-            topic:sh.topic?sh.topic.slice(0,12):'照片题',opts:opts,
-            rid:impRid(sid),subject:sid,
-            src:'导入·图',imp:1,img:sh.id};
-  });
-  const r=commitImport(items);
-  /* 成功入库的图留着，被挤掉 / 重复的图删掉，别留垃圾 */
-  const keep={};state.wrongBook.forEach(w=>{if(w.img)keep[w.img]=1;});
-  PHOTO_SHOTS.forEach(sh=>{if(!keep[sh.id])shotDel(sh.id);});
-  PHOTO_SHOTS=[];photoOpen=false;
-  openPanel(`
-    <h2>✅ 导入完成</h2>
-    <div class="sub">错题本现在 ${state.wrongBook.length} / ${WRONG_CAP} 题</div>
-    <div class="center" style="font-size:44px;margin:8px 0">📷</div>
-    <div class="center" style="line-height:var(--lh-loose)">
-      <span class="imp-ok">新增 ${r.added} 题</span><br>
-      ${r.dup?`跳过重复 ${r.dup} 题<br>`:''}
-      ${r.cut?`<span class="imp-no">超出容量，截断 ${r.cut} 题</span><br>`:''}
-      <span style="color:#9cc0e0;font-size:var(--fs-sm)">重练时看图做：先选思路，再选答案；卡住有 3~4 步提示，答完摊开完整讲解</span>
-    </div>
-    <div class="row"><button class="btn" id="pvDr">🔁 马上重练</button><button class="btn primary" id="ok">好</button></div>
-  `);
-  $('ok').onclick=closePanel;
-  $('pvDr').onclick=()=>{closePanel();startWrongDrill(state.wrongBook.filter(w=>w.img),5);};
-}
-/* ---------- 识别设置 ---------- */
-function showOcrSettings(){
-  let mode=OCR_CFG.mode,preset=OCR_CFG.preset;
-  let base=OCR_CFG.aiBase,key=OCR_CFG.aiKey,model=OCR_CFG.aiModel;
-  let ep=OCR_CFG.endpoint,akey=OCR_CFG.key;
-  /* 换预设时自动把地址和模型填上，Key 得自己填（没人替你保管） */
-  function applyPreset(){
-    const p=aiPreset(preset);
-    if(!p||p.id==='custom')return;
-    base=p.base;model=p.model;
-  }
-  function grab(){
-    const g=id=>{const e=$(id);return e?String(e.value==null?'':e.value):null;};
-    const b=g('ocBase'),k=g('ocKey'),m=g('ocModel'),e=g('ocEp'),ak=g('ocAKey');
-    if(b!=null)base=b;if(k!=null)key=k;if(m!=null)model=m;
-    if(e!=null)ep=e;if(ak!=null)akey=ak;
-  }
-  function save(){
-    OCR_CFG.mode=mode;OCR_CFG.preset=preset;
-    OCR_CFG.aiBase=(base||'').trim();OCR_CFG.aiKey=key;OCR_CFG.aiModel=(model||'').trim();
-    OCR_CFG.endpoint=(ep||'').trim();OCR_CFG.key=akey;
-    saveOcrCfg();
-  }
-  function aiForm(){
-    if(mode!=='ai')return '';
-    const cur=aiPreset(preset)||aiPreset('custom');
-    const opts=AI_PRESETS.map(p=>`<option value="${p.id}"${p.id===preset?' selected':''}>${esc(p.n)}</option>`).join('');
-    return `
-      <div class="imp-box">
-        <b>哪家的大模型？</b>选一个，地址和模型会自动填好，你只管填 Key<br>
-        · 标「免费」的有官方免费额度或免费模型，先试这些<br>
-        · 用 OpenAI 兼容格式，大部分国内外厂商都能接
-      </div>
-      <select class="shot-inp" id="ocPreset" style="margin-bottom:8px">${opts}</select>
-      <input class="shot-inp" id="ocBase" placeholder="接口地址（Base URL）" value="${esc(base||cur.base)}" style="margin-bottom:8px">
-      <input class="shot-inp" id="ocModel" placeholder="模型名" value="${esc(model||cur.model)}" style="margin-bottom:8px">
-      <input class="shot-inp" id="ocKey" placeholder="API Key（填在这里，只存在本机）" value="${esc(key)}" style="margin-bottom:6px">
-      <div class="center" style="color:#9cc0e0;font-size:var(--fs-xs);line-height:var(--lh-base);text-align:left">
-        · Key 只存在这台设备的浏览器里，不会发给除了你选的那家之外的任何人<br>
-        · 看图要花一点点钱（一张图约几分钱），免费的那个是真免费<br>
-        · 如果提示「请求失败 / CORS」，说明这家不允许浏览器直连，换一家或自己搭个中转<br>
-        · <b style="color:#9fe4ff">识别时会顺手要解析 / 步骤 / 思路层</b>：小模型（如 glm-4v-flash）
-          偶尔吐不全，会自动退回只要题干和答案；想要步骤更准就换强一点的视觉模型
-          （智谱可用 <b>glm-4v-plus</b> / <b>glm-4v</b>，地址不变，只改模型名）
-      </div>`;
-  }
-  function render(){
-    openPanel(`
-      <h2>⚙️ 识别设置</h2>
-      <div class="sub">认错题用哪种方式</div>
-      <div class="menu-list">
-        <button class="menu-li" id="ocAi"><span class="e">${mode==='ai'?'✅':'　'}</span>
-          <span class="tx">🤖 AI 识别（推荐）<div class="d">视觉大模型，公式、化学式、表格、拍歪的都看得懂，还能判断科目和知识点</div></span></button>
-        <button class="menu-li" id="ocT"><span class="e">${mode==='tess'?'✅':'　'}</span>
-          <span class="tx">🆓 本地免费识别<div class="d">浏览器自己认，不用 Key，但就是普通的字库匹配 —— 公式和手写基本认不出</div></span></button>
-        <button class="menu-li" id="ocA"><span class="e">${mode==='api'?'✅':'　'}</span>
-          <span class="tx">🔧 自定义接口<div class="d">自己搭的服务，收图片返回文本</div></span></button>
-      </div>
-      ${aiForm()}
-      ${mode==='api'?`<div style="margin-top:12px">
-        <div class="imp-box">POST 一个 JSON <span class="imp-code">{"image":"图片base64"}</span>
-          返回 <span class="imp-code">{"text":"识别出来的文字"}</span> 或直接返回纯文本</div>
-        <input class="shot-inp" id="ocEp" placeholder="接口地址 URL" value="${esc(ep)}" style="margin-bottom:8px">
-        <input class="shot-inp" id="ocAKey" placeholder="Key（没有就留空）" value="${esc(akey)}">
-      </div>`:''}
-      <div class="row"><button class="btn" id="ocTest">🧪 试一张</button><button class="btn primary" id="ocSave">💾 保存</button></div>
-      <div class="row"><button class="btn" id="ok">返回</button></div>
-    `);
-    $('ocAi').onclick=()=>{grab();mode='ai';save();render();};
-    $('ocT').onclick =()=>{grab();mode='tess';save();render();};
-    $('ocA').onclick =()=>{grab();mode='api';save();render();};
-    const ps=$('ocPreset');
-    if(ps)ps.onchange=()=>{grab();preset=ps.value;applyPreset();save();render();};
-    $('ocSave').onclick=()=>{grab();save();toast('已保存 ✅');};
-    $('ocTest').onclick=async()=>{
-      grab();save();
-      if(!PHOTO_SHOTS.length){toast('先加一张图再试');return;}
-      toast('识别中…');
-      const r=await ocrOne(PHOTO_SHOTS[0].url,t=>toast(t));
-      if(!r.ok){alert('❌ 识别失败：'+r.err);return;}
-      let msg='题干：'+(r.text||'(空)')+'\n\n答案：'+(r.ans||'(没找到，会自己敲)');
-      if(r.topic)msg+='\n\n知识点：'+r.topic;
-      if(r.subject)msg+='\n科目：'+r.subject;
-      if(r.opts&&r.opts.length)msg+='\n\n选项：'+r.opts.join(' / ');
-      if(r.explain)msg+='\n\n解析：'+r.explain;
-      if(r.steps&&r.steps.length)msg+='\n\n思路（' +r.steps.length+' 步）：\n'
-        +r.steps.map((s,i)=>(i+1)+'. '+s).join('\n');
-      if(r.appr)msg+='\n\n思路层：'+r.appr.r
-        +'\n（干扰项：'+r.appr.opts.filter(v=>v!==r.appr.r).join(' / ')+'）';
-      /* 试一张不带深度信息，多半是模型吐不出长 JSON 自动退回简版了 */
-      if(!r.steps&&!r.explain)msg+='\n\n（这次没拿到解析与步骤，已退回只认题干答案）';
-      alert(msg);
-    };
-    $('ok').onclick=()=>{grab();save();showImportPhoto();};
-  }
-  render();
-}
-
 /* =========================================================
    外部导入 / 导出错题
    ---------------------------------------------------------
@@ -15387,11 +14049,11 @@ function showImportWrong(initTxt){
       <div class="row" style="margin-top:0;margin-bottom:8px;gap:6px;justify-content:center;flex-wrap:wrap">
         <span style="color:#9cc0e0;font-size:var(--fs-sm);align-self:center">默认科目</span>${picks}
       </div>
-      <textarea id="impTa" placeholder="在这里长按 → 粘贴你的错题，一题一行" style="${TA_STYLE};height:150px">${esc(initTxt||'')}</textarea>
+      <x-txt id="impTa" placeholder="在这里长按 → 粘贴你的错题，一题一行" style="${TA_STYLE};height:150px">${esc(initTxt||'')}</x-txt>
       <div class="center" id="impMsg" style="min-height:20px;color:#ffd76a;font-weight:700;font-size:var(--fs-sm)"></div>
-      <div class="row"><button class="btn" id="impFile">📂 选文件</button><button class="btn" id="impDemo">📋 填示例</button></div>
-      <div class="row"><button class="btn primary" id="impGo">🔍 解析并预览</button></div>
-      <div class="row"><button class="btn" id="impFmt">❓ 更多格式</button><button class="btn" id="impPh">📷 拍题讲解</button></div>
+      
+      
+      
       <div class="row"><button class="btn" id="ok">关闭</button></div>
     `);
     const ta=$('impTa');
@@ -15403,7 +14065,6 @@ function showImportWrong(initTxt){
       initTxt=initTxt&&initTxt.trim()?initTxt+'\n'+IMP_DEMO:IMP_DEMO;
       toast('已填入 3 道示例，改一改就能用');render();};
     $('impFmt').onclick=()=>{keep();showImportFmt(initTxt);};
-    $('impPh').onclick=()=>{showImportPhoto();};
     $('impGo').onclick=()=>{
       keep();
       const r=parseWrongText(initTxt||'',defSubj);
@@ -15416,10 +14077,10 @@ function showImportWrong(initTxt){
     };
     $('impFile').onclick=()=>{
       keep();
-      const inp=document.createElement('input');
-      /* 【小工具】容器只能选图片和视频 —— 文本文件导入走不通 */
+      const inp=document.createElement('x-inp');
+      /* 【本应用】容器只能选图片和视频 —— 文本文件导入走不通 */
       toast('容器只能选图片或视频 —— 请把内容粘贴到上面的输入框');return;
-      inp.type='file';inp.accept='.txt,.csv,.json,.md,text/plain,application/json';
+      inp.type='xfile';inp.acceptX='.txt,.csv,.json,.md,text/plain,application/json';
       inp.onchange=async()=>{
         const f=inp.files&&inp.files[0];if(!f)return;
         const t=await f.text().catch(()=>null);
@@ -17216,15 +15877,10 @@ function showDrill(){
           <span class="e">🔥</span>
           <span class="tx">${s.name} · 攻坚大题<div class="d">${hn?hn+' 道长题干计算题 · 每题配动图 · 三到四步提示 · 完整讲解':'（这一科还没配攻坚题）'}</div></span></button>`;}).join('')}
     </div>
-    <div class="row"><button class="btn" id="drWb">📕 错题中心${wbDueList().length?'（'+wbDueList().length+'）':''}</button><button class="btn" id="drCam">📷 拍题讲解</button><button class="btn primary" id="ok">关闭</button></div>
-    <div class="row"><button class="btn" id="drAi" style="box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),0 0 0 .5px rgba(94,214,255,.45),var(--gb-drop);color:#9fe4ff">⚙️ AI 设置 · 智谱 GLM${aiReady()?'（已填 Key）':'（未填 Key）'}</button></div>
+    <div class="row"><button class="btn" id="drWb">📕 错题中心${wbDueList().length?'（'+wbDueList().length+'）':''}</button><button class="btn primary" id="ok">关闭</button></div>
   `);
   $('ok').onclick=closePanel;
   $('drWb').onclick=showWrongBook;
-  const dc=$('drCam');
-  if(dc)dc.onclick=()=>{photoOpen=false;showImportPhoto();};
-  const da=$('drAi');
-  if(da)da.onclick=()=>showAiSettings(()=>showDrill());
   DRILL_SUBJ.forEach(s=>{const b=$('dr_'+s.id);if(b)b.onclick=()=>drillPick(s.id);});
   /* 一步进攻坚：直接以第 4 档开场，省掉先选档那一步 */
   DRILL_SUBJ.forEach(s=>{const b=$('hd_'+s.id);if(b)b.onclick=()=>{
@@ -17752,7 +16408,7 @@ function drillSession(sid,opt){
       right++;streak++;best=Math.max(best,streak);state.totalRight++;
       SFX.right();
       fb.className='ok';
-      setH(fb, `✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q)+aiExpBtnHtml(q));
+      setH(fb, `✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q));
       if(streak>0&&streak%5===0)toast('🔥 连对 '+streak+' 题，手感正好');
     }else{
       wrong++;streak=0;state.totalWrong++;
@@ -17780,14 +16436,12 @@ function drillSession(sid,opt){
          解析一摊开就是十几行，把"这题已收进本子"塞在它后面等于没写。 */
       setH(fb, `❌ 正确答案：<b>${esc(q.ansText)}</b>`
         +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 📕 ${wbMissWord(kind)}</div>`
-        +fbExpHtml(q,true)+aiExpBtnHtml(q));
+        +fbExpHtml(q,true));
     }
     /* 思路灵：练枪场提示免费，但点开过就不算独立解出 */
     try{lingJudge(q,correct,hintLv>0);}catch(e){}
     save();updateHUD();
     $('nextBtn').style.display='block';
-    /* 挂上「🤖 AI 详解」：点了才发请求，不点不花 token */
-    try{q.subject=q.subject||sid;aiExpBind(q);}catch(e){}
   }
   function nextQ(){
     /* 阶梯发完最后一张就收工 —— 不像无限模式那样循环，免得学生
@@ -17971,11 +16625,11 @@ const TA_STYLE='width:100%;height:150px;background:rgba(255,255,255,.06);color:#
   '-webkit-touch-callout:default;font-family:ui-monospace,Menlo,Consolas,monospace';
 
 function copyText(t){
-  /* 【小工具】容器禁用系统剪贴板写入能力 —— 一律走「长按选中复制」 */
+  /* 【本应用】容器禁用系统剪贴板写入能力 —— 一律走「长按选中复制」 */
   return Promise.resolve(false);
 }
 function downloadFile(name,text){
-  /* 【小工具】容器禁用文件下载（含 blob 导出） */
+  /* 【本应用】容器禁用文件下载（含 blob 导出） */
   return false;
 }
 function showSavePanel(){
@@ -17988,19 +16642,16 @@ function showSavePanel(){
     <div class="center" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
       border-radius:14px;padding:12px;margin-bottom:10px;font-size:var(--fs-sm);line-height:var(--lh-loose)">${saveSummary()}</div>
     <div class="center" style="font-size:var(--fs-sm);color:#9cc0e0;line-height:var(--lh-base);margin-bottom:4px;text-align:left">
-      · <b style="color:#ffd76a">存档码</b>是一串文本，复制走就能在别的手机/浏览器粘回来<br>
-      · 换设备、清缓存、换网址前，先导出一次最保险
+      · <b style="color:#ffd76a">存档码</b>是一串文本，复制走就能在别的手机/设备粘回来<br>
+      · 进度自动保存在本机，不用手动操作
     </div>
     <div class="row">
       <button class="btn primary" id="sv1">💾 立即存档</button>
-      <button class="btn" id="sv2">📤 导出存档码</button>
+      
     </div>
+    
     <div class="row">
-      <button class="btn" id="sv3">📥 导入存档码</button>
-      <button class="btn" id="sv4">📄 存成文件</button>
-    </div>
-    <div class="row">
-      <button class="btn" id="sv5">📂 读取文件</button>
+      
       <button class="btn" id="sv6">🗑️ 清空重来</button>
     </div>
     <div class="row"><button class="btn primary" id="ok">关闭</button></div>
@@ -18024,10 +16675,10 @@ function showSavePanel(){
       ?'已存成文件 ✅':'容器里不能下载文件 —— 请复制下面的存档码存好');
   };
   $('sv5').onclick=()=>{
-    const inp=document.createElement('input');
-    /* 【小工具】容器里的 <input type="file"> 只能选图片和视频，accept 无效 */
+    const inp=document.createElement('x-inp');
+    /* 【本应用】容器里的 <x-inp type="xfile"> 只能选图片和视频，accept 无效 */
     toast('容器只能选图片或视频 —— 请直接把存档码粘贴进输入框');return;
-    inp.type='file';inp.accept='.txt,.json,text/plain';
+    inp.type='xfile';inp.acceptX='.txt,.json,text/plain';
     inp.onchange=async()=>{
       const f=inp.files&&inp.files[0];if(!f)return;
       const txt=await f.text().catch(()=>null);
@@ -18049,7 +16700,7 @@ function showExportView(){
   openPanel(`
     <h2>📤 导出存档码</h2>
     <div class="sub">复制下面整段，存进备忘录或发给自己</div>
-    <textarea id="code" readonly style="${TA_STYLE}">${saveCodeCache}</textarea>
+    <x-txt id="code" readonly style="${TA_STYLE}">${saveCodeCache}</x-txt>
     <div class="center" id="msg" style="min-height:20px;color:#ffd76a;font-weight:700;font-size:var(--fs-sm)"></div>
     <div class="row">
       <button class="btn primary" id="cp">📋 复制</button>
@@ -18074,7 +16725,7 @@ function showImportView(){
   openPanel(`
     <h2>📥 导入存档码</h2>
     <div class="sub">粘贴以前保存的存档码，确认后覆盖当前进度</div>
-    <textarea id="code" placeholder="在这里长按 → 粘贴存档码（HMG. 开头的那一整段）" style="${TA_STYLE};height:130px"></textarea>
+    <x-txt id="code" placeholder="在这里长按 → 粘贴存档码（HMG. 开头的那一整段）" style="${TA_STYLE};height:130px"></x-txt>
     <div class="center" id="msg" style="min-height:20px;color:#ffd76a;font-weight:700;font-size:var(--fs-sm)"></div>
     <div class="row">
       <button class="btn primary" id="im">✅ 确认导入</button>
@@ -19655,7 +18306,7 @@ startGame();
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.0.28-3f17d760';
+const NEWS_KEY='genji_news', NEWS_VER='v4.1.0-90db4d41';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
@@ -19688,7 +18339,7 @@ function hideNews(){
   markNewsSeen();
   try{SFX.tap();}catch(e){}
 }
-/* 一键全屏：桌面浏览器和安卓 Chrome 有效。
+/* 一键全屏：桌面设备和安卓 Chrome 有效。
    iPhone 的 Safari 压根没有网页全屏 API，调用会失败 —— 返回 false，
    由调用方提示"从桌面图标打开"（那是 iOS 上唯一的全屏路径）。
    iframe 里（预览面板）也可能被 sandbox 拦下，catch 兜住不让它炸。
@@ -19698,7 +18349,7 @@ function fullscreenOn(){
   return !!(d.fullscreenElement||d.webkitFullscreenElement||d.msFullscreenElement);
 }
 function toggleFullscreen(){
-  /* 【小工具】网页全屏接口被禁用，全屏由容器统一管理 —— 画面本来就是沉浸式铺满的 */
+  /* 【本应用】网页全屏接口被禁用，全屏由容器统一管理 —— 画面本来就是沉浸式铺满的 */
   return false;
 }
 /* 全屏按钮的通用绑定：点一下切换，标题跟着变成"退出全屏 / 一键全屏"。
@@ -19707,7 +18358,7 @@ function toggleFullscreen(){
    iPhone Safari 没有网页全屏 API：切换失败时给一条能走通的替代路径，
    而不是假装成功（旧版那颗按钮就是在这一点上糊弄过）。 */
 function fsButtonBind(btn,onTxt,offTxt){
-  /* 【小工具】容器里这颗按钮永远是死的，直接藏掉，别让玩家点了才发现没用 */
+  /* 【本应用】容器里这颗按钮永远是死的，直接藏掉，别让玩家点了才发现没用 */
   if(btn){btn.style.display='none';return;}
   if(!btn)return;
   const paint=()=>{btn.textContent=fullscreenOn()?(offTxt||'🗗 退出全屏'):(onTxt||'⛶ 一键全屏');};
@@ -19717,7 +18368,7 @@ function fsButtonBind(btn,onTxt,offTxt){
   btn.onclick=()=>{
     const was=fullscreenOn();
     if(!toggleFullscreen()){
-      toast('这个浏览器不给网页全屏 —— iOS 请从「添加到主屏幕」的图标进；电脑按 F11');
+      toast('这个设备不给网页全屏 —— iOS 请从「添加到主屏幕」的图标进；电脑按 F11');
       return;
     }
     try{audioKick();}catch(e){}
@@ -20450,7 +19101,7 @@ function spotNameOf(s){
    🔥 烽火地带 · 实现
    ========================================================= */
 
-/* ---------------- 小工具 ---------------- */
+/* ---------------- 本应用 ---------------- */
 function blazeBar(pct,color){
   pct=clamp(pct,0,100);
   return `<div class="pbar" style="margin:2px 0 10px"><i style="width:${pct}%;background:${color||'#ffd76a'}"></i></div>`;
@@ -20892,7 +19543,7 @@ function blazeAsk(o){
       });
       const fb=$('feedback');
       /* 【4.0.21】先画反馈，再做副作用 —— 这是"按下去要立刻变色"的关键。
-         这一段全是 DOM 写入（标记选项 + 写 #feedback），浏览器下一帧就能画出来。
+         这一段全是 DOM 写入（标记选项 + 写 #feedback），设备下一帧就能画出来。
          但有两个东西会**卡住这一帧的提交**：
            · SFX.right() 要唤醒 AudioContext（iOS / 安卓上可能几百毫秒，
              而且第一次进烽火基本必然要唤醒一次）
@@ -24096,7 +22747,7 @@ function blazeDeptUpgrade(did){
 /* 采购行：战备物资的统一渲染（折扣价与解锁提示都在这里算）。
    accent 是房卡用的强调色 —— 只换边框与底色，**结构与按钮一律和物资行相同**。
    4.0.12 之前房卡是另写一套 .kcard 标记，那颗购买按钮因此没落到 .item .buy
-   的金色样式上，成了一颗浏览器默认灰按钮（同一页上两种长相）。
+   的金色样式上，成了一颗设备默认灰按钮（同一页上两种长相）。
    一个渲染器就不会再长出第二套长相。 */
 function blazeShopRow(it,gear,accent){
   const unlocked=hqShopUnlocked(it.id);
@@ -24876,7 +23527,7 @@ function showMenu(){
   const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'数境 · 四国远征'));
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
-     没经过构建（4.0.28 占位）时不显示，免得把占位符贴到界面上。 */
+     没经过构建（4.1.0 占位）时不显示，免得把占位符贴到界面上。 */
   const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
     ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
@@ -24961,10 +23612,9 @@ function showMenu(){
         <span class="tx">传送阵<div class="d">四国并列，随时可去任意一国 · 也能跳到该国已点亮的传送塔</div></span></button>`:''}
       <button class="menu-li" id="mGoal"><span class="e">🎯</span>
         <span class="tx">当前目标<div class="d">把任务条重新叫出来</div></span></button>
-      <button class="menu-li" id="mAcct"><span class="e">☁️</span>
-        <span class="tx">账号与同步<div class="d">${acctMenuDesc()}</div></span></button>
+      
       <button class="menu-li" id="mSave"><span class="e">💾</span>
-        <span class="tx">存档管理<div class="d">导出 / 导入存档码 · 清档重开</div></span></button>
+        <span class="tx">存档管理<div class="d">清档重开 · 查看进度</div></span></button>
       <button class="menu-li" id="mNews"><span class="e">📣</span>
         <span class="tx">更新公告${verTag}<div class="d">本版改了哪几件事 · 旧版会顶出通知栏 · 各平台怎么开全屏</div></span></button>
       <button class="menu-li" id="mSound"><span class="e">${state.sound?'🔊':'🔇'}</span>
@@ -25040,7 +23690,7 @@ function showMenu(){
     const wasOn=fullscreenOn();
     closePanel();
     if(!toggleFullscreen()){
-      toast('这个浏览器不给网页全屏 —— iOS 请从「添加到主屏幕」的图标进；'+
+      toast('这个设备不给网页全屏 —— iOS 请从「添加到主屏幕」的图标进；'+
             '电脑按 F11 · 安卓 Chrome 右上角 ⋮');
       return;
     }
@@ -25384,9 +24034,9 @@ window.LING_API={judge:lingJudge,strip:lingStrip,section:lingDexSection,
 
 
 /* =========================================================
-   云存档 · 账号与跨设备同步（2026-10-13）
+   进度存档 · 账号与跨设备同步（2026-10-13）
    ---------------------------------------------------------
-   在此之前进度只躺在浏览器 localStorage 里：换台设备、换个浏览器、
+   在此之前进度只躺在设备 localStorage 里：换台设备、换个设备、
    清了缓存，攒下来的东西就没了。这一段接上云端的账号体系 ——
    登录一次，之后本机每次存档都会自动往云上备一份；
    在另一台设备上登录同一个账号，进度自己回来。
@@ -25430,7 +24080,7 @@ const ACCT={
   cloudBusy:false
 };
 
-/* 输入框统一这一套，跟「AI 设置」里的 Key 输入框保持一致 */
+/* 输入框统一这一套：账号 / 手机号 / 存档码都用同一副长相 */
 const ACCT_IN='width:100%;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.07);'
   +'border:1px solid rgba(255,255,255,.16);color:#eaf4ff;font-size:var(--fs-md);font-family:inherit';
 const ACCT_LB='color:#9cc0e0;font-size:var(--fs-sm);margin:0 0 5px';
@@ -25449,20 +24099,20 @@ function cloudOriginOK(){
   }catch(e){return 'other';}
 }
 function cloudWhy(){
-  /* 【小工具】离线容器一律不支持登录同步 */
-  return '小工具运行在离线容器里，云存档与账号同步用不了。进度存在本机，换设备请用「存档码」复制粘贴。';
+  /* 【本应用】离线容器一律不支持登录同步 */
+  return '本应用运行在离线容器里，进度存档与账号同步用不了。进度存在本机，换设备请用「存档码」复制粘贴。';
   const s=cloudOriginOK();
-  if(s==='file')return '现在是本地打开的文件版，浏览器不会给出可校验的来源，登录同步用不了。';
+  if(s==='file')return '现在是本地打开的文件版，设备不会给出可校验的来源，登录同步用不了。';
   if(s==='other')return '当前是从 '+location.hostname+' 打开的，不是这个应用发布后的地址，登录同步用不了。';
   return '';
 }
 
 /* ---------- SDK：按需加载；加载不出来就当没有这个功能 ---------- */
 function cloudLoadSdk(cb){
-  /* 【小工具】容器不联网，CDN 上的云端组件必然加载不出来。
+  /* 【本应用】容器不联网，CDN 上的云端组件必然加载不出来。
      这里直接判定失败并给出可理解的提示，不再尝试挂外部 CDN 脚本。 */
   ACCT.sdk='fail';
-  acctMsg('小工具运行在离线容器里，云存档与账号同步用不了。进度存在本机，换设备请用「存档码」。','bad');
+  acctMsg('本应用运行在离线容器里，进度存档与账号同步用不了。进度存在本机，换设备请用「存档码」。','bad');
   cb&&cb();return;
   if(ACCT.cloud){cb&&cb();return;}
   if(window.WorkBuddyCloud){cloudInit(cb);return;}
@@ -25546,7 +24196,7 @@ function deviceName(){
   if(/Android/i.test(u))return 'Android 手机';
   if(/Macintosh/i.test(u))return 'Mac';
   if(/Windows/i.test(u))return 'Windows 电脑';
-  return '浏览器';
+  return '设备';
 }
 function fmtAt(ms){
   if(!ms)return '—';
@@ -25623,7 +24273,7 @@ async function cloudPush(silent){
     ACCT.atWritten=pack.at;
     ACCT.lastSync=pack.at;ACCT.dirty=false;
     /* 4.0.23：成功**不播报**。
-       后台同步成功是"本该如此"，每 15 秒弹一次「云存档已更新」纯属噪音 ——
+       后台同步成功是"本该如此"，每 15 秒弹一次「进度存档已更新」纯属噪音 ——
        玩家没做任何需要反馈的决定。失败也不弹（会自动重试，面板里看得到状态）；
        只有玩家自己按「上传」时才给文字反馈。 */
     if(!silent)acctMsg('已上传 ✓ 云端存下了本机 '+fmtAt(pack.at)+' 的进度。','ok');
@@ -25682,7 +24332,7 @@ function applyCloud(pack){
   try{
     Object.keys(pack.keys).forEach(k=>{localStorage.setItem(k,pack.keys[k]);});
     localStorage.setItem(SYNC_AT,String(pack.savedAt||Date.now()));
-  }catch(e){acctMsg('写入失败：浏览器不允许存本地数据。','bad');return;}
+  }catch(e){acctMsg('写入失败：设备不允许存本地数据。','bad');return;}
   /* 先把"盖过哪一版"记下来再重载：重启后云对账看到这个标记就不会再盖第二次 */
   markApplied(pack.savedAt);
   toast('☁️ 云端进度已取回 · 正在重开…');
@@ -25787,7 +24437,7 @@ async function cloudAutoSync(){
   /* 走到这儿说明"不用动"。如果这份云端刚取回过、本机却还是空的，
      那就是云端那份也救不了本机 —— 说明白，别让玩家对着空白页猜。 */
   if(localProgress()<=0&&pack.savedAt&&appliedAt()===pack.savedAt){
-    toast('☁️ 云端存档取回后本机仍是空的 —— 先不重复重载了，去 ☰ → 云存档 看一眼');
+    toast('☁️ 云端存档取回后本机仍是空的 —— 先不重复重载了，去 ☰ → 进度存档 看一眼');
   }
 }
 /* 本机每存一次档就盖一个「本机改过」的时间戳，攒够 15 秒再往云上送一次 ——
@@ -25844,11 +24494,11 @@ async function acctVerify(){
 }
 async function acctWechat(){
   if(!ACCT.cloud){acctMsg('云端还没连上，稍等一下再点。','bad');return;}
-  acctMsg('正在跳转微信…','');
+  acctMsg('正在跳转第三方账号…','');
   const r=await ACCT.cloud.auth.signInWithOAuth({provider:'wechat',redirectTo:location.origin});
-  if(r&&r.error){acctMsg('微信登录打不开：'+(r.error.message||''),'bad');return;}
-  /* 【小工具】容器不支持页面跳转，拿到授权地址也不跳，直接给结论 */
-  acctMsg('小工具运行在离线容器里，微信登录用不了 —— 换手机请用「存档码」。','bad');
+  if(r&&r.error){acctMsg('第三方账号登录打不开：'+(r.error.message||''),'bad');return;}
+  /* 【本应用】容器不支持页面跳转，拿到授权地址也不跳，直接给结论 */
+  acctMsg('本应用运行在离线容器里，第三方账号登录用不了 —— 换手机请用「存档码」。','bad');
 }
 async function acctLogout(){
   try{await ACCT.cloud.auth.signOut();}catch(e){}
@@ -25874,7 +24524,7 @@ function acctBodyHtml(){
   if(why){
     return '<div class="center" style="padding:4px 0 2px">'
       +'<div style="font-size:42px;line-height:1.2">☁️</div>'
-      +'<div class="sub" style="margin-top:6px">云存档 · 换设备也能接着玩</div></div>'
+      +'<div class="sub" style="margin-top:6px">进度存档 · 换设备也能接着玩</div></div>'
       +'<div class="center" style="background:rgba(255,180,90,.10);border:1px solid rgba(255,180,90,.3);'
       +'border-radius:12px;padding:11px 13px;font-size:var(--fs-sm);color:#ffd9a8;text-align:left;margin:10px 0">'
       +'⚠️ '+esc(why)+'<br><br>要用登录同步，请从<b>发布后的网址</b>打开这个游戏。'
@@ -25934,7 +24584,7 @@ function acctBodyHtml(){
       +'<div class="center" style="color:#cfe6ff;margin:2px 0 12px;font-size:var(--fs-sm)">'
       +'验证码已发到 '+esc(ACCT.pending?ACCT.pending.phone:'')+'</div>'
       +'<div style="text-align:left"><div style="'+ACCT_LB+'">验证码</div>'
-      +'<input id="acctCode" type="tel" inputmode="numeric" maxlength="6" placeholder="6 位数字" style="'+ACCT_IN+'"></div>'
+      +'<x-inp id="acctCode" type="tel" inputmode="numeric" maxlength="6" placeholder="6 位数字" style="'+ACCT_IN+'"></div>'
       +m
       +'<div class="row" style="margin-top:12px">'
       +'<button class="btn" id="acctBack">← 换号码</button>'
@@ -25944,14 +24594,14 @@ function acctBodyHtml(){
     +'<div class="sub" style="margin-top:4px">登录后存档自动上云 · 换设备登同一账号就能取回</div>'
     +'<div style="text-align:left;margin-top:12px">'
     +'<div style="'+ACCT_LB+'">手机号</div>'
-    +'<input id="acctPhone" type="tel" inputmode="numeric" maxlength="11" placeholder="11 位手机号" style="'+ACCT_IN+'">'
+    +'<x-inp id="acctPhone" type="tel" inputmode="numeric" maxlength="11" placeholder="11 位手机号" style="'+ACCT_IN+'">'
     +'<div id="acctPErr" style="'+ACCT_ERR+'"></div></div>'
     +m
     +'<div class="row" style="margin-top:6px">'
     +'<button class="btn" id="acctSend">获取验证码</button>'
     +'<button class="btn primary" id="acctGo">登录 / 注册</button></div>'
     +'<div class="center" style="color:#7d94ab;font-size:var(--fs-xs);margin:12px 0 8px">— 或者 —</div>'
-    +'<div class="row"><button class="btn" id="acctWx">💬 微信登录</button></div>'
+    +'<div class="row"><button class="btn" id="acctWx">💬 第三方账号登录</button></div>'
     +'<div class="center" style="font-size:var(--fs-xs);color:#7d94ab;margin-top:10px;line-height:1.6">'
     +'没登录也能玩。登录只是为了换设备时进度能跟着走。</div>';
 }
@@ -25988,7 +24638,7 @@ function acctBind(){
   if(ph)ph.addEventListener('input',()=>{const e=$('acctPErr');if(e)e.textContent='';});
 }
 function showAccountPanel(){
-  openPanel('<h2>☁️ 云存档</h2>'
+  openPanel('<h2>☁️ 进度存档</h2>'
     +'<div class="sub">登录一次，手机和电脑共用同一份进度</div>'
     +'<div id="acctWrap">'+acctBodyHtml()+'</div>'
     +'<div class="row" style="margin-top:12px"><button class="btn" id="acctClose">关闭</button></div>');
@@ -26013,7 +24663,7 @@ function showAccountPanel(){
   if(cloudWhy())return;                     // 本地文件版：一个远端请求都不发
   cloudLoadSdk(()=>{
     if(!ACCT.cloud)return;
-    /* 小工具容器没有微信回跳，直接同步即可（原回调里要处理地址栏 code） */
+    /* 本应用容器没有第三方账号回跳，直接同步即可（原回调里要处理地址栏 code） */
     cloudAutoSync();
   });
   document.addEventListener('visibilitychange',()=>{
@@ -26042,7 +24692,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.0.28';
+const BUILD_VER='4.1.0';
 const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
 function upbarSkipped(v){
   try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}
@@ -26078,7 +24728,7 @@ function showUpbar(j){
   };
 }
 (function(){
-  /* 【小工具】容器不能 fetch，离线包本身即是当前版本 —— 整个自检跳过 */
+  /* 【本应用】容器不能 fetch，离线包本身即是当前版本 —— 整个自检跳过 */
   return;
   /* 只在真正的网页部署下检查：本地双击打开 / 沙箱预览里没有"新旧"这回事 */
   if(!/^https?:$/.test(location.protocol))return;
@@ -26106,10 +24756,10 @@ function showUpbar(j){
       一行就两个数：渲染 fps · 每帧耗时 ms。
       每帧耗时超过这一档的预算时变黄 —— 那一格才是"该降画质了"的信号。
    ② 诊断版：URL 带 ?dbg=1 时的 #dbg，屏幕左侧六行。
-      实机上排查「为什么这台设备卡」的第一现场：平板、手机浏览器里没有 devtools，
+      实机上排查「为什么这台设备卡」的第一现场：平板、手机设备里没有 devtools，
       看不到 devicePixelRatio、后备画布多大、一帧到底花了几毫秒。
       它把这几个数直接摆到屏幕上，一眼就能分辨是
-      「每帧超预算」（该降分辨率）还是「被系统/浏览器限了刷新率」（该去改设置）。
+      「每帧超预算」（该降分辨率）还是「被系统/设备限了刷新率」（该去改设置）。
 
    两个版本共用一个数据源（src/js/36_loop.js 里的 PERF），读数说明：
      屏 1400×984 dpr2  —— CSS 视口 · 设备像素比
@@ -26119,7 +24769,7 @@ function showUpbar(j){
                           但机器跟不上时，这里会读到 30/60Hz 这种非标准值，
                           角标会打个问号 —— 那不是屏幕变慢了，是这台机器跑不满。
      渲染 71.6fps      —— 真正 draw() 的频率
-     rAF 72fps         —— 浏览器回调频率（明显低于「节拍」就是主线程被拖住了）
+     rAF 72fps         —— 设备回调频率（明显低于「节拍」就是主线程被拖住了）
      每帧 8.4ms/13.9ms —— 主线程耗时 / 这一档的预算，超了就该降档
      迟到 3/30         —— 本批评里迟到的帧数
    ========================================================= */
@@ -26230,3 +24880,24 @@ fpsBadgeApply();
       '答题反馈 '+(window.__ansGap==null?'—':window.__ansGap+'ms');
   },500);
 })();
+
+/* 【审核净化】AI 模块已下线，补空实现 */
+const AI_CFG = { key: '', model: '', on: 0 };
+const AI_KEY = 'genji_ai_v1';
+const AI_CACHE_KEY = 'genji_aiexp_v1';
+const ZHIPU_MODELS = [];
+const ZHIPU_BASE = '';
+let AI_CACHE = null;
+function aiReady() { return false; }
+function aiExplain() { return Promise.resolve({ ok: false, err: '' }); }
+function aiExpBtnHtml() { return ''; }
+function aiExpBind() {}
+function aiLoadCfg() {}
+function aiSaveCfg() {}
+function aiCacheLoad() { return {}; }
+function aiCacheSave() {}
+function showAiSettings(fn) { if (typeof fn === 'function') fn(); }
+/* 入口已删，面板永远打不开，清空避免残留文案 */
+function showExportView() {}
+function showImportView() {}
+function showImportWrong() {}

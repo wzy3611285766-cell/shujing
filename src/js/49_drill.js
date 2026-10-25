@@ -323,15 +323,10 @@ function showDrill(){
           <span class="e">🔥</span>
           <span class="tx">${s.name} · 攻坚大题<div class="d">${hn?hn+' 道长题干计算题 · 每题配动图 · 三到四步提示 · 完整讲解':'（这一科还没配攻坚题）'}</div></span></button>`;}).join('')}
     </div>
-    <div class="row"><button class="btn" id="drWb">📕 错题中心${wbDueList().length?'（'+wbDueList().length+'）':''}</button><button class="btn" id="drCam">📷 拍题讲解</button><button class="btn primary" id="ok">关闭</button></div>
-    <div class="row"><button class="btn" id="drAi" style="box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),0 0 0 .5px rgba(94,214,255,.45),var(--gb-drop);color:#9fe4ff">⚙️ AI 设置 · 智谱 GLM${aiReady()?'（已填 Key）':'（未填 Key）'}</button></div>
+    <div class="row"><button class="btn" id="drWb">📕 错题中心${wbDueList().length?'（'+wbDueList().length+'）':''}</button><button class="btn primary" id="ok">关闭</button></div>
   `);
   $('ok').onclick=closePanel;
   $('drWb').onclick=showWrongBook;
-  const dc=$('drCam');
-  if(dc)dc.onclick=()=>{photoOpen=false;showImportPhoto();};
-  const da=$('drAi');
-  if(da)da.onclick=()=>showAiSettings(()=>showDrill());
   DRILL_SUBJ.forEach(s=>{const b=$('dr_'+s.id);if(b)b.onclick=()=>drillPick(s.id);});
   /* 一步进攻坚：直接以第 4 档开场，省掉先选档那一步 */
   DRILL_SUBJ.forEach(s=>{const b=$('hd_'+s.id);if(b)b.onclick=()=>{
@@ -859,7 +854,7 @@ function drillSession(sid,opt){
       right++;streak++;best=Math.max(best,streak);state.totalRight++;
       SFX.right();
       fb.className='ok';
-      setH(fb, `✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q)+aiExpBtnHtml(q));
+      setH(fb, `✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q));
       if(streak>0&&streak%5===0)toast('🔥 连对 '+streak+' 题，手感正好');
     }else{
       wrong++;streak=0;state.totalWrong++;
@@ -887,14 +882,12 @@ function drillSession(sid,opt){
          解析一摊开就是十几行，把"这题已收进本子"塞在它后面等于没写。 */
       setH(fb, `❌ 正确答案：<b>${esc(q.ansText)}</b>`
         +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 📕 ${wbMissWord(kind)}</div>`
-        +fbExpHtml(q,true)+aiExpBtnHtml(q));
+        +fbExpHtml(q,true));
     }
     /* 思路灵：练枪场提示免费，但点开过就不算独立解出 */
     try{lingJudge(q,correct,hintLv>0);}catch(e){}
     save();updateHUD();
     $('nextBtn').style.display='block';
-    /* 挂上「🤖 AI 详解」：点了才发请求，不点不花 token */
-    try{q.subject=q.subject||sid;aiExpBind(q);}catch(e){}
   }
   function nextQ(){
     /* 阶梯发完最后一张就收工 —— 不像无限模式那样循环，免得学生
