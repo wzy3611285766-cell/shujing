@@ -15,3 +15,9 @@ ref_page/
 # Python 字节码（tools/daily.py 会把 check / news / shots 当模块 import）
 __pycache__/
 *.pyc
+
+# 4.1.2 审计后补全：git add -A 曾经扫进库的杂物（已 untrack）
+_shots/
+$null
+*.genie
+.workbuddy/
