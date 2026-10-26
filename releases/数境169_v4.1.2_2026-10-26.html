@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>数境</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.1.2 · 2026-10-26 06:33 · 源码摘要 aea41622 · 72 个模块 -->
+<!-- build: v4.1.2 · 2026-10-26 07:08 · 源码摘要 aea41622 · 72 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -1761,18 +1761,27 @@ margin-top:8px;padding:5px 0}
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新 · v4.1.0</span>
-        <div class="news-title">AI 相关功能已全部移除，题解回到题目自带</div>
-        <div class="news-sub">离线可用 · 不再需要填任何 Key</div>
+        <span class="news-badge">📣 版本更新 · v4.1.2</span>
+        <div class="news-title">老设备能跑了，电脑上还能用键盘答题</div>
+        <div class="news-sub">另有一批内部整理：玩法、题库、存档一点没变</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
-          <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">🧹</span><span>移除<b>「🤖 AI 详解」</b>、<b>「⚙️ AI 设置」</b>与「智谱 GLM」整套接口 —— 答题后不再出现那颗按钮，也不用再填 API Key、不会发生任何联网请求</span></div>
-          <div class="news-li"><span class="e">📷</span><span>移除<b>拍照识别 / AI 拍题导入</b>：错题本里改成只走<b>文字导入</b>（粘贴或选文件，格式不变）</span></div>
-          <div class="news-li"><span class="e">📖</span><span>题目自带的<b>完整解析、分步思路、阶梯提示</b>全部保留 —— 攻坚大题、练枪、错题复习的讲解一个字没少</span></div>
-          <div class="news-li"><span class="e">⚠️</span><span>以前 AI 生成过的讲解不会再显示；错题本里的题目、熟炼度、复习日程<b>完全不受影响</b></span></div>
+          <div class="news-sec-h">4.1.1 · 老设备与手感</div>
+          <div class="news-li"><span class="e">🧱</span><span><b>老安卓 / 老 WebView 里字号和间距不再算坏</b>：整套尺寸原来靠 <b>clamp()</b> 撑着，Chrome 61 那代内核不认这个函数 —— 现在给了一整套 px 回退，不认的浏览器自动走备用值</span></div>
+          <div class="news-li"><span class="e">🕹️</span><span><b>摇杆只认建杆那根手指</b>：以前抱着平板玩，虎口或第二根手指一搭上屏幕，摇杆就被整根抢走；现在按触点编号认人，别的手指在地图上滑不推杆</span></div>
+          <div class="news-li"><span class="e">📐</span><span><b>地址栏伸缩 / 软键盘弹出时不再卡一下</b>：以前每发一次 resize 都整块重建画布，现在连发合并成 200ms 一次的收尾调用</span></div>
+        </div>
+        <div class="news-sec">
+          <div class="news-sec-h">4.1.2 · 能用键盘了</div>
+          <div class="news-li"><span class="e">⌨️</span><span><b>电脑上可以用键盘答题</b>：<b>Tab</b> 在选项之间走、<b>空格 / 回车</b>确认；面板打开时 Tab 和方向键也放行了（以前被一律吞掉，焦点走不出画面）</span></div>
+          <div class="news-li"><span class="e">🎯</span><span><b>焦点看得见了</b>：键盘导航时会画一圈金边，鼠标 / 手指点按不画 —— 摸黑按半天不知道停在哪的问题没了</span></div>
+        </div>
+        <div class="news-sec">
+          <div class="news-sec-h">内部整理（玩家无感）</div>
+          <div class="news-li"><span class="e">🧹</span><span>判题涂色 / 思路小结 / 先画后算三处逻辑合一、删掉永远跑不到的死代码；存档面板、自习室阶梯、错题中心拆成独立模块；CSS 里同选择器互相打架的 7 组清零</span></div>
+          <div class="news-li"><span class="e">✅</span><span><b>玩法、题库、存档、熟炼度一律没动</b>：这版改的是代码怎么摆，不是你能玩到什么</span></div>
         </div>
 
         <div class="news-sec">
@@ -20108,7 +20117,7 @@ function startGame(){
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.1.0-0203297e';
+const NEWS_KEY='genji_news', NEWS_VER='v4.1.2-7c670a91';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
