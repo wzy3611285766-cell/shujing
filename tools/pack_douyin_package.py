@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """打包抖音互动空间游戏包，并校验全部素材是否符合规格。"""
+import json
 import os
 import zipfile
 
@@ -8,10 +9,13 @@ from PIL import Image
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(BASE, "抖音上传准备材料")
 DIST = os.path.join(BASE, "minitool", "dist")
-PKG = os.path.join(OUT, "数境-v4.0.28.zip")
+_VER = json.load(open(os.path.join(BASE, "version.json"), encoding="utf-8"))["version"]
+PKG = os.path.join(OUT, "数境-v%s.zip" % _VER)
 
 LIMITS = {
     "icon_512x512.png": ((512, 512), 5 * 1024 * 1024),
+    # 互动空间发布规格（MCP 上传用这张）
+    "icon_300x300.png": ((300, 300), 2 * 1024 * 1024),
     "splash_720x1280.png": ((720, 1280), 5 * 1024 * 1024),
     "banner_1080x1920.jpg": ((1080, 1920), 5 * 1024 * 1024),
 }

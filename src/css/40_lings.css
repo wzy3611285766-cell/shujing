@@ -118,6 +118,21 @@
   .menu-li{padding-top:8px;padding-bottom:8px}
   .menu-li .e{font-size:var(--fs-xl)}
   .menu-li .d{font-size:var(--fs-2xs);line-height:1.35;margin-top:1px}
+
+  /* 顶栏：横屏一行要塞下 7 个入口 + 两枚 chip。不同安卓机的中文与 emoji
+     字宽差得挺多，按常规间距排，最右边的 ☰ 会顶出屏幕、被裁掉半边。
+     这里统一收一档间距与内边距，并给左侧两枚 chip 限宽，留出余量。 */
+  #topbar{gap:4px;padding-left:max(6px,var(--safeL));padding-right:max(6px,var(--safeR))}
+  #topbar .btn{padding:4px 8px}
+  #topbar .btn.ico{padding:4px}
+  #topRight{gap:4px}
+  #regionChip{max-width:18vw}
+  #diffChip{max-width:10vw}
+
+  /* 矮屏上任务条会下压到 34% 附近，和开场横幅撞在一起（两行字叠成一团）。
+     横幅下移一档并收小字号，让它落在任务条与地图中心之间。 */
+  #banner{top:41%}
+  #banner .t{font-size:var(--fs-2xl)}
 }
 
 /* 横屏 + 极矮（<340px）：字号与间距再收一档，保证一屏放得下 */

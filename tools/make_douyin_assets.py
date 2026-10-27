@@ -16,6 +16,13 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(BASE, "抖音上传准备材料")
+
+
+def _ver():
+    """版本号统一从 version.json 读，避免素材里写死旧版本。"""
+    import json
+    with open(os.path.join(BASE, "version.json"), encoding="utf-8") as f:
+        return json.load(f)["version"]
 IMG_DIR = os.path.join(OUT, "assets", "images")
 SHOT_DIR = os.path.join(IMG_DIR, "screenshots")
 AUD_DIR = os.path.join(OUT, "assets", "audio")
@@ -250,16 +257,11 @@ def round_frame(im, radius, border=GOLD, border_w=2, shadow=True):
 
 # ---------------- 图标 ----------------
 def make_icon(size=512, scale=4):
-    """图标统一由 tools/make_icon_ring.py 生成（圆环开口，极简两色）。"""
+    """图标来自用户设计的黑金头像，同时产出 512 与 300 两个尺寸。"""
     import importlib
-    mod = importlib.import_module("make_icon_ring")
-    S = size * scale
-    img = mod.make_bg(S, (44, 82, 128), (7, 16, 30), (44, 84, 126))
-    img = mod.draw_ring(img, (255, 214, 124), S, tail="gold")
-    img = img.convert("RGB").resize((size, size), Image.LANCZOS)
-    p = os.path.join(IMG_DIR, "icon_512x512.png")
-    img.save(p, "PNG", optimize=True)
-    return p
+    mod = importlib.import_module("make_icon_avatar")
+    p512, _p300 = mod.make()
+    return p512
 
 
 # ---------------- 启动图 ----------------
@@ -294,7 +296,7 @@ def make_splash(w=720, h=1280, scale=2):
     soft_text(img, W // 2, int(H * 0.555), "以知识为刃 · 行四国之远",
               F(int(24 * scale)), (208, 220, 236), alpha=200)
 
-    soft_text(img, W // 2, int(H * 0.94), "v4.0.28   单机可玩   竖屏适配",
+    soft_text(img, W // 2, int(H * 0.94), "v%s   单机可玩   横屏适配" % _ver(),
               F(int(14 * scale)), (150, 166, 186), alpha=170, shadow=False)
 
     img = img.convert("RGB").resize((w, h), Image.LANCZOS)
@@ -471,7 +473,7 @@ def make_screenshot(idx, filename, title, subtitle, marks, w=720, h=1280, scale=
                         radius=int(29 * scale), fill=(255, 215, 106, 18),
                         outline=(255, 215, 106, 85), width=max(1, scale))
     d.text((W // 2, y + int(29 * scale)),
-           "数境 · 四国远征   v4.0.28", font=F(int(18 * scale)),
+           "数境 · 四国远征   v%s" % _ver(), font=F(int(18 * scale)),
            fill=(255, 224, 154, 215), anchor="mm")
     img.alpha_composite(ov)
 

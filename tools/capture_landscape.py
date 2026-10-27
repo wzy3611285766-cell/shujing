@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(BASE, "minitool", "dist-landscape", "index.html")
+SRC = os.path.join(BASE, "minitool", "dist-douyin", "index.html")
 TMP = os.path.join(BASE, "minitool", "dist-landscape", "_ls_tmp.html")
 OUT_DIR = os.path.join(BASE, "_shots")
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"

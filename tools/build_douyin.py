@@ -67,12 +67,21 @@ PATCH_JS = b"""
 })();
 """
 
-PATCH_CSS = b"""
+PATCH_CSS = """
 <style id="douyin-input-off">
 /* \u6296\u97f3\u7279\u4f9b\uff1a\u8f93\u5165\u63a7\u4ef6\u4e0d\u6e32\u67d3\uff0c\u4e0d\u7559\u7a7a\u58f3 */
 x-inp, x-txt{display:none!important}
+/* \u624b\u673a\u7aef\u4e0d\u9700\u8981\u952e\u76d8\u63d0\u793a */
+#pcHint, #pcKeyHint{display:none!important}
+
+/* \u6296\u97f3\u5bb9\u5668\u53f3\u4e0a\u89d2\u6709\u5e73\u53f0\u81ea\u5e26\u7684\u300c\u00b7\u00b7\u00b7 / \u00d7\u300d\u80f6\u56ca\u6309\u94ae\uff08\u7ea6 87\u00d732\uff0c\u8ddd\u9876 6px\uff09\u3002
+   \u6e38\u620f\u9876\u680f\u539f\u6765\u8d34\u7740\u5b89\u5168\u533a\u6392\uff0c\u6700\u53f3\u4fa7\u7684 \u2630 \u6b63\u597d\u88ab\u5b83\u538b\u4f4f\u3002
+   \u8fd9\u91cc\u628a\u6574\u6761\u9876\u680f\u4e0b\u79fb 36px\uff0c\u843d\u5230\u80f6\u56ca\u4e0b\u65b9\uff1b\u4efb\u52a1\u6761\u4f1a\u8ddf\u7740 offsetHeight \u81ea\u52a8\u4e0b\u79fb\u3002 */
+/* 顶栏贴最上面排（按用户要求，不再为平台胶囊让位）。
+   这里显式压回原始内边距，避免任何历史偏移规则残留。 */
+#topbar{padding-top:calc(var(--safeT) + var(--pad))!important}
 </style>
-"""
+""".encode("utf-8")
 
 # 整体功能下线的模块（AI 详解 / 智谱 GLM）
 SKIP_MODULES = {"42_ai_glm.js"}
@@ -122,6 +131,7 @@ TEXT_FIX = [
     ("各平台怎么开全屏", "怎么开全屏"),
     ("iPhone", "手机"),
     ("Safari", "系统"),
+    ("存档管理", "存档"),
 ]
 
 # 入口已删、永远打不开的面板函数，整体清空（避免标题与输入控件留在产物里）
@@ -204,6 +214,14 @@ def main():
     html_text = sanitize(data.decode("utf-8"))
     for a, b in TEXT_FIX:
         html_text = html_text.replace(a, b)
+
+    # 小红书容器的补丁：顶栏整体下移 44px 让开"返回/标题/分享"浮层。
+    # 抖音容器的胶囊在右上角、不在同一条横带上，这个下移只会白占高度，
+    # 所以直接从产物里抹掉，让顶栏回到最上面。
+    html_text = html_text.replace(
+        "+ 44px) calc(var(--safeR) + 10px)",
+        ") calc(var(--safeR) + 10px)")
+
     data = html_text.encode("utf-8")
 
     # 2) app.js：拼接 + 净化 + 平台名清理 + AI 入口移除 + 补 JS

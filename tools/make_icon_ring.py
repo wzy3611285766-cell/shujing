@@ -14,6 +14,7 @@
 """
 import math
 import os
+import shutil
 
 from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
@@ -201,8 +202,18 @@ def main():
                       glow=(70, 160, 255), ring_color=(255, 255, 255),
                       tail="alpha"))
 
+    # 互动空间发布规格：300×300（平台要求），满幅不预切角
+    made.append(build("ring_gold_300",
+                      top=(44, 82, 128), bottom=(7, 16, 30),
+                      glow=(44, 84, 126), ring_color=(255, 214, 124),
+                      tail="gold", radius=0.0, size=300, scale=6))
+    shutil.copy2(os.path.join(ALT, "ring_gold_300.png"),
+                 os.path.join(OUT, "icon_300x300.png"))
+
     for p in made:
         print(p, os.path.getsize(p) // 1024, "KB")
+    print(os.path.join(OUT, "icon_300x300.png"),
+          os.path.getsize(os.path.join(OUT, "icon_300x300.png")) // 1024, "KB")
 
 
 if __name__ == "__main__":

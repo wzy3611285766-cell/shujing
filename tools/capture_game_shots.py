@@ -93,6 +93,14 @@ def main():
     fire(document.querySelector('#news .btn')) ||
     clickText(/^知道了/);
   }, 600);
+  // 商店截图里不要出现电脑端键位提示
+  setTimeout(function(){
+    ['pcHint','pcKeyHint'].forEach(function(id){
+      var e = document.getElementById(id);
+      if(e) e.style.display = 'none';
+    });
+  }, 900);
+
   // 兜底：无论引导弹窗有没有冒出来，都把遮罩层收掉
   var kills = 0;
   var kt = setInterval(function(){

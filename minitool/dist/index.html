@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>数境</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: minitool v4.1.0 · 2026-10-25 17:54 · 本应用离线包 -->
+<!-- build: minitool v4.1.2 · 2026-10-27 13:39 · 本应用离线包 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -176,6 +176,32 @@
    地址栏收起时不会把底部控件顶出可视区 */
 @supports (height:100dvh){
   :root{--vmin:100vw;--vmin:min(100vw,100dvh);--vmax:100vw;--vmax:max(100vw,100dvh)}
+}
+/* ============ 兼容回退：不支持 clamp()/min() 的老 WebView（4.1.1）============
+   声明基线是 Chrome 61（Android 8.1 WebView），而 :root 那批尺寸全靠
+   clamp()/min() 撑着（Chrome 79+ 才有）。不能用"先写 px 再写 clamp"的
+   层叠回退 —— 自定义属性在解析期几乎接受任何 token，clamp 那条照样
+   赢得级联，只是取值时才失效，px 那条永远轮不上。
+   所以用 @supports not 整块切换：不认 clamp 的设备生效，取各档的
+   "手机中档值"（就是 :root 注释里那列）；认 clamp 的看不到这个块。
+   （--vmin 本体是 min()，老设备里同样失效 —— 这批 px 回退不引用它，
+   其余 calc(var(--vmin)…) 的零散用法不在基线承诺内，随它去。） */
+@supports not (width:clamp(1px,1vw,2px)){
+  :root{
+    --fs-2xs:11px;
+    --fs-xs:12px;
+    --fs-sm:13.5px;
+    --fs-md:15.5px;
+    --fs-lg:17.5px;
+    --fs-xl:20px;
+    --fs-2xl:23px;
+    --fs-3xl:26.5px;
+    --gap:6px;
+    --pad:8px;
+    --r:14px;
+    --stick:132px;
+    --act:106px;
+  }
 }
 
 /* ============ 压在地图上的毛玻璃：一律不用（4.0.17） ============
@@ -349,6 +375,11 @@ body.upbar-on #modal{top:var(--upH)}
 .btn:active{transform:scale(.96);filter:brightness(.96);
   box-shadow:var(--gb-press-lift),var(--gb-hair)}
 .btn:disabled{opacity:.4}
+/* 键盘导航的焦点圈（4.1.1 a11y）：只认 :focus-visible —— 鼠标 / 手指点按不画圈，
+   Tab / 方向键导航时才出现。面板打开期间 Tab 已放行（见 35_input.js），
+   选项 .opt 也补了 role=button + tabindex，同样吃这条圈。 */
+.btn:focus-visible,.opt:focus-visible,.fitbtn:focus-visible,.menu-li:focus-visible{
+  outline:2px solid #ffd76a;outline-offset:2px}
 /* 图标按钮：只有 emoji/符号，没有文字 */
 /* aspect-ratio 需 Chrome 88：老内核退回一个近似正方形 */
 .btn.ico{padding:calc(var(--pad) * .9);justify-content:center;min-height:calc(var(--pad) * 1.8 + 1.2em)}
@@ -741,7 +772,7 @@ body.pc #stick.active{opacity:1}
   padding-bottom:calc(var(--vmin) * .0590);
   padding-bottom:clamp(15px,calc(var(--vmin) * .0590),23px)}
 .qtext.f-sm{font-size:calc(var(--fs-2xl) * var(--qs,1));line-height:1.44;font-weight:700;text-align:center}
-.qtext.f-md{font-size:calc(var(--fs-xl) * var(--qs,1));line-height:1.58;font-weight:700;text-align:center}
+.qtext.f-md{font-size:calc(var(--fs-xl) * var(--qs,1));line-height:1.58;font-weight:700}
 /* 居中是给"一两行的短句"用的：行一多，每行起点都不同，眼睛没法顺着扫。
    实际折到三行以上的题（大字 + 中等长度最容易撞上）自动改左对齐 */
 .qtext.fl{text-align:left;padding-left:calc(var(--vmin) * .0513);padding-left:clamp(15px,calc(var(--vmin) * .0513),22px);
@@ -774,31 +805,30 @@ body.pc #stick.active{opacity:1}
   scrollbar-color:rgba(255,215,106,.4) transparent}
 .qtext.scrollable::-webkit-scrollbar{width:4px}
 .qtext.scrollable::-webkit-scrollbar-thumb{background:rgba(255,215,106,.4);border-radius:99px}
-.qmeta{text-align:center;color:#8fb4d6;font-size:var(--fs-xs);margin-bottom:14px}
+/* 旧 .qmeta 规则已并入下方新版（锚点 + 左对齐），4.1.1 删掉整条 */
 /* 长题干时把标题、统计行、徽章压一压：省下的高度全给题干本身 */
 .panel.long-q h2{font-size:var(--fs-xl);margin-bottom:2px}
 .panel.long-q .sub{font-size:var(--fs-xs);margin-bottom:8px;line-height:1.4}
 .panel.long-q .qtag,.panel.long-q .qsrc{margin-bottom:7px}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--vmin) * .0308);gap:clamp(8px,calc(var(--vmin) * .0308),12px)}
 .opt{background:var(--gb-face);border:2px solid rgba(255,255,255,.16);border-radius:16px;
-  padding:calc(var(--vmin) * .0513) calc(var(--vmin) * .0256);
-  padding:clamp(13px,calc(var(--vmin) * .0513),20px) clamp(6px,calc(var(--vmin) * .0256),10px);
-  color:#fff;font-size:calc(var(--fs-xl) * var(--qs,1));font-weight:700;text-align:center;
+  color:#fff;font-size:calc(var(--fs-xl) * var(--qs,1));font-weight:700;
   cursor:pointer;overflow-wrap:anywhere;line-height:var(--lh-snug);
-  display:flex;align-items:center;justify-content:center;min-height:2.6em;
+  display:flex;align-items:center;min-height:2.6em;
+  /* padding / text-align / justify-content 由下方现行规则统一裁定（4.1.1 清理） */
   position:relative;isolation:isolate;
   -webkit-backdrop-filter:var(--gb-blur-sm);backdrop-filter:var(--gb-blur-sm);
   box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-drop);
   transition:transform .12s ease-out,box-shadow .2s,filter .15s,background .2s,border-color .2s}
 .opt::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
   background:var(--gb-sheen)}
-.opt:active{transform:scale(.96);box-shadow:var(--gb-press-lift)}
-.opt.right{background:var(--gb-tint-green);border-color:rgba(110,231,183,.8)}
-.opt.wrong{background:var(--gb-tint-red);border-color:rgba(255,138,128,.75)}
+.opt:active{box-shadow:var(--gb-press-lift)}
+.opt.right{background:var(--gb-tint-green)}
+.opt.wrong{background:var(--gb-tint-red)}
 .opt.locked{pointer-events:none}
 /* 思路选项：虚线边框 + 小一号字，和答案选项在视觉上一眼分开。
    思路文本比答案长（常见 15~24 字），字号降一档、行高放宽，才不会挤成两行半 */
-.opt.appr{border-style:dashed;font-size:calc(var(--fs-md) * var(--qs,1));line-height:var(--lh-snug);
+.opt.appr{font-size:calc(var(--fs-md) * var(--qs,1));line-height:var(--lh-snug);
   min-height:2.9em;padding:calc(var(--vmin) * .0436) calc(var(--vmin) * .0282);padding:clamp(11px,calc(var(--vmin) * .0436),17px) clamp(7px,calc(var(--vmin) * .0282),11px)}
 /* 选项也按长度分档：短的继续大字双列（扫码式作答才快），
    长的自动单列 + 降字号 + 左对齐 —— 半屏宽里塞 40 个字，谁看都是一坨。
@@ -1661,6 +1691,16 @@ margin-top:8px;padding:5px 0}
   .menu-li{padding-top:8px;padding-bottom:8px}
   .menu-li .e{font-size:var(--fs-xl)}
   .menu-li .d{font-size:var(--fs-2xs);line-height:1.35;margin-top:1px}
+
+  /* 顶栏：横屏一行要塞下 7 个入口 + 两枚 chip。不同安卓机的中文与 emoji
+     字宽差得挺多，按常规间距排，最右边的 ☰ 会顶出屏幕、被裁掉半边。
+     这里统一收一档间距与内边距，并给左侧两枚 chip 限宽，留出余量。 */
+  #topbar{gap:4px;padding-left:6px;padding-left:max(6px,var(--safeL));padding-right:6px;padding-right:max(6px,var(--safeR))}
+  #topbar .btn{padding:4px 8px}
+  #topbar .btn.ico{padding:4px}
+  #topRight{gap:4px}
+  #regionChip{max-width:18vw}
+  #diffChip{max-width:10vw}
 }
 
 /* 横屏 + 极矮（<340px）：字号与间距再收一档，保证一屏放得下 */
@@ -1784,7 +1824,7 @@ x-inp,x-txt{display:none!important}</style>
        合成器完全不碰地形。见 36_loop.js 的 draw 与 34_engine_core.js 的 buildStatic。 -->
   <canvas id="game"></canvas>
   <div id="ents"></div>
-  <div id="fx"></div>
+  <div id="fx" aria-hidden="true"></div>
 
   <!-- ============ 新版本通知栏（4.0.6）============
        玩家手里那份是缓存里的旧版时，光弹一句"刷新一下"等于没说 ——
@@ -1822,14 +1862,14 @@ x-inp,x-txt{display:none!important}</style>
 
   <div id="quest">目标：<b id="questText">……</b></div>
 
-  <div id="banner"><div class="t"></div><div class="s"></div></div>
+  <div id="banner" role="status"><div class="t"></div><div class="s"></div></div>
 
   <div id="stick"><div id="knob"></div></div>
   <div id="moveHint">👆 在屏幕上按住拖动即可移动</div>
   <div id="pcHint"></div>
   <button id="actBtn">互动</button>
   <div id="actHint"></div>
-  <div id="toast"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
 
   <div id="modal"><div class="panel" id="panel"></div><div id="scrollTip">↓ 上下滑动看更多</div></div>
 
@@ -1845,18 +1885,27 @@ x-inp,x-txt{display:none!important}</style>
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新 · v4.1.0</span>
-        <div class="news-title">AI 相关功能已全部移除，题解回到题目自带</div>
-        <div class="news-sub">离线可用 · 不再需要填任何 Key</div>
+        <span class="news-badge">📣 版本更新 · v4.1.2</span>
+        <div class="news-title">老设备能跑了，电脑上还能用键盘答题</div>
+        <div class="news-sub">另有一批内部整理：玩法、题库、存档一点没变</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
-          <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">🧹</span><span>移除<b>「🤖 AI 讲解」</b>、<b>「⚙️ AI 设置」</b>与「AI 服务 GLM」整套接口 —— 答题后不再出现那颗按钮，也不用再填 API Key、不会发生任何联网请求</span></div>
-          <div class="news-li"><span class="e">📷</span><span>移除<b>拍照识别 / AI 拍题导入</b>：错题本里改成只走<b>文字导入</b>（粘贴或选文件，格式不变）</span></div>
-          <div class="news-li"><span class="e">📖</span><span>题目自带的<b>完整解析、分步思路、阶梯提示</b>全部保留 —— 攻坚大题、练枪、错题复习的讲解一个字没少</span></div>
-          <div class="news-li"><span class="e">⚠️</span><span>以前 AI 生成过的讲解不会再显示；错题本里的题目、熟炼度、复习日程<b>完全不受影响</b></span></div>
+          <div class="news-sec-h">4.1.1 · 老设备与手感</div>
+          <div class="news-li"><span class="e">🧱</span><span><b>老安卓 / 老 WebView 里字号和间距不再算坏</b>：整套尺寸原来靠 <b>clamp()</b> 撑着，Chrome 61 那代内核不认这个函数 —— 现在给了一整套 px 回退，不认的设备自动走备用值</span></div>
+          <div class="news-li"><span class="e">🕹️</span><span><b>摇杆只认建杆那根手指</b>：以前抱着平板玩，虎口或第二根手指一搭上屏幕，摇杆就被整根抢走；现在按触点编号认人，别的手指在地图上滑不推杆</span></div>
+          <div class="news-li"><span class="e">📐</span><span><b>地址栏伸缩 / 软键盘弹出时不再卡一下</b>：以前每发一次 resize 都整块重建画布，现在连发合并成 200ms 一次的收尾调用</span></div>
+        </div>
+        <div class="news-sec">
+          <div class="news-sec-h">4.1.2 · 能用键盘了</div>
+          <div class="news-li"><span class="e">⌨️</span><span><b>电脑上可以用键盘答题</b>：<b>Tab</b> 在选项之间走、<b>空格 / 回车</b>确认；面板打开时 Tab 和方向键也放行了（以前被一律吞掉，焦点走不出画面）</span></div>
+          <div class="news-li"><span class="e">🎯</span><span><b>焦点看得见了</b>：键盘导航时会画一圈金边，鼠标 / 手指点按不画 —— 摸黑按半天不知道停在哪的问题没了</span></div>
+        </div>
+        <div class="news-sec">
+          <div class="news-sec-h">内部整理（玩家无感）</div>
+          <div class="news-li"><span class="e">🧹</span><span>判题涂色 / 思路小结 / 先画后算三处逻辑合一、删掉永远跑不到的死代码；存档面板、自习室阶梯、错题中心拆成独立模块；CSS 里同选择器互相打架的 7 组清零</span></div>
+          <div class="news-li"><span class="e">✅</span><span><b>玩法、题库、存档、熟炼度一律没动</b>：这版改的是代码怎么摆，不是你能玩到什么</span></div>
         </div>
       </div>
 
