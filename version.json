@@ -1,9 +1,9 @@
 {
-  "name": "数境",
-  "version": "4.1.2",
-  "released": "2026-10-26",
+  "name": "数境：搜打撤",
+  "version": "4.1.4",
+  "released": "2026-10-29",
   "file": "index.html",
   "note": "版本号由 tools/release.py 递增，构建时写进产物并同步到 shujing-app/version.json；更新公告由 news.json 提供，构建时渲染进产物并自动生成 NEWS_VER",
-  "news_ver": "v4.1.2-7c670a91",
-  "news_hash": "86d38dbd09fc9e47a72eedb4e9d905cfc847f7df3fc135aa3631a93ad0a22d91"
+  "news_ver": "v4.1.4-cfab5e87",
+  "news_hash": "eefa723b0830c9f891db2550edecbbf6f9b9a3fb432d84b8b0a6313b2e94f8cc"
 }

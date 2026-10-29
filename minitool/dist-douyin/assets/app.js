@@ -1150,7 +1150,7 @@ function approachFor(q){
 
 
 /* =========================================================
-   数境 · 四国并立
+   数境：搜打撤 · 四国并立
    —— 数学 / 物理 / 化学 / 生物，各为一国，各有一张独立地图
    —— 国与国之间靠「传送塔」（⛩️，即七天神像）往来
    ========================================================= */
@@ -1158,7 +1158,7 @@ function approachFor(q){
 /* ---------------- 全局世界量（引擎会直接读写这些） ----------------
    地图尺寸随国度切换而改变，这里的初值只是数学国的默认 */
 let W=2400,H=1900;
-let WORLD_TITLE='数境 · 四国远征';
+let WORLD_TITLE='数境：搜打撤';
 let WORLD_SUB='走遍数理群岛、力理亚、嬗变利亚、生衍利亚';
 const SAVE_KEY='genji_v1';
 const SAVE_KEY_EPIC='genji_epic_v1';
@@ -13306,9 +13306,9 @@ function showSavePanel(){
     const code=await exportCode();   // 每次都重新生成，避免存到旧进度
     saveCodeCache=code;
     downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',
-      '数境 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入进度」即可）\n\n'+code);
+      '数境：搜打撤 —— 存档码\n（把下面这整段粘回游戏的「导入进度」即可）\n\n'+code);
     toast(downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',
-      '数境 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入进度」即可）\n\n'+code)
+      '数境：搜打撤 —— 存档码\n（把下面这整段粘回游戏的「导入进度」即可）\n\n'+code)
       ?'已保存 ✅':'容器里不能下载文件 —— 请复制下面的存档码存好');
   };
   $('sv5').onclick=()=>{
@@ -14402,7 +14402,7 @@ function showExportWrong(){
   const json=JSON.stringify(list.map(w=>({text:w.text,ans:w.ans,exp:w.exp||'',
     topic:w.topic||'',subject:w.subject||subjOfRid(w.rid)||'',
     opts:(w.opts&&w.opts.length)?w.opts:null})),null,1);
-  const head='数境 · 错题本导出 '+new Date().toISOString().slice(0,10)+'\n'
+  const head='数境：搜打撤 · 错题本导出 '+new Date().toISOString().slice(0,10)+'\n'
     +'（改完可以直接粘回「📥 导入错题」）\n\n';
   openPanel(`
     <h2>📤 导出错题</h2>
@@ -16664,14 +16664,14 @@ EPIC_STATE.sound=ADV_STATE.sound;
 
 const ADV={
   id:'adv',W:2400,H:1900,
-  title:'数境 · 四国远征',
+  title:'数境：搜打撤',
   sub:'走遍数理群岛、力理亚、嬗变利亚、生衍利亚',
   regions:REGIONS,bridges:BRIDGES,spots:SPOTS,loose:LOOSE,spirits:SPIRITS,
   st:ADV_STATE,save:SAVE_KEY,actR:86
 };
 const EPIC={
   id:'epic',W:EPIC_W,H:EPIC_H,
-  title:'数境 · 科学编年史',
+  title:'数境：搜打撤',
   sub:'从伊尚戈骨上的刻痕，到碱基的双螺旋',
   regions:EPIC_REGIONS,bridges:[],spots:EPIC_SPOTS,loose:EPIC_DUST,spirits:[],
   st:EPIC_STATE,save:SAVE_KEY_EPIC,actR:74,
@@ -17492,7 +17492,7 @@ const BLAZE_LOOSE=[];
 
 const BLAZE={
   id:'blaze',W:1600,H:1200,
-  title:'数境 · 烽火地带',
+  title:'数境：搜打撤',
   sub:'搜刮 · 交火 · 活着撤离',
   regions:BLAZE_REGIONS,bridges:[],spots:BLAZE_SPOTS,loose:BLAZE_LOOSE,spirits:[],
   st:BLAZE_STATE,save:SAVE_KEY_BLAZE,actR:78,
@@ -17524,7 +17524,7 @@ const DRILL_SPOTS=[
 
 const DRILL={
   id:'drill',W:1500,H:1060,
-  title:'数境 · 练枪场',
+  title:'数境：搜打撤',
   sub:'高考压轴 · 思路详解 · 四科无限题',
   regions:DRILL_REGIONS,bridges:[],spots:DRILL_SPOTS,loose:[],spirits:[],
   st:DRILL_STATE,save:SAVE_KEY_DRILL,actR:78,
@@ -17624,7 +17624,7 @@ function questTextDrill(){
 function drillIntroHtml(){
   return `
     <h2>🎯 练枪场</h2>
-    <div class="sub">数境 · 第四模式</div>
+    <div class="sub">数境：搜打撤 · 第四模式</div>
     <div class="it-list">
       <div class="il">🎯 <b>四科无限题</b>：数 / 理 / 化 / 生，走近场上的训练台随时开练</div>
       <div class="il">🧭 <b>思路详解</b>：先选「从哪儿入手」，选完给为什么 + 第一步落点 —— 这是练枪独有的环节</div>
@@ -18199,7 +18199,7 @@ function startGame(){
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.1.2-6eac4b60';
+const NEWS_KEY='genji_news', NEWS_VER='v4.1.4-384ae35f';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
@@ -23409,10 +23409,13 @@ function resetBlazeState(){
    ========================================================= */
 function showMenu(){
   const ep=CUR===EPIC, bz=CUR===BLAZE, dr=CUR===DRILL;
-  const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'数境 · 四国远征'));
+  /* 菜单标题一律挂作品名（4.1.4 定名「数境：搜打撤」）：以前按当前世界换标题，
+     但作品名只有一个，四处不同的抬头会让审核与玩家都以为这是四款游戏。
+     当前在哪个世界由下面列表里的 📍 标出来，标题不必兼任。 */
+  const head = '数境：搜打撤';
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
-     没经过构建（4.1.2 占位）时不显示，免得把占位符贴到界面上。 */
+     没经过构建（4.1.4 占位）时不显示，免得把占位符贴到界面上。 */
   const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
     ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
@@ -24574,7 +24577,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.1.2';
+const BUILD_VER='4.1.4';
 const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
 function upbarSkipped(v){
   try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}

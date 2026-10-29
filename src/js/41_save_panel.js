@@ -79,7 +79,7 @@ function showSavePanel(){
     const code=await exportCode();   // 每次都重新生成，避免存到旧进度
     saveCodeCache=code;
     downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',
-      '数境 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code);
+      '数境：搜打撤 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code);
     toast('已存成文件 ✅');
   };
   $('sv5').onclick=()=>{

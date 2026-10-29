@@ -74,12 +74,17 @@ x-inp, x-txt{display:none!important}
 /* \u624b\u673a\u7aef\u4e0d\u9700\u8981\u952e\u76d8\u63d0\u793a */
 #pcHint, #pcKeyHint{display:none!important}
 
-/* \u6296\u97f3\u5bb9\u5668\u53f3\u4e0a\u89d2\u6709\u5e73\u53f0\u81ea\u5e26\u7684\u300c\u00b7\u00b7\u00b7 / \u00d7\u300d\u80f6\u56ca\u6309\u94ae\uff08\u7ea6 87\u00d732\uff0c\u8ddd\u9876 6px\uff09\u3002
-   \u6e38\u620f\u9876\u680f\u539f\u6765\u8d34\u7740\u5b89\u5168\u533a\u6392\uff0c\u6700\u53f3\u4fa7\u7684 \u2630 \u6b63\u597d\u88ab\u5b83\u538b\u4f4f\u3002
-   \u8fd9\u91cc\u628a\u6574\u6761\u9876\u680f\u4e0b\u79fb 36px\uff0c\u843d\u5230\u80f6\u56ca\u4e0b\u65b9\uff1b\u4efb\u52a1\u6761\u4f1a\u8ddf\u7740 offsetHeight \u81ea\u52a8\u4e0b\u79fb\u3002 */
-/* 顶栏贴最上面排（按用户要求，不再为平台胶囊让位）。
-   这里显式压回原始内边距，避免任何历史偏移规则残留。 */
-#topbar{padding-top:calc(var(--safeT) + var(--pad))!important}
+/* 抖音容器右上角有平台自带的「··· / ×」胶囊（约 87×32，距顶 6px）。
+   两大决定（4.1.3，按玩家定的 C 案）：
+     ① 顶栏贴屏幕最上沿 —— src 里已经去掉那一个 --pad，这里再显式钉一次，
+        免得历史偏移规则残留；
+     ② 整排右侧让开胶囊 95px（胶囊 87 + 右边距 6 + 2 呼吸位）。
+        不让位的话，横屏被压的是 📍 与 ☰，竖屏连结晶数和 ☰ 一起被吃掉 ——
+        等于开不了菜单。让位之后最右那颗 ☰ 完整落在胶囊左边，
+        宽屏那排一颗键都没少（存档 / 音效在 ≥720px 本来就收进了 ☰，见 30_world.css 断点）。
+   代价只有一条：最右边空出一段，没有键伸到胶囊底下。 */
+#topbar{padding-top:var(--safeT)!important}
+#topRight{padding-right:95px!important}
 </style>
 """.encode("utf-8")
 

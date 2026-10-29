@@ -7,9 +7,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1b2a">
-<title>数境</title>
+<title>数境：搜打撤</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: v4.1.2 · 2026-10-26 22:26 · 源码摘要 aea41622 · 72 个模块 -->
+<!-- build: v4.1.4 · 2026-10-29 12:38 · 源码摘要 8a887f05 · 72 个模块 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -251,8 +251,11 @@ body.upbar-on #modal{top:var(--upH)}
 /* ============ 顶部 HUD ============
    窄屏一行放不下 7 个入口，以前会挤成 3~4 行压住地图。
    现在：位置 / 难度 / 结晶 / ☰ 常驻，其余功能收进 ☰ 菜单；宽屏才全部平铺。 */
+/* 4.1.3：顶栏贴屏幕最上沿 —— 上面只留状态栏/刘海的安全区，不再多留一个 --pad。
+   少掉的那 10px 是"整条顶栏 + 任务条"一起上移的净收益（--topH 由 JS 实测，跟着变）。
+   右侧仍留 10px，左边同理：贴边的是"内容"，不是文字。 */
 #topbar{position:absolute;top:var(--upH);left:0;right:0;
-  padding:calc(var(--safeT) + var(--pad)) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
+  padding:var(--safeT) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
   display:flex;gap:var(--gap);align-items:center;pointer-events:none;z-index:20}
 /* 4.0.17：chip 浮在活地图上，不能带 backdrop-filter（每帧重算 → 60fps 变 30fps）。
    没了模糊就得补不透明度，否则半透明底"糊在图上"、字立不住。 */
@@ -1578,6 +1581,21 @@ margin-top:8px;padding:5px 0}
   .menu-li{padding-top:8px;padding-bottom:8px}
   .menu-li .e{font-size:var(--fs-xl)}
   .menu-li .d{font-size:var(--fs-2xs);line-height:1.35;margin-top:1px}
+
+  /* 顶栏：横屏一行要塞下 7 个入口 + 两枚 chip。不同安卓机的中文与 emoji
+     字宽差得挺多，按常规间距排，最右边的 ☰ 会顶出屏幕、被裁掉半边。
+     这里统一收一档间距与内边距，并给左侧两枚 chip 限宽，留出余量。 */
+  #topbar{gap:4px;padding-left:max(6px,var(--safeL));padding-right:max(6px,var(--safeR))}
+  #topbar .btn{padding:4px 8px}
+  #topbar .btn.ico{padding:4px}
+  #topRight{gap:4px}
+  #regionChip{max-width:18vw}
+  #diffChip{max-width:10vw}
+
+  /* 矮屏上任务条会下压到 34% 附近，和开场横幅撞在一起（两行字叠成一团）。
+     横幅下移一档并收小字号，让它落在任务条与地图中心之间。 */
+  #banner{top:41%}
+  #banner .t{font-size:var(--fs-2xl)}
 }
 
 /* 横屏 + 极矮（<340px）：字号与间距再收一档，保证一屏放得下 */
@@ -1761,27 +1779,17 @@ margin-top:8px;padding:5px 0}
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新 · v4.1.2</span>
-        <div class="news-title">老设备能跑了，电脑上还能用键盘答题</div>
-        <div class="news-sub">另有一批内部整理：玩法、题库、存档一点没变</div>
+        <span class="news-badge">📣 版本更新 · v4.1.4</span>
+        <div class="news-title">定名《数境：搜打撤》</div>
+        <div class="news-sub">名字在界面上统一了 · 顶栏给平台按钮让位 · 玩法一点没变</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
-          <div class="news-sec-h">4.1.1 · 老设备与手感</div>
-          <div class="news-li"><span class="e">🧱</span><span><b>老安卓 / 老 WebView 里字号和间距不再算坏</b>：整套尺寸原来靠 <b>clamp()</b> 撑着，Chrome 61 那代内核不认这个函数 —— 现在给了一整套 px 回退，不认的浏览器自动走备用值</span></div>
-          <div class="news-li"><span class="e">🕹️</span><span><b>摇杆只认建杆那根手指</b>：以前抱着平板玩，虎口或第二根手指一搭上屏幕，摇杆就被整根抢走；现在按触点编号认人，别的手指在地图上滑不推杆</span></div>
-          <div class="news-li"><span class="e">📐</span><span><b>地址栏伸缩 / 软键盘弹出时不再卡一下</b>：以前每发一次 resize 都整块重建画布，现在连发合并成 200ms 一次的收尾调用</span></div>
-        </div>
-        <div class="news-sec">
-          <div class="news-sec-h">4.1.2 · 能用键盘了</div>
-          <div class="news-li"><span class="e">⌨️</span><span><b>电脑上可以用键盘答题</b>：<b>Tab</b> 在选项之间走、<b>空格 / 回车</b>确认；面板打开时 Tab 和方向键也放行了（以前被一律吞掉，焦点走不出画面）</span></div>
-          <div class="news-li"><span class="e">🎯</span><span><b>焦点看得见了</b>：键盘导航时会画一圈金边，鼠标 / 手指点按不画 —— 摸黑按半天不知道停在哪的问题没了</span></div>
-        </div>
-        <div class="news-sec">
-          <div class="news-sec-h">内部整理（玩家无感）</div>
-          <div class="news-li"><span class="e">🧹</span><span>判题涂色 / 思路小结 / 先画后算三处逻辑合一、删掉永远跑不到的死代码；存档面板、自习室阶梯、错题中心拆成独立模块；CSS 里同选择器互相打架的 7 组清零</span></div>
-          <div class="news-li"><span class="e">✅</span><span><b>玩法、题库、存档、熟炼度一律没动</b>：这版改的是代码怎么摆，不是你能玩到什么</span></div>
+          <div class="news-sec-h">本次更新</div>
+          <div class="news-li"><span class="e">🏷️</span><span><b>窗口标题、菜单抬头、存档码、错题导出里的名字统一成《数境：搜打撤》</b> —— 以前四处抬头各叫各的，看着像四款不同的游戏</span></div>
+          <div class="news-li"><span class="e">📐</span><span>顶栏移到屏幕最上沿，右侧<b>给容器右上角的平台按钮让出位置</b>：最右边的<b>菜单键</b>不再被压在下面（竖屏也一样）</span></div>
+          <div class="news-li"><span class="e">🔁</span><span><b>玩法、题库、存档、熟炼度一律没动</b>：这版只改了名字和顶栏的位置</span></div>
         </div>
 
         <div class="news-sec">
@@ -2941,7 +2949,7 @@ function approachFor(q){
 
 
 /* =========================================================
-   数境 · 四国并立
+   数境：搜打撤 · 四国并立
    —— 数学 / 物理 / 化学 / 生物，各为一国，各有一张独立地图
    —— 国与国之间靠「传送塔」（⛩️，即七天神像）往来
    ========================================================= */
@@ -2949,7 +2957,7 @@ function approachFor(q){
 /* ---------------- 全局世界量（引擎会直接读写这些） ----------------
    地图尺寸随国度切换而改变，这里的初值只是数学国的默认 */
 let W=2400,H=1900;
-let WORLD_TITLE='数境 · 四国远征';
+let WORLD_TITLE='数境：搜打撤';
 let WORLD_SUB='走遍数理群岛、力理亚、嬗变利亚、生衍利亚';
 const SAVE_KEY='genji_v1';
 const SAVE_KEY_EPIC='genji_epic_v1';
@@ -15107,7 +15115,7 @@ function showSavePanel(){
     const code=await exportCode();   // 每次都重新生成，避免存到旧进度
     saveCodeCache=code;
     downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',
-      '数境 · 四国远征 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code);
+      '数境：搜打撤 —— 存档码\n（把下面这整段粘回游戏的「导入存档码」即可）\n\n'+code);
     toast('已存成文件 ✅');
   };
   $('sv5').onclick=()=>{
@@ -16320,7 +16328,7 @@ function showExportWrong(){
   const json=JSON.stringify(list.map(w=>({text:w.text,ans:w.ans,exp:w.exp||'',
     topic:w.topic||'',subject:w.subject||subjOfRid(w.rid)||'',
     opts:(w.opts&&w.opts.length)?w.opts:null})),null,1);
-  const head='数境 · 错题本导出 '+new Date().toISOString().slice(0,10)+'\n'
+  const head='数境：搜打撤 · 错题本导出 '+new Date().toISOString().slice(0,10)+'\n'
     +'（改完可以直接粘回「📥 导入错题」）\n\n';
   openPanel(`
     <h2>📤 导出错题</h2>
@@ -18582,14 +18590,14 @@ EPIC_STATE.sound=ADV_STATE.sound;
 
 const ADV={
   id:'adv',W:2400,H:1900,
-  title:'数境 · 四国远征',
+  title:'数境：搜打撤',
   sub:'走遍数理群岛、力理亚、嬗变利亚、生衍利亚',
   regions:REGIONS,bridges:BRIDGES,spots:SPOTS,loose:LOOSE,spirits:SPIRITS,
   st:ADV_STATE,save:SAVE_KEY,actR:86
 };
 const EPIC={
   id:'epic',W:EPIC_W,H:EPIC_H,
-  title:'数境 · 科学编年史',
+  title:'数境：搜打撤',
   sub:'从伊尚戈骨上的刻痕，到碱基的双螺旋',
   regions:EPIC_REGIONS,bridges:[],spots:EPIC_SPOTS,loose:EPIC_DUST,spirits:[],
   st:EPIC_STATE,save:SAVE_KEY_EPIC,actR:74,
@@ -19410,7 +19418,7 @@ const BLAZE_LOOSE=[];
 
 const BLAZE={
   id:'blaze',W:1600,H:1200,
-  title:'数境 · 烽火地带',
+  title:'数境：搜打撤',
   sub:'搜刮 · 交火 · 活着撤离',
   regions:BLAZE_REGIONS,bridges:[],spots:BLAZE_SPOTS,loose:BLAZE_LOOSE,spirits:[],
   st:BLAZE_STATE,save:SAVE_KEY_BLAZE,actR:78,
@@ -19442,7 +19450,7 @@ const DRILL_SPOTS=[
 
 const DRILL={
   id:'drill',W:1500,H:1060,
-  title:'数境 · 练枪场',
+  title:'数境：搜打撤',
   sub:'高考压轴 · 思路详解 · 四科无限题',
   regions:DRILL_REGIONS,bridges:[],spots:DRILL_SPOTS,loose:[],spirits:[],
   st:DRILL_STATE,save:SAVE_KEY_DRILL,actR:78,
@@ -19542,7 +19550,7 @@ function questTextDrill(){
 function drillIntroHtml(){
   return `
     <h2>🎯 练枪场</h2>
-    <div class="sub">数境 · 第四模式</div>
+    <div class="sub">数境：搜打撤 · 第四模式</div>
     <div class="it-list">
       <div class="il">🎯 <b>四科无限题</b>：数 / 理 / 化 / 生，走近场上的训练台随时开练</div>
       <div class="il">🧭 <b>思路详解</b>：先选「从哪儿入手」，选完给为什么 + 第一步落点 —— 这是练枪独有的环节</div>
@@ -20117,7 +20125,7 @@ function startGame(){
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.1.2-7c670a91';
+const NEWS_KEY='genji_news', NEWS_VER='v4.1.4-cfab5e87';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
@@ -25336,10 +25344,13 @@ function resetBlazeState(){
    ========================================================= */
 function showMenu(){
   const ep=CUR===EPIC, bz=CUR===BLAZE, dr=CUR===DRILL;
-  const head = bz?'烽火地带 · 搜打撤':(ep?'科学编年史 · 科学长河':(dr?'练枪场 · 压轴专训':'数境 · 四国远征'));
+  /* 菜单标题一律挂作品名（4.1.4 定名「数境：搜打撤」）：以前按当前世界换标题，
+     但作品名只有一个，四处不同的抬头会让审核与玩家都以为这是四款游戏。
+     当前在哪个世界由下面列表里的 📍 标出来，标题不必兼任。 */
+  const head = '数境：搜打撤';
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
-     没经过构建（4.1.2 占位）时不显示，免得把占位符贴到界面上。 */
+     没经过构建（4.1.4 占位）时不显示，免得把占位符贴到界面上。 */
   const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
     ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
@@ -26498,7 +26509,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.1.2';
+const BUILD_VER='4.1.4';
 const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
 function upbarSkipped(v){
   try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}

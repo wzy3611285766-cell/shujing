@@ -288,7 +288,7 @@ PATCH_JS = {
         (
             "    toast('已存成文件 ✅');\n  };\n  $('sv5')",
             "    toast(downloadFile('数境存档_'+new Date().toISOString().slice(0,10)+'.txt',\n"
-            "      '数境 · 四国远征 —— 存档码\\n（把下面这整段粘回游戏的「导入存档码」即可）\\n\\n'+code)\n"
+            "      '数境：搜打撤 —— 存档码\\n（把下面这整段粘回游戏的「导入存档码」即可）\\n\\n'+code)\n"
             "      ?'已存成文件 ✅':'容器里不能下载文件 —— 请复制下面的存档码存好');\n"
             "  };\n  $('sv5')",
         ),
@@ -471,7 +471,7 @@ PATCH_CSS = {
         # 只在小工具包里把顶栏右侧内边距放大，让整排 chip 与按钮左移避开；
         # 网页版没有这颗按钮，保持原样。
         (
-            "padding:calc(var(--safeT) + var(--pad)) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);",
+            "padding:var(--safeT) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);",
             "/* 小工具：容器顶部是一条浮层导航（返回 / 标题 / 头像 / 分享），\n"
             "   顶栏与它同一行就会被夹住、最右的 ☰ 正好压在分享键下面。\n"
             "   与其左右避让，不如整体下移到浮层之下，右侧恢复满宽。 */\n"

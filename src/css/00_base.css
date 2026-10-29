@@ -238,8 +238,11 @@ body.upbar-on #modal{top:var(--upH)}
 /* ============ 顶部 HUD ============
    窄屏一行放不下 7 个入口，以前会挤成 3~4 行压住地图。
    现在：位置 / 难度 / 结晶 / ☰ 常驻，其余功能收进 ☰ 菜单；宽屏才全部平铺。 */
+/* 4.1.3：顶栏贴屏幕最上沿 —— 上面只留状态栏/刘海的安全区，不再多留一个 --pad。
+   少掉的那 10px 是"整条顶栏 + 任务条"一起上移的净收益（--topH 由 JS 实测，跟着变）。
+   右侧仍留 10px，左边同理：贴边的是"内容"，不是文字。 */
 #topbar{position:absolute;top:var(--upH);left:0;right:0;
-  padding:calc(var(--safeT) + var(--pad)) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
+  padding:var(--safeT) calc(var(--safeR) + 10px) var(--pad) calc(var(--safeL) + 10px);
   display:flex;gap:var(--gap);align-items:center;pointer-events:none;z-index:20}
 /* 4.0.17：chip 浮在活地图上，不能带 backdrop-filter（每帧重算 → 60fps 变 30fps）。
    没了模糊就得补不透明度，否则半透明底"糊在图上"、字立不住。 */
