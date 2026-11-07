@@ -74,14 +74,14 @@ function syncModeButtons(){
   const shop=$('btnShop'),dex=$('btnDex'),mode=$('btnMode'),nat=$('btnNation');
   /* 史诗下这个按钮是「⏳ 时空交易所」：星尘唯一的去处，别再藏起来了；
      练枪场不是经贸现场，商行与国度入口一并收起 */
-  if(shop){shop.style.display=(bz||dr)?'none':'';shop.textContent=ep?'⏳ 交易所':'🏪 商行';}
+  if(shop){shop.style.display=(bz||dr)?'none':'';setIco(shop,ep?'hourglass':'shop',ep?'交易所':'商行');}
   if(nat) nat.style.display=(bz||dr)?'none':'';
-  if(dex) dex.textContent=bz?'🎖️ 行动':(ep?'📜 编年史':'📖 图鉴');
+  if(dex) setIco(dex,bz?'medal':'book',bz?'行动':(ep?'编年史':'图鉴'));
   /* 这颗键只做一件事：切到下一个世界，名字就是那个世界的名字。
      以前烽火这站写作「🎯 练枪场」，和常驻的 #btnDrill「🎯 练枪」撞在一起 ——
      两颗键长得一样、点下去也到同一个地方，玩家分不清。
      现在循环里没有练枪场（见 switchMode），烽火 / 练枪场 这一站统一是「⚔️ 闯关」。 */
-  if(mode)mode.textContent=ep?'🔥 烽火':((bz||dr)?'⚔️ 闯关':'📜 史诗');
+  if(mode)setIco(mode,ep?'flame':((bz||dr)?'sword':'scroll'),ep?'烽火':((bz||dr)?'闯关':'史诗'));
 }
 
 /* ---------------- 首次进入的说明 ----------------

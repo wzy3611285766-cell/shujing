@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>数境：搜打撤 · 新结构预览</title>
+<style>
+:root{
+  --bg:#07131f; --ink:#eaf4ff; --muted:#93aec4; --dim:#6d879c;
+  --gold:#ffd76a; --amber:#f59f2b; --green:#34c77b; --red:#ff6b6b; --blue:#5ed6ff;
+  --line:rgba(255,255,255,.09); --glass:rgba(13,30,46,.82);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#050d16;color:var(--ink);
+  font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.preview-badge{position:fixed;left:14px;top:12px;z-index:20;font-size:12px;letter-spacing:.08em;
+  color:#ffd76a;background:rgba(245,159,43,.12);border:1px solid rgba(255,215,106,.35);
+  padding:5px 9px;border-radius:999px}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#device{position:relative;overflow:hidden;background:var(--bg);
+  border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.08);
+  transform-origin:center center}
+#device.landscape{width:1066px;height:487px}
+#device.portrait{width:390px;height:844px;border-radius:26px}
+
+/* ---------- 世界底图 ---------- */
+.world{position:absolute;inset:0;overflow:hidden;
+  background:
+    radial-gradient(520px 260px at 18% 22%,rgba(38,104,142,.38),transparent 70%),
+    radial-gradient(460px 240px at 82% 76%,rgba(86,58,120,.26),transparent 72%),
+    radial-gradient(300px 180px at 55% 45%,rgba(30,120,90,.16),transparent 70%),
+    linear-gradient(180deg,#07141f 0%,#0a1b2a 55%,#06111b 100%)}
+.world:before{content:"";position:absolute;inset:-20%;
+  background-image:linear-gradient(rgba(120,190,220,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(120,190,220,.045) 1px,transparent 1px);
+  background-size:42px 42px;transform:rotate(-6deg)}
+.world:after{content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 50%,transparent 42%,rgba(2,8,14,.72) 100%)}
+.zone{position:absolute;border-radius:28px;filter:blur(18px);opacity:.5}
+.zone.a{width:280px;height:190px;left:6%;top:8%;background:rgba(46,130,170,.35)}
+.zone.b{width:250px;height:170px;right:8%;top:12%;background:rgba(140,90,40,.28)}
+.zone.c{width:300px;height:200px;left:52%;bottom:6%;background:rgba(60,140,100,.22)}
+.road{position:absolute;background:rgba(150,190,210,.07);height:2px;transform-origin:left}
+.poi{position:absolute;font-size:22px;filter:drop-shadow(0 2px 5px rgba(0,0,0,.6));opacity:.92}
+.poi.small{font-size:17px;opacity:.7}
+.poi .tag{position:absolute;left:50%;top:100%;transform:translateX(-50%);white-space:nowrap;
+  font-size:10px;color:#bcd6e8;background:rgba(6,16,26,.66);padding:1px 5px;border-radius:5px;margin-top:2px}
+.player{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:16px;height:16px;
+  border-radius:50%;background:var(--blue);box-shadow:0 0 0 4px rgba(94,214,255,.22),0 0 18px var(--blue)}
+.player:after{content:"";position:absolute;inset:-10px;border:1px solid rgba(94,214,255,.45);border-radius:50%;
+  animation:pulse 2.6s infinite}
+@keyframes pulse{0%{transform:scale(.7);opacity:.7}70%{transform:scale(1.35);opacity:0}100%{opacity:0}}
+
+/* ---------- 通用屏幕 ---------- */
+.screen{position:absolute;inset:0;opacity:0;pointer-events:none;transform:translateY(10px);
+  transition:opacity .22s ease,transform .22s ease;overflow:hidden}
+.screen.active{opacity:1;pointer-events:auto;transform:none}
+.topbar{position:absolute;left:0;right:0;top:0;height:52px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 16px;z-index:5;
+  background:linear-gradient(180deg,rgba(4,11,18,.82),transparent)}
+.brand{font-weight:800;letter-spacing:.02em;font-size:16px}
+.brand span{color:var(--gold)}
+.brand em{font-style:normal;font-size:10px;color:var(--muted);font-weight:500;margin-left:8px}
+.top-actions{display:flex;align-items:center;gap:7px}
+.ver{font-size:11px;color:#ffd76a;border:1px solid rgba(255,215,106,.32);
+  background:rgba(245,159,43,.09);border-radius:999px;padding:4px 8px}
+.icon{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.08);
+  border:.5px solid rgba(255,255,255,.12);font-size:15px}
+.fps{font-size:10px;color:#9fe9c4;font-variant-numeric:tabular-nums;letter-spacing:.02em;
+  background:rgba(5,15,24,.5);padding:2px 6px;border-radius:5px}
+
+/* ---------- 启动 ---------- */
+#s-start .world{filter:saturate(.95)}
+.hero{position:absolute;left:38px;top:96px;max-width:520px}
+.eyebrow{font-size:11px;letter-spacing:.18em;color:var(--muted);margin-bottom:10px}
+.hero h1{font-size:38px;line-height:1.22;letter-spacing:.02em}
+.hero p{margin-top:10px;color:#a9c2d4;font-size:14px}
+.hero .keep{display:inline-flex;gap:6px;align-items:center;margin-top:16px;font-size:11px;
+  color:#8fb6c9;border:1px dashed rgba(143,182,201,.28);border-radius:8px;padding:5px 8px}
+.start-actions{position:absolute;right:38px;bottom:30px;width:318px;display:flex;flex-direction:column;
+  align-items:stretch;gap:8px;z-index:6}
+.cta-gold{background:linear-gradient(180deg,#ffd76a,#f59f2b);color:#241804;font-weight:900;
+  border-radius:14px;padding:13px 16px;font-size:18px;box-shadow:0 10px 26px -10px rgba(245,159,43,.75);
+  text-align:left;position:relative}
+.cta-gold small{display:block;font-size:10px;font-weight:700;color:#6b4406;margin-top:2px}
+.cta-ghost{background:rgba(255,255,255,.08);border:.5px solid rgba(255,255,255,.14);
+  border-radius:12px;padding:10px 14px;font-size:13px;color:#d7e7f3;display:flex;
+  justify-content:space-between;align-items:center}
+.cta-ghost span{color:var(--gold);font-weight:700}
+.mini{align-self:flex-start;font-size:11px;color:#a9c2d4;background:rgba(255,255,255,.06);
+  border:.5px solid rgba(255,255,255,.1);padding:5px 9px;border-radius:999px}
+.first-note{margin-top:2px;text-align:center;font-size:10px;color:#87a6b9}
+
+/* ---------- 基地 ---------- */
+#s-base .bg{position:absolute;inset:0;background:rgba(4,12,20,.42);backdrop-filter:blur(2px)}
+.base{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(94%,940px);
+  background:linear-gradient(180deg,rgba(16,38,58,.97),rgba(9,24,38,.98));
+  border:1px solid rgba(255,255,255,.11);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.55);
+  padding:12px 14px 0;display:flex;flex-direction:column}
+.base-head{display:flex;align-items:baseline;gap:9px;padding:0 30px 9px}
+.base-head b{font-size:18px}
+.base-head span{font-size:10px;color:var(--muted)}
+.base-head em{font-style:normal;margin-left:auto;color:var(--gold);font-size:13px;font-weight:800}
+.close{position:absolute;right:10px;top:10px;width:28px;height:28px;border-radius:9px;
+  background:rgba(255,255,255,.07);border:.5px solid rgba(255,255,255,.1);font-size:14px;color:#cfe2ef}
+.tabs{display:flex;gap:4px;background:rgba(0,0,0,.18);padding:3px;border-radius:11px;margin:0 0 10px}
+.tab{flex:1;text-align:center;font-size:12px;font-weight:700;color:#9fb8ca;padding:7px 0;border-radius:8px}
+.tab.on{background:linear-gradient(180deg,#ffd76a,#f59f2b);color:#241804;box-shadow:0 4px 10px -4px rgba(245,159,43,.6)}
+.sec{display:flex;align-items:center;justify-content:space-between;margin:7px 2px 5px}
+.sec b{font-size:11px;color:#bcd4e4;font-weight:700}
+.sec span{font-size:9px;color:var(--dim)}
+.loc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.loc{display:flex;align-items:center;gap:8px;text-align:left;padding:8px 10px;border-radius:10px;
+  background:rgba(255,255,255,.055);border:.5px solid rgba(255,255,255,.08)}
+.loc.on{border-color:rgba(255,215,106,.72);background:rgba(255,215,106,.1);
+  box-shadow:inset 0 0 0 .5px rgba(255,215,106,.45)}
+.loc i{font-style:normal;font-size:19px}
+.loc b{font-size:12px;display:block;line-height:1.25}
+.loc small{display:block;font-size:9px;color:var(--muted);margin-top:1px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg button{font-size:11px;padding:8px 10px;border-radius:9px;text-align:left;
+  background:rgba(255,255,255,.05);border:.5px solid rgba(255,255,255,.08);color:#b7cedd}
+.seg button.on{background:rgba(94,214,255,.12);border-color:rgba(94,214,255,.55);color:#dff6ff}
+.seg small{display:block;font-size:9px;color:var(--muted);margin-top:1px}
+.gear{display:flex;gap:6px;align-items:center}
+.gear button{font-size:10px;padding:6px 9px;border-radius:8px;background:rgba(255,255,255,.05);
+  border:.5px dashed rgba(255,255,255,.14);color:#a9c2d4}
+.gear button.on{border-style:solid;border-color:rgba(52,199,123,.5);color:#bff3d6;background:rgba(52,199,123,.1)}
+.gear .more{margin-left:auto;color:var(--dim);border:0;background:none;font-size:9px;text-decoration:underline;text-underline-offset:2px}
+.base-actions{display:flex;gap:8px;margin:10px -14px 0;padding:9px 14px 11px;
+  background:rgba(5,14,24,.9);border-top:1px solid rgba(255,255,255,.07);border-radius:0 0 16px 16px}
+.base-actions button{border-radius:10px;padding:9px 12px;font-size:12px;font-weight:800}
+.naked{flex:0 0 36%;background:rgba(255,255,255,.08);border:.5px solid rgba(255,255,255,.16);text-align:left}
+.naked b{display:block;font-size:10px;color:#9fe9c4;font-weight:700;margin-top:1px}
+.deploy{flex:1;background:linear-gradient(180deg,#ffd76a,#f59f2b);color:#241804;
+  box-shadow:0 8px 18px -10px rgba(245,159,43,.8)}
+.deploy b{font-weight:900}
+.base-foot{font-size:9px;color:#86a5b8;text-align:center;padding:5px 0 7px}
+.tab-body{min-height:236px;display:none}
+.tab-body.on{display:block}
+.ware-row{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:9px;
+  background:rgba(255,255,255,.045);margin-bottom:5px;font-size:11px}
+.ware-row span{color:var(--dim);font-size:9px}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.stat{padding:10px;border-radius:10px;background:rgba(255,255,255,.045);text-align:center}
+.stat b{display:block;font-size:18px;color:var(--gold)}
+.stat small{font-size:9px;color:var(--muted)}
+
+/* ---------- 战场 ---------- */
+#s-battle .world{transform:scale(1.06)}
+.hud{position:absolute;left:0;right:0;top:0;padding:9px 12px;display:flex;align-items:flex-start;
+  justify-content:space-between;z-index:5}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{font-size:10px;padding:4px 7px;border-radius:7px;background:rgba(6,17,28,.72);
+  border:.5px solid rgba(255,255,255,.1);color:#cfe2ef;white-space:nowrap}
+.chip.good{color:#bff3d6;border-color:rgba(52,199,123,.4)}
+.chip.warn{color:#ffd76a;border-color:rgba(255,215,106,.35)}
+.hud-right{display:flex;align-items:center;gap:6px}
+.banner{position:absolute;left:50%;top:58px;transform:translateX(-50%);z-index:6;
+  background:rgba(6,17,28,.82);border:.5px solid rgba(255,255,255,.12);border-radius:9px;
+  padding:5px 12px;font-size:12px;font-weight:800;white-space:nowrap;animation:bannerOut 1.6s forwards}
+@keyframes bannerOut{0%,62%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-8px)}}
+.chest{position:absolute;left:62%;top:38%;font-size:24px;animation:bob 3s ease-in-out infinite}
+.chest i{font-style:normal;display:block;font-size:9px;color:#d8e9f5;background:rgba(5,15,24,.7);
+  padding:1px 5px;border-radius:4px;margin-top:2px;text-align:center}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.hints{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-size:10px;
+  color:#a9c2d4;background:rgba(5,15,24,.62);border:.5px solid rgba(255,255,255,.08);
+  border-radius:8px;padding:5px 10px;white-space:nowrap}
+.sig{position:absolute;left:14px;bottom:12px;font-size:10px;color:#a9c2d4}
+
+/* ---------- 答题 ---------- */
+.shade{position:absolute;inset:0;background:rgba(2,8,14,.58);backdrop-filter:blur(1.5px)}
+.quiz{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92%,940px);
+  background:linear-gradient(180deg,rgba(14,33,50,.98),rgba(8,22,35,.98));
+  border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px 14px;
+  box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.qhead{display:flex;flex-direction:column;align-items:center;gap:1px;position:relative}
+.qhead b{font-size:17px}
+.qhead small{font-size:9px;color:var(--muted)}
+.qhead .fs{position:absolute;right:0;top:0;width:28px;height:28px;border-radius:9px;
+  background:rgba(255,255,255,.07);font-size:11px;border:.5px solid rgba(255,255,255,.1)}
+.signal{display:flex;align-items:center;gap:7px;font-size:9px;color:var(--muted);margin:7px 0 9px}
+.signal .bar{flex:1;height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.signal .bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#34c77b,#7ef0b3)}
+.quiz-main{display:grid;grid-template-columns:1fr 1.06fr;gap:10px;align-items:start}
+.qcol{padding:12px 13px;border-radius:11px;background:rgba(255,255,255,.045);
+  border-left:2px solid var(--blue);min-height:108px}
+.qcol h2{font-size:17px;line-height:1.65;margin-top:8px;font-weight:700}
+.qcol .chips{gap:4px}
+.ocol{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.opt{text-align:left;padding:8px 9px;border-radius:9px;background:rgba(255,255,255,.06);
+  border:.5px solid rgba(255,255,255,.1);font-size:12px;line-height:1.45;color:#dbeaf5;
+  display:flex;gap:6px;align-items:center;min-height:44px}
+.opt k{font-size:9px;width:17px;height:17px;border-radius:50%;background:rgba(255,255,255,.1);
+  display:grid;place-items:center;font-weight:800;flex:none}
+.opt.ok{border-color:rgba(52,199,123,.65);background:rgba(52,199,123,.14)}
+.opt.bad{border-color:rgba(255,107,107,.6);background:rgba(255,107,107,.13)}
+.fb{margin-top:9px;padding:8px 10px;border-radius:9px;background:rgba(255,107,107,.08);
+  border:.5px solid rgba(255,107,107,.28);font-size:10px;line-height:1.6;color:#ffd9d4;display:none}
+.fb.show{display:block}
+.fb b{color:#ff9c93}
+.fb em{font-style:normal;color:#ffb;display:block;margin-top:2px}
+.fb .tag{display:inline-block;color:#ffb4ad;font-size:9px;margin-top:3px}
+.fb.ok{background:rgba(52,199,123,.09);border-color:rgba(52,199,123,.34);color:#d5f7e4}
+.fb.ok b{color:#8ff0bc}
+.fb.ok em{color:#c9f0dc}
+.fb.ok .tag{color:#9fe9c4}
+.qfoot{display:flex;gap:8px;margin-top:10px}
+.hint{flex:0 0 34%;text-align:center;font-size:11px;padding:9px;border-radius:9px;
+  background:rgba(255,255,255,.055);border:.5px solid rgba(255,255,255,.1);color:#9fb8ca}
+.next{flex:1;font-size:12px;font-weight:900;padding:9px;border-radius:9px;
+  background:linear-gradient(180deg,#ffd76a,#f59f2b);color:#241804;opacity:.45;pointer-events:none}
+.next.on{opacity:1;pointer-events:auto}
+
+/* ---------- 练枪 ---------- */
+.panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92%,880px);
+  background:linear-gradient(180deg,rgba(14,33,50,.97),rgba(8,22,35,.98));
+  border:1px solid rgba(255,255,255,.11);border-radius:16px;padding:16px}
+.panel h2{font-size:20px}
+.panel .sub{font-size:10px;color:var(--muted);margin-top:2px}
+.drill-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:14px}
+.dcard{padding:11px 9px;border-radius:11px;background:rgba(255,255,255,.05);
+  border:.5px solid rgba(255,255,255,.09);text-align:left}
+.dcard i{font-style:normal;font-size:20px}
+.dcard b{display:block;font-size:12px;margin-top:5px}
+.dcard small{display:block;font-size:9px;color:var(--muted);margin-top:2px}
+.dcard em{font-style:normal;display:inline-block;margin-top:6px;font-size:9px;color:#ffd76a;
+  background:rgba(255,215,106,.1);border-radius:5px;padding:1px 5px}
+.weak{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;
+  border-radius:10px;background:rgba(94,214,255,.07);border:.5px solid rgba(94,214,255,.22)}
+.weak b{font-size:12px}
+.weak small{color:var(--muted);font-size:9px;display:block;margin-top:2px}
+.start-drill{font-size:11px;font-weight:900;color:#241804;background:linear-gradient(180deg,#ffd76a,#f59f2b);
+  padding:8px 12px;border-radius:8px}
+
+/* ---------- 内容库 ---------- */
+.lib{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92%,880px)}
+.lib-head{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.lib-head h2{font-size:20px}
+.lib-head small{font-size:10px;color:var(--muted)}
+.lib-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.libcard{padding:15px;border-radius:13px;background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.03));
+  border:.5px solid rgba(255,255,255,.1);text-align:left}
+.libcard i{font-style:normal;font-size:26px}
+.libcard b{display:block;font-size:14px;margin-top:6px}
+.libcard small{display:block;font-size:10px;color:var(--muted);line-height:1.6;margin-top:3px}
+.libcard em{font-style:normal;display:inline-block;margin-top:8px;font-size:9px;color:#9fe9c4;
+  border:1px solid rgba(52,199,123,.35);border-radius:5px;padding:1px 5px}
+.lib-foot{margin-top:10px;font-size:10px;color:#87a6b9;text-align:center}
+
+/* ---------- 菜单 / 日志 ---------- */
+.sheet{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92%,760px);max-height:88%;
+  overflow:auto;background:linear-gradient(180deg,rgba(15,35,53,.99),rgba(8,22,35,.99));
+  border:1px solid rgba(255,255,255,.12);border-radius:15px;padding:14px;z-index:9}
+.sheet h3{font-size:16px;margin-bottom:9px}
+.sheet .x{position:absolute;right:10px;top:10px;width:27px;height:27px;border-radius:8px;
+  background:rgba(255,255,255,.07);font-size:13px}
+.mrow{display:flex;align-items:center;gap:9px;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.06);
+  font-size:12px;width:100%;text-align:left}
+.mrow i{font-style:normal;font-size:16px;width:22px;text-align:center}
+.mrow small{margin-left:auto;color:var(--muted);font-size:10px}
+.mrow .on{color:#9fe9c4}
+.log{padding:10px 11px;border-radius:10px;background:rgba(255,255,255,.045);margin-bottom:7px;font-size:11px;line-height:1.75}
+.log b{color:var(--gold);font-size:12px}
+.log span{color:var(--dim);font-size:9px;margin-left:6px}
+.log p{color:#c9dce9;margin-top:3px}
+.note{font-size:9px;color:#87a6b9;margin-top:8px}
+
+/* ---------- 预览控制 ---------- */
+#controls{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:30;
+  display:flex;align-items:center;gap:4px;background:rgba(10,22,34,.92);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:6px;backdrop-filter:blur(12px)}
+#controls button{font-size:11px;padding:6px 9px;border-radius:8px;color:#a9c2d4}
+#controls button.on{background:rgba(255,215,106,.16);color:#ffd76a}
+#controls .sep{width:1px;height:18px;background:rgba(255,255,255,.12);margin:0 3px}
+#changes{position:fixed;right:14px;top:52px;bottom:64px;width:290px;z-index:25;
+  background:rgba(9,23,37,.97);border:1px solid rgba(255,255,255,.1);border-radius:14px;
+  padding:14px;overflow:auto;transform:translateX(115%);transition:transform .25s ease}
+#changes.show{transform:none}
+#changes h3{font-size:14px;margin-bottom:8px;color:#ffd76a}
+#changes li{list-style:none;font-size:11px;line-height:1.65;color:#b9cfdf;padding:6px 0;
+  border-bottom:1px solid rgba(255,255,255,.06)}
+#changes b{color:#fff}
+#changes .keep{color:#9fe9c4}
+#changes .cut{color:#ff9c93}
+#changes footer{margin-top:10px;font-size:10px;color:#87a6b9;line-height:1.6}
+.toast{position:absolute;left:50%;bottom:58px;transform:translate(-50%,8px);z-index:12;
+  background:rgba(6,17,28,.94);border:.5px solid rgba(255,255,255,.16);border-radius:9px;
+  padding:6px 12px;font-size:11px;opacity:0;pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- 竖屏 ---------- */
+#device.portrait .hero{left:20px;right:20px;top:88px;max-width:none}
+#device.portrait .hero h1{font-size:28px}
+#device.portrait .hero p{font-size:12px}
+#device.portrait .start-actions{left:16px;right:16px;bottom:26px;width:auto}
+#device.portrait .base{width:auto;left:8px;right:8px;top:auto;bottom:10px;transform:none;padding:12px 12px 0}
+#device.portrait .loc-grid{grid-template-columns:1fr 1fr}
+#device.portrait .loc{padding:7px 8px}
+#device.portrait .loc b{font-size:11px}
+#device.portrait .tabs{margin-bottom:8px}
+#device.portrait .base-head{padding:0 26px 7px}
+#device.portrait .base-head b{font-size:16px}
+#device.portrait .quiz{width:auto;left:8px;right:8px;transform:translateY(-50%);padding:11px}
+#device.portrait .quiz-main{grid-template-columns:1fr;gap:8px}
+#device.portrait .qcol{min-height:0;padding:10px}
+#device.portrait .qcol h2{font-size:16px}
+#device.portrait .opt{font-size:11px;min-height:46px}
+#device.portrait .fb{font-size:11px;line-height:1.75}
+#device.portrait .drill-cards{grid-template-columns:1fr 1fr}
+#device.portrait .panel,#device.portrait .lib{width:auto;left:8px;right:8px;transform:translateY(-50%)}
+#device.portrait .lib-grid{grid-template-columns:1fr}
+#device.portrait .sheet{width:auto;left:8px;right:8px;transform:translateY(-50%)}
+#device.portrait .hero .keep{font-size:10px}
+</style>
+</head>
+<body>
+<div class="preview-badge">预览版 · 未应用到正式版</div>
+
+<div id="stage">
+  <div id="device" class="landscape">
+
+    <!-- ========== 启动 ========== -->
+    <section class="screen active" id="s-start">
+      <div class="world">
+        <div class="zone a"></div><div class="zone b"></div><div class="zone c"></div>
+        <span class="poi" style="left:56%;top:30%">📦</span>
+        <span class="poi small" style="left:72%;top:62%">📦</span>
+        <span class="poi small" style="left:30%;top:68%">🔐</span>
+        <span class="poi" style="left:80%;top:24%">🚁<span class="tag">撤离点</span></span>
+        <span class="poi small" style="left:22%;top:34%">👾</span>
+        <div class="player" style="left:44%;top:58%"></div>
+      </div>
+      <div class="topbar">
+        <div class="brand">数境<span>：搜打撤</span><em>行动基地</em></div>
+        <div class="top-actions">
+          <button class="ver" onclick="openChangelog()">v4.1.4</button>
+          <button class="icon" onclick="openMenu()">☰</button>
+        </div>
+      </div>
+      <div class="hero">
+        <div class="eyebrow">行动基地 · 第一局</div>
+        <h1>搜刮 · 交火<br>活着撤离</h1>
+        <p>先跑一把。规则不在说明书里，在局内提示里。</p>
+        <span class="keep">🪙 首局送 40 · 够打一场常规</span>
+      </div>
+      <div class="start-actions">
+        <button class="mini" onclick="show('drill')">🎯 练枪 · 30 秒热身</button>
+        <button class="cta-gold" onclick="toast('跑刀进图 · 免费');show('battle')">🪖 跑刀进图<small>免费 · 不带装备也能进 · 首局推荐</small></button>
+        <button class="cta-ghost" onclick="show('base')">选点部署 <span>40 🪙</span> →</button>
+        <div class="first-note">不用先配装，进去捡了再说</div>
+      </div>
+    </section>
+
+    <!-- ========== 基地（合并后） ========== -->
+    <section class="screen" id="s-base">
+      <div class="world" style="filter:blur(2px) saturate(.8);opacity:.55">
+        <div class="zone a"></div><div class="zone c"></div>
+        <span class="poi small" style="left:20%;top:26%">🏭</span>
+        <span class="poi small" style="left:76%;top:30%">🚁</span>
+        <span class="poi small" style="left:40%;top:64%">📦</span>
+      </div>
+      <div class="bg"></div>
+      <div class="base">
+        <button class="close" onclick="show('start')">✕</button>
+        <div class="base-head">
+          <b>🔥 烽火地带</b><span>搜刮 · 交火 · 活着撤离</span><em>🪙 40</em>
+        </div>
+        <div class="tabs">
+          <button class="tab on" data-tab="deploy">部署</button>
+          <button class="tab" data-tab="stash">仓库</button>
+          <button class="tab" data-tab="stats">战绩</button>
+        </div>
+        <div class="tab-body on" data-body="deploy">
+          <div class="sec"><b>选择行动地点</b><span>4 张图 · 共用一套题库</span></div>
+          <div class="loc-grid">
+            <button class="loc on" onclick="pick(this)"><i>📐</i><span><b>零点演算场</b><small>数学 · 废弃数据中心</small></span></button>
+            <button class="loc" onclick="pick(this)"><i>⚡</i><span><b>长弓变电站</b><small>物理 · 高压试验区</small></span></button>
+            <button class="loc" onclick="pick(this)"><i>🔥</i><span><b>灰烬精炼厂</b><small>化学 · 反应釜区</small></span></button>
+            <button class="loc" onclick="pick(this)"><i>🌿</i><span><b>静默培养区</b><small>生物 · 隔离温室</small></span></button>
+          </div>
+          <div class="sec"><b>选择难度</b><span>题难 × 物资估值</span></div>
+          <div class="seg">
+            <button class="on" onclick="seg(this)">🟢 常规 <small>×1 · 40 🪙</small></button>
+            <button onclick="seg(this)">🔴 高考 <small>×2.6 · 200 🪙</small></button>
+          </div>
+          <div class="sec"><b>战备</b><span>可不带 · 局内也能捡</span></div>
+          <div class="gear">
+            <button class="on" onclick="this.classList.toggle('on')">🎒 扩容背包</button>
+            <button onclick="this.classList.toggle('on')">📄 行动保险</button>
+            <button class="more" onclick="toast('更多战备已折叠：房卡、医疗包改为局内掉落')">更多战备 ▾</button>
+          </div>
+          <div class="base-foot">常规场 40 🪙 · 首局已送，刚好够</div>
+        </div>
+        <div class="tab-body" data-body="stash">
+          <div class="sec"><b>仓库</b><span>卖一件就少一件材料</span></div>
+          <div class="ware-row">💎 量子芯片 <span>×2 · 估值 1200</span></div>
+          <div class="ware-row">🔋 备用电池 <span>×1 · 估值 300</span></div>
+          <div class="ware-row">📦 未鉴定物资 <span>×3 · 估值 ？</span></div>
+          <div class="base-foot">交易与特勤处移出首版，先看留存</div>
+        </div>
+        <div class="tab-body" data-body="stats">
+          <div class="sec"><b>战绩</b><span>只看三件最重要的事</span></div>
+          <div class="stat-grid">
+            <div class="stat"><b>7</b><small>撤离成功</small></div>
+            <div class="stat"><b>132</b><small>答对题数</small></div>
+            <div class="stat"><b>68%</b><small>正确率</small></div>
+          </div>
+          <div class="base-foot">结算页只保留这三项，不做长报表</div>
+        </div>
+        <div class="base-actions">
+          <button class="naked" onclick="toast('跑刀进图 · 免费 · 首局推荐');show('battle')">🪖 跑刀<b>免费 · 不进保底</b></button>
+          <button class="deploy" onclick="toast('部署成功 · 正在进入零点演算场');show('battle')">🚀 部署行动 <b>40 🪙</b></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 战场 HUD ========== -->
+    <section class="screen" id="s-battle">
+      <div class="world">
+        <div class="zone a"></div><div class="zone b"></div><div class="zone c"></div>
+        <span class="poi small" style="left:24%;top:22%">🏭<span class="tag">装卸平台</span></span>
+        <span class="poi" style="left:64%;top:35%">📦<span class="tag">物资箱 · 12m</span></span>
+        <span class="poi small" style="left:38%;top:72%">📦</span>
+        <span class="poi small" style="left:75%;top:66%">💎</span>
+        <span class="poi" style="left:83%;top:20%">🚁<span class="tag">撤离点 · 320m</span></span>
+        <span class="poi small" style="left:58%;top:72%">👾</span>
+        <div class="player"></div>
+      </div>
+      <div class="hud">
+        <div class="chips">
+          <span class="chip good">⚡ 信号 4/4</span>
+          <span class="chip">🎒 0/20</span>
+          <span class="chip warn">🚁 撤离 320m</span>
+        </div>
+        <div class="hud-right">
+          <span class="fps" id="fps">118fps · 0.2ms</span>
+          <button class="icon" onclick="openMenu()">☰</button>
+        </div>
+      </div>
+      <div class="banner">🚀 零点演算场 · 常规</div>
+      <div class="sig">📍 E4 · 常规</div>
+      <div class="hints">点地图移动 · 长按拖动 · E 互动</div>
+    </section>
+
+    <!-- ========== 答题 ========== -->
+    <section class="screen" id="s-quiz">
+      <div class="world" style="transform:scale(1.1)">
+        <div class="zone a"></div><div class="zone c"></div>
+        <span class="poi" style="left:64%;top:35%">📦</span>
+        <div class="player" style="left:48%;top:58%"></div>
+      </div>
+      <div class="shade"></div>
+      <div class="quiz">
+        <div class="qhead"><b>📦 物资箱</b><small>正在撬锁 · 零点演算场</small><button class="fs" onclick="toast('字号：A− / A+')">A−</button></div>
+        <div class="signal">⚡ 信号值 4/4<div class="bar"><i></i></div></div>
+        <div class="quiz-main">
+          <div class="qcol">
+            <div class="chips"><span class="chip good">🟢 常规 · 搜索</span><span class="chip">高考基础题型</span></div>
+            <h2>圆心为 (1, -2)、半径为 3 的圆的标准方程是</h2>
+          </div>
+          <div class="ocol" id="opts">
+            <button class="opt" data-ok="0"><k>A</k><span>(x − 1)² + (y − 2)² = 9</span></button>
+            <button class="opt" data-ok="0"><k>B</k><span>(x − 1)² + (y + 2)² = 3</span></button>
+            <button class="opt" data-ok="0"><k>C</k><span>(x + 1)² + (y − 2)² = 9</span></button>
+            <button class="opt" data-ok="1"><k>D</k><span>(x − 1)² + (y + 2)² = 9</span></button>
+          </div>
+        </div>
+        <div class="fb" id="fb"></div>
+        <div class="qfoot">
+          <button class="hint" onclick="toast('还差 50 🪙 · 首局不扣，先答一题试试')">💡 要思路（50 🪙）</button>
+          <button class="next" id="next" onclick="toast('搜刮完毕 · 物资已入库');show('battle')">搜刮完毕 →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 练枪 ========== -->
+    <section class="screen" id="s-drill">
+      <div class="world" style="opacity:.55"><div class="zone a"></div><div class="zone c"></div></div>
+      <div class="shade"></div>
+      <div class="panel">
+        <button class="close" onclick="show('start')">✕</button>
+        <div style="display:flex;align-items:baseline;gap:8px"><h2>🎯 练枪场</h2><span class="sub">零损失 · 无限题 · 答错不进信号</span></div>
+        <div class="drill-cards">
+          <button class="dcard" onclick="toast('数学 · 专攻薄弱 6 题')"><i>📐</i><b>数学</b><small>薄弱 6 题</small><em>专攻</em></button>
+          <button class="dcard" onclick="toast('物理 · 专攻薄弱 3 题')"><i>⚡</i><b>物理</b><small>薄弱 3 题</small><em>专攻</em></button>
+          <button class="dcard" onclick="toast('化学 · 专攻薄弱 2 题')"><i>🔥</i><b>化学</b><small>薄弱 2 题</small><em>专攻</em></button>
+          <button class="dcard" onclick="toast('生物 · 专攻薄弱 4 题')"><i>🌿</i><b>生物</b><small>薄弱 4 题</small><em>专攻</em></button>
+        </div>
+        <div class="weak">
+          <span><b>今天先补：圆与方程 · 6 题</b><small>从错题本自动排的，不用自己挑</small></span>
+          <button class="start-drill" onclick="toast('开始专攻 · 6 题')">开始 6 题 →</button>
+        </div>
+        <div class="base-foot">练枪只做一件事：把错题再答对一次</div>
+      </div>
+    </section>
+
+    <!-- ========== 内容库 ========== -->
+    <section class="screen" id="s-lib">
+      <div class="world" style="opacity:.5"><div class="zone b"></div></div>
+      <div class="shade"></div>
+      <div class="lib">
+        <div class="lib-head"><h2>📚 内容库</h2><small>非主线 · 长线收集，慢慢逛</small>
+          <button class="icon" style="margin-left:auto" onclick="show('menu')">✕</button></div>
+        <div class="lib-grid">
+          <button class="libcard" onclick="toast('进入闯关四国（保留完整内容）')">
+            <i>⚔️</i><b>闯关 · 四国远征</b>
+            <small>14 域 / 42 精灵 / 图鉴 / 商行<br>原来的长线收集，不在首屏抢入口</small>
+            <em>内容保留</em>
+          </button>
+          <button class="libcard" onclick="toast('翻阅史诗 27 篇')">
+            <i>📜</i><b>史诗 · 科学编年史</b>
+            <small>27 篇卷宗 + 时空考题<br>当书架用，不占主流程</small>
+            <em>内容保留</em>
+          </button>
+        </div>
+        <div class="lib-foot">首版移动端只留“内容库”一个入口，不删内容，也不做四套独立经济</div>
+      </div>
+    </section>
+
+    <!-- ========== 菜单 ========== -->
+    <section class="screen" id="s-menu">
+      <div class="world" style="opacity:.35"></div>
+      <div class="shade"></div>
+      <div class="sheet" id="menuSheet">
+        <button class="x" onclick="show('start')">✕</button>
+        <h3>菜单</h3>
+        <button class="mrow" onclick="show('lib')"><i>📚</i>内容库 <small>闯关 / 史诗</small></button>
+        <button class="mrow" onclick="openChangelog()"><i>📜</i>更新日志 <small>v4.1.4</small></button>
+        <button class="mrow" onclick="toggleFps(this)"><i>📈</i>帧率角标 <small class="on" id="fpsState">开</small></button>
+        <button class="mrow" onclick="toast('存档码 · 跨设备迁移')"><i>🎒</i>存档码 <small>本地优先</small></button>
+        <button class="mrow" onclick="toast('全屏 · 已在预览中')"><i>⛶</i>全屏 <small>F11 / 添加到主屏</small></button>
+        <div class="note">帧率角标与更新日志均按你的要求保留；默认仍然开。</div>
+      </div>
+    </section>
+
+    <!-- ========== 更新日志（保留） ========== -->
+    <section class="screen" id="s-log">
+      <div class="world" style="opacity:.35"></div>
+      <div class="shade"></div>
+      <div class="sheet">
+        <button class="x" onclick="show('start')">✕</button>
+        <h3>更新日志</h3>
+        <div class="log"><b>v4.1.4</b><span>2026-10-29</span><p>定名《数境：搜打撤》，界面名字统一；顶栏给平台按钮让位；玩法、题库、存档、熟练度没动。</p></div>
+        <div class="log"><b>v4.1.3</b><span>2026-10-28</span><p>答题卡与结算页收口；抖音特供包去掉输入控件与外链。</p></div>
+        <div class="note">正式版仍保留完整 CHANGELOG；这里只展示最近两条，证明入口没丢。</div>
+      </div>
+    </section>
+
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<div id="controls">
+  <button data-s="start" class="on">启动</button>
+  <button data-s="base">基地</button>
+  <button data-s="battle">战场</button>
+  <button data-s="quiz">答题</button>
+  <button data-s="drill">练枪</button>
+  <button data-s="lib">内容库</button>
+  <button data-s="menu">菜单</button>
+  <span class="sep"></span>
+  <button id="ori">竖屏</button>
+  <button id="chg">改动清单</button>
+</div>
+
+<aside id="changes">
+  <h3>这次预览改了什么</h3>
+  <ul>
+    <li><b>合并</b> 基地 6 个 tab → 3 个：部署 / 仓库 / 战绩</li>
+    <li><b>合并</b> 9 件战前装备 + 3 张房卡 → 背包 / 保险 2 件</li>
+    <li><b>合并</b> 双货币 + 3 档难度 → 单货币 + 常规 / 高考 2 档</li>
+    <li><b>前置</b> 跑刀免费入口放到首屏，首局送 40 🪙</li>
+    <li><b>降级</b> 闯关四国、史诗 27 篇 → 内容库，不做一级入口</li>
+    <li><b>移除</b> 首屏更新正文、烽火/闯关两套全屏手册</li>
+    <li class="keep"><b>保留</b> 帧率角标（默认仍开）</li>
+    <li class="keep"><b>保留</b> 完整更新日志入口（版本角标 + 菜单）</li>
+    <li class="cut"><b>未动</b> shujing-app/index.html 与 src/；确认后才落正式版</li>
+  </ul>
+  <footer>这是界面预览，不是最终构建。你点头后我再改源码、出真实预览包、最后替换。</footer>
+</aside>
+
+<script>
+const device = document.getElementById('device');
+const screens = [...document.querySelectorAll('.screen')];
+const ctrl = [...document.querySelectorAll('#controls [data-s]')];
+
+function show(name){
+  screens.forEach(s=>s.classList.toggle('active', s.id==='s-'+name));
+  ctrl.forEach(b=>b.classList.toggle('on', b.dataset.s===name));
+  if(name==='battle'){ const b=document.querySelector('.banner'); b.style.animation='none'; void b.offsetWidth; b.style.animation=''; }
+  if(name==='quiz'){
+    const fb=document.getElementById('fb'); fb.className='fb'; fb.innerHTML='';
+    document.getElementById('next').classList.remove('on');
+    document.querySelectorAll('#opts .opt').forEach(x=>x.classList.remove('ok','bad'));
+  }
+}
+ctrl.forEach(b=>b.onclick=()=>show(b.dataset.s));
+
+function toast(t){
+  const el=document.getElementById('toast');
+  el.textContent=t; el.classList.add('show');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),1800);
+}
+
+function pick(el){
+  el.parentElement.querySelectorAll('.loc').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+}
+function seg(el){
+  el.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');
+  document.querySelectorAll('.tab-body').forEach(b=>b.classList.toggle('on', b.dataset.body===t.dataset.tab));
+});
+
+document.querySelectorAll('#opts .opt').forEach(o=>o.onclick=()=>{
+  const fb=document.getElementById('fb');
+  if(fb.classList.contains('show')) return;
+  const ok=o.dataset.ok==='1';
+  document.querySelectorAll('#opts .opt').forEach(x=>{
+    if(x.dataset.ok==='1') x.classList.add('ok');
+  });
+  if(!ok) o.classList.add('bad');
+  fb.className='fb show'+(ok?' ok':'');
+  fb.innerHTML = ok
+    ? '<b>✓ 答对 · 物资已入库</b><em>标准方程 (x − a)² + (y − b)² = r²，圆心坐标要变号，右端是 r² = 9。</em><span class="tag">信号 4/4 · 未触发警报</span>'
+    : '<b>✕ 正确答案：D (x − 1)² + (y + 2)² = 9</b><em>标准方程 (x − a)² + (y − b)² = r²，圆心坐标要变号，右端是 r² = 9。</em><span class="tag">📕 已收进错题本 · 信号 4 → 3</span>';
+  document.getElementById('next').classList.add('on');
+});
+
+function openMenu(){ show('menu'); }
+function openChangelog(){ show('log'); }
+function toggleFps(row){
+  const s=document.getElementById('fpsState');
+  const on=s.classList.toggle('on');
+  s.textContent=on?'开':'关';
+  document.getElementById('fps').style.display=on?'':'none';
+  toast(on?'帧率角标已开':'帧率角标已关');
+}
+
+// 竖屏切换
+let portrait=false;
+document.getElementById('ori').onclick=()=>{
+  portrait=!portrait;
+  device.classList.toggle('portrait',portrait);
+  device.classList.toggle('landscape',!portrait);
+  document.getElementById('ori').textContent=portrait?'横屏':'竖屏';
+  fit();
+};
+
+// 改动清单
+document.getElementById('chg').onclick=()=>document.getElementById('changes').classList.toggle('show');
+
+// 缩放适配
+function fit(){
+  const pad=64, ctrlH=60;
+  const w=device.classList.contains('portrait')?390:1066;
+  const h=device.classList.contains('portrait')?844:487;
+  const s=Math.min((innerWidth-pad)/w,(innerHeight-ctrlH-40)/h);
+  device.style.transform='scale('+Math.max(.45,s)+')';
+}
+addEventListener('resize',fit); fit();
+
+// 模拟帧率角标（保留项）
+setInterval(()=>{
+  const el=document.getElementById('fps');
+  if(!el || el.style.display==='none') return;
+  el.textContent=(108+Math.round(Math.random()*14))+'fps · '+(0.15+Math.random()*0.15).toFixed(2)+'ms';
+},700);
+</script>
+</body>
+</html>

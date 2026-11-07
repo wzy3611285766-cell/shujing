@@ -16,6 +16,9 @@
    ⚠️ 本文件必须是最后一个 JS 模块 —— build.py 的 boot_last_check() 断言这条。
       往后追加新模块时，启动语句一律写进这里，别在别处再开"执行"的口子。
    ========================================================= */
+/* 静态标记里的图标占位（<i data-ico>）先填一次：
+   顶栏那排键在 startGame 之前就存在，不填会先露出空白格。 */
+paintIco(document);
 startGame();
 advNationBoot();
 newsBoot();

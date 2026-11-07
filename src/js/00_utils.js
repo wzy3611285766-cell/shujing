@@ -12,6 +12,9 @@ function setH(el,html){
   el.textContent='';
   el.appendChild(frag);
   el._h=src;                               // 给「内容没变就别重画」的比较用
+  /* 带图标占位的片段顺手填一次：调用方只写 <i data-ico="pin">。
+     没有这个属性时连查询都不做，热路径零开销。 */
+  if(src.indexOf('data-ico')>=0)paintIco(el);
   return el;
 }
 function addH(el,html){
@@ -21,6 +24,58 @@ function addH(el,html){
   return el;
 }
 function hasH(el){return !!(el&&el.firstChild);}
+
+/* ---------- 入口图标：单色线性 SVG（4.1.5 调性基线）----------
+   功能入口一律不用彩色 emoji：容器缺彩色 emoji 字体时 📕🎯 会渲染成方块，
+   同一排按钮在平板上糊成几粒色块，这跟"夜间作战室"的调性完全对不上。
+   这里给一套 24 栅格、1.7 描边、currentColor 的线性图标 —— 颜色跟着文字走，
+   换主题不用重画，缺字体也不会崩。
+   用法：
+     · 静态：<i class="ic" data-ico="pin"></i>（开机 paintIco 填一次）
+     · 动态：setIco(el,'flame','烽火')（换图标 + 换字）
+   ⚠️ 彩色 emoji 只留给"内容"（物资、地图标记、题图），那是世界的一部分。 */
+const ICO={
+  pin:'<circle cx="12" cy="10.6" r="2.4"/><path d="M12 21c4-4.6 6-7.7 6-10.2a6 6 0 1 0-12 0C6 13.3 8 16.4 12 21Z"/>',
+  flag:'<path d="M6 21V3.6"/><path d="M6 4.2h11l-2.4 4.2L17 12.6H6Z"/>',
+  book:'<path d="M5 4.6C5 3.7 5.7 3 6.6 3H19v18H6.6A1.6 1.6 0 0 1 5 19.4Z"/><path d="M5 17.6h14"/>',
+  bookmark:'<path d="M7 3.6h10a1 1 0 0 1 1 1V21l-6-3.8L6 21V4.6a1 1 0 0 1 1-1Z"/>',
+  globe:'<circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8"/><path d="M12 3.6c2.4 2.5 3.7 5.3 3.7 8.4s-1.3 5.9-3.7 8.4c-2.4-2.5-3.7-5.3-3.7-8.4S9.6 6.1 12 3.6Z"/>',
+  shop:'<path d="M4.2 9.4 5.6 4h12.8l1.4 5.4"/><path d="M5.4 9.4V20h13.2V9.4"/><path d="M9.6 20v-5.4h4.8V20"/>',
+  target:'<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.2"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3"/>',
+  save:'<path d="M5 4h10.4L19 7.6V20H5Z"/><path d="M9 4v5.2h6V4"/><path d="M8 20v-6.2h8V20"/>',
+  sound:'<path d="M4 9.4h3.4L12 5.6v12.8L7.4 14.6H4Z"/><path d="M15.4 8.9a4.3 4.3 0 0 1 0 6.2"/><path d="M18 6.4a7.8 7.8 0 0 1 0 11.2"/>',
+  mute:'<path d="M4 9.4h3.4L12 5.6v12.8L7.4 14.6H4Z"/><path d="M16 9.6 21 14.4M21 9.6 16 14.4"/>',
+  menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+  coin:'<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.6"/>',
+  bag:'<path d="M5.4 8.4h13.2l1 11.6H4.4Z"/><path d="M9 8.4V6.2a3 3 0 0 1 6 0v2.2"/>',
+  scroll:'<path d="M6 5.6C6 4.2 7 3.4 8.2 3.4H18v13.2H8.6a2.6 2.6 0 0 0-2.6 2.6Z"/><path d="M6 19.2V5.6"/><path d="M18 16.6H8.6"/>',
+  flame:'<path d="M12 3.2c3.2 4 5.2 6.3 5.2 9.4a5.2 5.2 0 0 1-10.4 0c0-3.1 2-5.4 5.2-9.4Z"/><path d="M12 13.6c1 1.2 1.5 2 1.5 2.9a1.5 1.5 0 0 1-3 0c0-.9.5-1.7 1.5-2.9Z"/>',
+  sword:'<path d="M14.4 3.6 20.4 9.6 11 19H5.6v-5.4Z"/><path d="M14.4 9.6 9.6 14.4"/>',
+  medal:'<circle cx="12" cy="9" r="5.2"/><path d="M8.6 13.4 7 21l5-2.8 5 2.8-1.6-7.6"/>',
+  hourglass:'<path d="M6.4 3.4h11.2M6.4 20.6h11.2"/><path d="M6.4 3.4c0 5.2 5.6 6.2 5.6 8.6 0-2.4 5.6-3.4 5.6-8.6"/><path d="M6.4 20.6c0-5.2 5.6-6.2 5.6-8.6 0 2.4 5.6 3.4 5.6 8.6"/>'
+};
+function icoSvg(n){
+  const d=ICO[n];
+  return d?('<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+d+'</svg>'):'';
+}
+/* 把 root 里所有还空着的 [data-ico] 填上图标（setH 会自动调，静态标记开机调一次） */
+function paintIco(root){
+  const box=root||document;
+  if(!box.querySelectorAll)return;
+  const list=box.querySelectorAll('[data-ico]');
+  for(let i=0;i<list.length;i++){
+    const el=list[i];
+    if(el.firstChild)continue;
+    const n=el.getAttribute('data-ico');
+    if(n)setH(el,icoSvg(n));
+  }
+}
+/* 整颗按钮换图标 + 文字：<button><i class="ic">…</i><span class="lb">…</span></button> */
+function setIco(el,ico,label){
+  if(!el)return;
+  setH(el,'<i class="ic">'+icoSvg(ico)+'</i>'
+    +(label==null?'':'<span class="lb">'+esc(String(label))+'</span>'));
+}
 
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);

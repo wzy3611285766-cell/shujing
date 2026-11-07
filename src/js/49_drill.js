@@ -855,7 +855,7 @@ $('btnShop').onclick=()=>{
   else showShop();
 };
 
-$('btnSound').onclick=()=>{state.sound=!state.sound;try{EPIC_STATE.sound=ADV_STATE.sound=state.sound;}catch(e){}$('btnSound').textContent=state.sound?'🔊':'🔇';try{$('btnSound').setAttribute('aria-pressed',state.sound?'true':'false');}catch(e){}save();if(state.sound){audioKick();SFX.toggle(true);}};
+$('btnSound').onclick=()=>{state.sound=!state.sound;try{EPIC_STATE.sound=ADV_STATE.sound=state.sound;}catch(e){}setIco($('btnSound'),state.sound?'sound':'mute');try{$('btnSound').setAttribute('aria-pressed',state.sound?'true':'false');}catch(e){}save();if(state.sound){audioKick();SFX.toggle(true);}};
 /* 🎯 目标：手动召回任务条。任务条平时是闪现的（显示几秒后淡出），
    需要看目标时点这里，或答完题、换域时它也会自动闪一下。 */
 $('btnGoal').onclick=()=>{audioKick();flashQuest(true);};

@@ -273,7 +273,7 @@ function updateHUD(){
   setH($('diffChip'), '<span class="txt">'+TIER_NAME[tv]+'题</span>');
   $('diffChip').style.color=tv>=3?'#ffb0b0':(tv===2?'#ffd76a':'');
   const cv=crystalShown();
-  setH($('crystalChip'), '🪙 <span class="mono">'+cv+'</span>');
+  setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+cv+'</span>');
   $('crystalChip').style.color='#ffd76a';
   watchCrystal(cv);
   setQuestText(questText());

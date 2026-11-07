@@ -29,6 +29,9 @@ function setH(el,html){
   el.textContent='';
   el.appendChild(frag);
   el._h=src;                               // 给「内容没变就别重画」的比较用
+  /* 带图标占位的片段顺手填一次：调用方只写 <i data-ico="pin">。
+     没有这个属性时连查询都不做，热路径零开销。 */
+  if(src.indexOf('data-ico')>=0)paintIco(el);
   return el;
 }
 function addH(el,html){
@@ -38,6 +41,58 @@ function addH(el,html){
   return el;
 }
 function hasH(el){return !!(el&&el.firstChild);}
+
+/* ---------- 入口图标：单色线性 SVG（4.1.5 调性基线）----------
+   功能入口一律不用彩色 emoji：容器缺彩色 emoji 字体时 📕🎯 会渲染成方块，
+   同一排按钮在平板上糊成几粒色块，这跟"夜间作战室"的调性完全对不上。
+   这里给一套 24 栅格、1.7 描边、currentColor 的线性图标 —— 颜色跟着文字走，
+   换主题不用重画，缺字体也不会崩。
+   用法：
+     · 静态：<i class="ic" data-ico="pin"></i>（开机 paintIco 填一次）
+     · 动态：setIco(el,'flame','烽火')（换图标 + 换字）
+   ⚠️ 彩色 emoji 只留给"内容"（物资、地图标记、题图），那是世界的一部分。 */
+const ICO={
+  pin:'<circle cx="12" cy="10.6" r="2.4"/><path d="M12 21c4-4.6 6-7.7 6-10.2a6 6 0 1 0-12 0C6 13.3 8 16.4 12 21Z"/>',
+  flag:'<path d="M6 21V3.6"/><path d="M6 4.2h11l-2.4 4.2L17 12.6H6Z"/>',
+  book:'<path d="M5 4.6C5 3.7 5.7 3 6.6 3H19v18H6.6A1.6 1.6 0 0 1 5 19.4Z"/><path d="M5 17.6h14"/>',
+  bookmark:'<path d="M7 3.6h10a1 1 0 0 1 1 1V21l-6-3.8L6 21V4.6a1 1 0 0 1 1-1Z"/>',
+  globe:'<circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8"/><path d="M12 3.6c2.4 2.5 3.7 5.3 3.7 8.4s-1.3 5.9-3.7 8.4c-2.4-2.5-3.7-5.3-3.7-8.4S9.6 6.1 12 3.6Z"/>',
+  shop:'<path d="M4.2 9.4 5.6 4h12.8l1.4 5.4"/><path d="M5.4 9.4V20h13.2V9.4"/><path d="M9.6 20v-5.4h4.8V20"/>',
+  target:'<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.2"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3"/>',
+  save:'<path d="M5 4h10.4L19 7.6V20H5Z"/><path d="M9 4v5.2h6V4"/><path d="M8 20v-6.2h8V20"/>',
+  sound:'<path d="M4 9.4h3.4L12 5.6v12.8L7.4 14.6H4Z"/><path d="M15.4 8.9a4.3 4.3 0 0 1 0 6.2"/><path d="M18 6.4a7.8 7.8 0 0 1 0 11.2"/>',
+  mute:'<path d="M4 9.4h3.4L12 5.6v12.8L7.4 14.6H4Z"/><path d="M16 9.6 21 14.4M21 9.6 16 14.4"/>',
+  menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+  coin:'<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.6"/>',
+  bag:'<path d="M5.4 8.4h13.2l1 11.6H4.4Z"/><path d="M9 8.4V6.2a3 3 0 0 1 6 0v2.2"/>',
+  scroll:'<path d="M6 5.6C6 4.2 7 3.4 8.2 3.4H18v13.2H8.6a2.6 2.6 0 0 0-2.6 2.6Z"/><path d="M6 19.2V5.6"/><path d="M18 16.6H8.6"/>',
+  flame:'<path d="M12 3.2c3.2 4 5.2 6.3 5.2 9.4a5.2 5.2 0 0 1-10.4 0c0-3.1 2-5.4 5.2-9.4Z"/><path d="M12 13.6c1 1.2 1.5 2 1.5 2.9a1.5 1.5 0 0 1-3 0c0-.9.5-1.7 1.5-2.9Z"/>',
+  sword:'<path d="M14.4 3.6 20.4 9.6 11 19H5.6v-5.4Z"/><path d="M14.4 9.6 9.6 14.4"/>',
+  medal:'<circle cx="12" cy="9" r="5.2"/><path d="M8.6 13.4 7 21l5-2.8 5 2.8-1.6-7.6"/>',
+  hourglass:'<path d="M6.4 3.4h11.2M6.4 20.6h11.2"/><path d="M6.4 3.4c0 5.2 5.6 6.2 5.6 8.6 0-2.4 5.6-3.4 5.6-8.6"/><path d="M6.4 20.6c0-5.2 5.6-6.2 5.6-8.6 0 2.4 5.6 3.4 5.6 8.6"/>'
+};
+function icoSvg(n){
+  const d=ICO[n];
+  return d?('<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+d+'</svg>'):'';
+}
+/* 把 root 里所有还空着的 [data-ico] 填上图标（setH 会自动调，静态标记开机调一次） */
+function paintIco(root){
+  const box=root||document;
+  if(!box.querySelectorAll)return;
+  const list=box.querySelectorAll('[data-ico]');
+  for(let i=0;i<list.length;i++){
+    const el=list[i];
+    if(el.firstChild)continue;
+    const n=el.getAttribute('data-ico');
+    if(n)setH(el,icoSvg(n));
+  }
+}
+/* 整颗按钮换图标 + 文字：<button><i class="ic">…</i><span class="lb">…</span></button> */
+function setIco(el,ico,label){
+  if(!el)return;
+  setH(el,'<i class="ic">'+icoSvg(ico)+'</i>'
+    +(label==null?'':'<span class="lb">'+esc(String(label))+'</span>'));
+}
 
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
@@ -11906,8 +11961,13 @@ if(window.ResizeObserver&&document.getElementById('topbar')){
    force=true 用于玩家手动点 🎯 按钮召回。 */
 const QUEST_SHOW_MS=5200;
 let questTimer=0,questShown='';
+/* 中央浮层排队用的两个状态（见下面 showBanner 的注释） */
+let pendingQuest=null,bannerClsT=0;
 function setQuestText(txt,showMs,force){
   const el=$('quest');if(!el)return;
+  /* 横幅正占着中央：先排队，等它收（见 showBanner / flushQuest）。
+     注意文案本身已经更新到 DOM —— 排队的是"什么时候亮出来"，不是内容。 */
+  if(typeof bannerTimer!=='undefined'&&bannerTimer>0){pendingQuest={t:txt,ms:showMs,force:force};return;}
   showMs=showMs||QUEST_SHOW_MS;
   $('questText').textContent=txt;
   if(force||txt!==questShown){questShown=txt;el.style.opacity='1';questTimer=showMs;}
@@ -11934,11 +11994,31 @@ function toast(msg,ms){
   const d=document.createElement('div');d.className='tst';d.textContent=msg;
   box.appendChild(d);setTimeout(()=>d.remove(),ms||1900);
 }
+/* 中央浮层排队（4.1.5）
+   ---------------------------------------------------------------
+   进场横幅、目标条、操作提示以前各自抢着显示：横幅刚出来，目标条就压在它上面，
+   左下角的键位小抄也同时亮着 —— 三层字挤在屏幕中央，谁也读不完。
+   现在按优先级排队：横幅（2.1 秒）> 目标条 > 操作提示。
+   横幅在的时候 body 挂 banner-on，CSS 把另外两层压掉（见 00_base.css）；
+   这期间要说的目标条先存一句，横幅收了再补上。 */
+function flushQuest(){
+  if(!pendingQuest)return;
+  const p=pendingQuest;pendingQuest=null;
+  setQuestText(p.t,p.ms,p.force);
+}
 function showBanner(a,b){
   const el=$('banner');
   el.querySelector('.t').textContent=a;
   el.querySelector('.s').textContent=b||'';
   el.style.opacity=1;bannerTimer=2100;
+  document.body.classList.add('banner-on');
+  /* 用定时器收，不靠主循环的 dt —— 面板开着 / 后台标签页时循环会停，
+     靠它收尾的话这条横幅会永远挂在那儿把目标条压住。 */
+  clearTimeout(bannerClsT);
+  bannerClsT=setTimeout(()=>{
+    document.body.classList.remove('banner-on');
+    flushQuest();
+  },2100);
 }
 let actBtnCache='',actHintCache='';
 
@@ -16633,7 +16713,7 @@ $('btnShop').onclick=()=>{
   else showShop();
 };
 
-$('btnSound').onclick=()=>{state.sound=!state.sound;try{EPIC_STATE.sound=ADV_STATE.sound=state.sound;}catch(e){}$('btnSound').textContent=state.sound?'🔊':'🔇';try{$('btnSound').setAttribute('aria-pressed',state.sound?'true':'false');}catch(e){}save();if(state.sound){audioKick();SFX.toggle(true);}};
+$('btnSound').onclick=()=>{state.sound=!state.sound;try{EPIC_STATE.sound=ADV_STATE.sound=state.sound;}catch(e){}setIco($('btnSound'),state.sound?'sound':'mute');try{$('btnSound').setAttribute('aria-pressed',state.sound?'true':'false');}catch(e){}save();if(state.sound){audioKick();SFX.toggle(true);}};
 /* 🎯 目标：手动召回任务条。任务条平时是闪现的（显示几秒后淡出），
    需要看目标时点这里，或答完题、换域时它也会自动闪一下。 */
 $('btnGoal').onclick=()=>{audioKick();flashQuest(true);};
@@ -17594,13 +17674,13 @@ function drillActBtn(spot,btn,hint){
 
 /* 练枪模式的 HUD：位置 / 统计 / 任务条 */
 function updateHudDrill(){
-  setH($('regionChip'), '<span class="txt">🎯 练枪场 · 压轴专训</span>');
+  setH($('regionChip'), '<i class="ic" data-ico="target"></i><span class="txt">练枪场 · 压轴专训</span>');
   $('regionChip').style.color='#ffd76a';
   const tt=drillTotal();
   setH($('diffChip'), '<span class="txt">'+(tt.n?('累计 '+tt.n+' 题 · 命中 '+pctOf(tt.p)):'还没开练')+'</span>');
   $('diffChip').style.color=tt.n?'#ffd76a':'';
   const cv=crystalShown();
-  setH($('crystalChip'), '🪙 <span class="mono">'+cv+'</span>');
+  setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+cv+'</span>');
   $('crystalChip').style.color='#ffd76a';
   watchCrystal(cv);
   setQuestText(questTextDrill());
@@ -17758,11 +17838,11 @@ function updateHudEpic(){
   const ep=EPOCHS.find(r=>r.id===state.era)||EPOCHS.find(r=>r.id===state.region)||EPOCHS[0];
   const list=EPIC_SPOTS.filter(s=>s.era===ep.id);
   const rd=list.filter(s=>state.read[s.sid]).length;
-  setH($('regionChip'), '📍 <span class="txt">'+esc(ep.name)+'</span>');
+  setH($('regionChip'), '<i class="ic" data-ico="pin"></i><span class="txt">'+esc(ep.name)+'</span>');
   setH($('diffChip'), '<span class="txt">已读 '+rd+'/'+list.length+'</span>');
   $('diffChip').style.color='';
   const cv=crystalShown();
-  setH($('crystalChip'), '<span class="txt">✨ <span class="mono">'+cv+'</span></span>');
+  setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+cv+'</span>');
   watchCrystal(cv);
   setQuestText(questTextEpic(),QUEST_SHOW_MS);
   measureTopbar();
@@ -18168,7 +18248,7 @@ function startGame(){
   const reg=currentRegion(state.x,state.y);
   state.region=reg?reg.id:REGIONS[0].id;
   updateHUD();
-  $('btnSound').textContent=state.sound?'🔊':'🔇';
+  setIco($('btnSound'),state.sound?'sound':'mute');
   try{$('btnSound').setAttribute('aria-pressed',state.sound?'true':'false');}catch(e){}
   syncModeButtons();
   cam.x=clamp(state.x-VW/SCALE/2,0,Math.max(0,W-VW/SCALE));
@@ -18199,7 +18279,7 @@ function startGame(){
    以前这里要手工改，改漏了公告就发不出去（v173 踩过一次）。
    现在由 tools/build.py 从 news.json 自动生成 —— 'v<版本>-<公告内容摘要>'，
    内容一改值必变，必重弹，不用再惦记这件事。 */
-const NEWS_KEY='genji_news', NEWS_VER='v4.1.4-384ae35f';
+const NEWS_KEY='genji_news', NEWS_VER='v4.1.5-2f6b723d';
 let NEWS_SEEN=false, NEWS_OPEN=false;
 /* 没经过构建（在 src/ 上直接改着试）时占位符还在：退回按公告文本算个稳定值，
    至少保证"改了内容就会重弹"，不至于因为漏跑构建就永远看不到公告。 */
@@ -18744,7 +18824,7 @@ function updateHUD(){
   setH($('diffChip'), '<span class="txt">'+TIER_NAME[tv]+'题</span>');
   $('diffChip').style.color=tv>=3?'#ffb0b0':(tv===2?'#ffd76a':'');
   const cv=crystalShown();
-  setH($('crystalChip'), '🪙 <span class="mono">'+cv+'</span>');
+  setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+cv+'</span>');
   $('crystalChip').style.color='#ffd76a';
   watchCrystal(cv);
   setQuestText(questText());
@@ -22259,12 +22339,12 @@ function updateHudBlaze(){
   const poi=active?blazePoiAt(state.x,state.y):null;
   const gd =active?blazeGridOf(state.x,state.y):'';
   const here=poi?(poi.e+' '+poi.n):(site.emoji+' '+site.name);
-  setH($('regionChip'), '<span class="txt">'+
-    (active?esc('📍 '+here+(gd?' · '+gd:'')):'📍 🎖️ 行动基地')+'</span>');
+  setH($('regionChip'), '<i class="ic" data-ico="pin"></i><span class="txt">'+
+    (active?esc(here+(gd?' · '+gd:'')):'行动基地')+'</span>');
   $('regionChip').style.color=active?site.color:'#9cc0e0';
 
   setH($('diffChip'), '<span class="txt">'+
-    (active?esc(diff.emoji+' '+diff.name+' · 📶'+Math.max(0,BZ.sig)):'未部署')+'</span>');
+    (active?esc(diff.name+' · 信号 '+Math.max(0,BZ.sig)):'未部署')+'</span>');
   $('diffChip').style.color=active?(diff.id>=3?'#ffb0b0':(diff.id===2?'#ffd76a':'')):'';
 
   /* 局中这一格显示「背包」：几件 / 几格，以及这批东西能卖多少。
@@ -22272,10 +22352,10 @@ function updateHudBlaze(){
   if(active){
     const bg=BZ.bag||[];
     const v=bg.reduce((a,b)=>a+b.val,0);
-    setH($('crystalChip'), '🎒 <span class="mono">'+blazeBagUsed(bg)+'</span>/'+
+    setH($('crystalChip'), '<i class="ic" data-ico="bag"></i><span class="mono">'+blazeBagUsed(bg)+'</span>/'+
       blazeBagCap()+'<span style="opacity:.65"> · '+bg.length+'件 · '+v+'</span>');
   }else{
-    setH($('crystalChip'), '🪙 <span class="mono">'+(BLAZE_STATE.crystals|0)+'</span>');
+    setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+(BLAZE_STATE.crystals|0)+'</span>');
   }
   $('crystalChip').style.color='#ffd76a';
   watchCrystal(BLAZE_STATE.crystals|0);
@@ -23117,14 +23197,14 @@ function syncModeButtons(){
   const shop=$('btnShop'),dex=$('btnDex'),mode=$('btnMode'),nat=$('btnNation');
   /* 史诗下这个按钮是「⏳ 时空交易所」：星尘唯一的去处，别再藏起来了；
      练枪场不是经贸现场，商行与国度入口一并收起 */
-  if(shop){shop.style.display=(bz||dr)?'none':'';shop.textContent=ep?'⏳ 交易所':'🏪 商行';}
+  if(shop){shop.style.display=(bz||dr)?'none':'';setIco(shop,ep?'hourglass':'shop',ep?'交易所':'商行');}
   if(nat) nat.style.display=(bz||dr)?'none':'';
-  if(dex) dex.textContent=bz?'🎖️ 行动':(ep?'📜 编年史':'📖 图鉴');
+  if(dex) setIco(dex,bz?'medal':'book',bz?'行动':(ep?'编年史':'图鉴'));
   /* 这颗键只做一件事：切到下一个世界，名字就是那个世界的名字。
      以前烽火这站写作「🎯 练枪场」，和常驻的 #btnDrill「🎯 练枪」撞在一起 ——
      两颗键长得一样、点下去也到同一个地方，玩家分不清。
      现在循环里没有练枪场（见 switchMode），烽火 / 练枪场 这一站统一是「⚔️ 闯关」。 */
-  if(mode)mode.textContent=ep?'🔥 烽火':((bz||dr)?'⚔️ 闯关':'📜 史诗');
+  if(mode)setIco(mode,ep?'flame':((bz||dr)?'sword':'scroll'),ep?'烽火':((bz||dr)?'闯关':'史诗'));
 }
 
 /* ---------------- 首次进入的说明 ----------------
@@ -23415,7 +23495,7 @@ function showMenu(){
   const head = '数境：搜打撤';
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
-     没经过构建（4.1.4 占位）时不显示，免得把占位符贴到界面上。 */
+     没经过构建（4.1.5 占位）时不显示，免得把占位符贴到界面上。 */
   const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
     ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
@@ -24577,7 +24657,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.1.4';
+const BUILD_VER='4.1.5';
 const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
 function upbarSkipped(v){
   try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}
@@ -24783,6 +24863,9 @@ fpsBadgeApply();
    ⚠️ 本文件必须是最后一个 JS 模块 —— build.py 的 boot_last_check() 断言这条。
       往后追加新模块时，启动语句一律写进这里，别在别处再开"执行"的口子。
    ========================================================= */
+/* 静态标记里的图标占位（<i data-ico>）先填一次：
+   顶栏那排键在 startGame 之前就存在，不填会先露出空白格。 */
+paintIco(document);
 startGame();
 advNationBoot();
 newsBoot();

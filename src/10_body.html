@@ -30,21 +30,24 @@
     <button class="up-x" id="upX" aria-label="这次不提醒">✕</button>
   </div>
 
+  <!-- 顶栏（4.1.5 降噪）：功能入口一律单色线性图标，彩色 emoji 只留给世界里的东西。
+       图标由 00_utils.js 的 ICO 表提供，data-ico 开机时填一次；随模式变脸的几颗
+       （史诗 / 图鉴 / 商行 / 音效）由 syncModeButtons 用 setIco 换。 -->
   <div id="topbar">
-    <div class="chip" id="regionChip">📍 <span class="txt">——</span></div>
+    <div class="chip" id="regionChip"><i class="ic" data-ico="pin"></i><span class="txt">——</span></div>
     <div class="chip small" id="diffChip"><span class="txt">基础题</span></div>
     <div id="topRight">
-      <div class="chip" id="crystalChip">🪙 <span class="mono">0</span></div>
-      <button class="btn fn" id="btnMode">📜 史诗</button>
-      <button class="btn fn" id="btnDex">📖 图鉴</button>
-      <button class="btn fn" id="btnNation">🌍 国度</button>
-      <button class="btn fn" id="btnShop">🏪 商行</button>
-      <button class="btn fn" id="btnDrill">🎯 练枪</button>
-      <button class="btn fn" id="btnWb">📕 错题<span class="wb-dot" id="wbDot" hidden>0</span></button>
-      <button class="btn fn ico" id="btnGoal" aria-label="当前目标">📍</button>
-      <button class="btn fn" id="btnSave">💾 存档</button>
-      <button class="btn fn ico" id="btnSound" aria-label="音效开关">🔊</button>
-      <button class="btn ico" id="btnMenu" aria-label="菜单">☰<span class="wb-dot pin" id="wbDot2" hidden>0</span></button>
+      <div class="chip" id="crystalChip"><i class="ic" data-ico="coin"></i><span class="mono">0</span></div>
+      <button class="btn fn" id="btnMode"><i class="ic" data-ico="scroll"></i><span class="lb">史诗</span></button>
+      <button class="btn fn" id="btnDex"><i class="ic" data-ico="book"></i><span class="lb">图鉴</span></button>
+      <button class="btn fn" id="btnNation"><i class="ic" data-ico="globe"></i><span class="lb">国度</span></button>
+      <button class="btn fn" id="btnShop"><i class="ic" data-ico="shop"></i><span class="lb">商行</span></button>
+      <button class="btn fn" id="btnDrill"><i class="ic" data-ico="target"></i><span class="lb">练枪</span></button>
+      <button class="btn fn" id="btnWb"><i class="ic" data-ico="bookmark"></i><span class="lb">错题</span><span class="wb-dot" id="wbDot" hidden>0</span></button>
+      <button class="btn fn ico" id="btnGoal" aria-label="当前目标"><i class="ic" data-ico="flag"></i></button>
+      <button class="btn fn" id="btnSave"><i class="ic" data-ico="save"></i><span class="lb">存档</span></button>
+      <button class="btn fn ico" id="btnSound" aria-label="音效开关"><i class="ic" data-ico="sound"></i></button>
+      <button class="btn ico" id="btnMenu" aria-label="菜单"><i class="ic" data-ico="menu"></i><span class="wb-dot pin" id="wbDot2" hidden>0</span></button>
     </div>
   </div>
 

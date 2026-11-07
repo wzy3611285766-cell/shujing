@@ -284,8 +284,16 @@ body.upbar-on #modal{top:var(--upH)}
    选项 .opt 也补了 role=button + tabindex，同样吃这条圈。 */
 .btn:focus-visible,.opt:focus-visible,.fitbtn:focus-visible,.menu-li:focus-visible{
   outline:2px solid #ffd76a;outline-offset:2px}
-/* 图标按钮：只有 emoji/符号，没有文字 */
+/* 图标按钮：只有图标，没有文字 */
 .btn.ico{padding:calc(var(--pad) * .9);justify-content:center;aspect-ratio:1}
+/* 入口图标（4.1.5）：单色线性 SVG，尺寸跟字号走、颜色跟文字走。
+   不用彩色 emoji —— 容器缺 emoji 字体时那排键会糊成色块（见 00_utils.js 的 ICO 注释）。 */
+.ic{display:inline-flex;align-items:center;justify-content:center;
+  width:1.08em;height:1.08em;flex:none;vertical-align:-.16em}
+.ic svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+/* 状态 chip 里的图标压一档：它跟的是 --fs-sm，比按钮小一号 */
+.chip .ic{width:1.02em;height:1.02em;opacity:.92}
 /* 顶栏的按钮压在地图上：换深蓝玻璃，浅色字才立得住。
    4.0.17：顺手去掉 backdrop-filter —— 它们背后是每帧都在变的地图，
    每一层模糊都要跟着重算一遍（60fps 变 30fps），而这层模糊在深色地图上几乎看不出来。
@@ -312,12 +320,25 @@ body.upbar-on #modal{top:var(--upH)}
    旧版字号写死 38px，13 个字的标题在 320px 屏上会顶出屏幕外。 */
 #banner{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%);
   width:min(92vw,560px);text-align:center;z-index:19;pointer-events:none;opacity:0;
-  transition:opacity .5s}
+  transition:opacity .5s;isolation:isolate}
+/* 标题底下一层软晕：地图上的实体标签（指挥部、物资箱）是 z-index 14，
+   会从字缝里透出来，白字压在彩色标签上就成了花斑。
+   这里垫一块静止的径向暗晕 —— 一次性画好，不参与每帧合成，跟毛玻璃不是一回事。 */
+#banner::before{content:'';position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);width:132%;height:230%;border-radius:50%;
+  pointer-events:none;z-index:-1;
+  background:radial-gradient(closest-side,rgba(4,12,24,.88),rgba(4,12,24,.55) 55%,rgba(4,12,24,0) 100%)}
 #banner .t{font-size:var(--fs-3xl);font-weight:800;color:#fff;
   text-shadow:0 4px 18px rgba(0,0,0,.65);letter-spacing:1px;line-height:var(--lh-tight);
   overflow-wrap:anywhere}
 #banner .s{font-size:var(--fs-md);color:#bcd9f5;margin-top:4px;line-height:var(--lh-snug);
   text-shadow:0 2px 8px rgba(0,0,0,.65);overflow-wrap:anywhere}
+/* 中央浮层排队（4.1.5）：横幅那 2.1 秒里，目标条与两条操作提示一律让位。
+   以前三层同时压在屏幕中央 —— 横幅在讲"这是哪儿"，目标条在讲"下一步干什么"，
+   左下角还在教怎么走路，谁也没读完。body.banner-on 由 showBanner 挂/摘。 */
+body.banner-on #quest,
+body.banner-on #moveHint,
+body.banner-on #pcHint{opacity:0!important;pointer-events:none}
 
 /* ============ 摇杆（浮动：按下时移动到手指位置） ============ */
 #stick{position:absolute;left:calc(var(--safeL) + 14px);bottom:calc(var(--safeB) + 16px);

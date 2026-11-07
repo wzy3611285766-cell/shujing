@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0d1b2a">
 <title>数境：搜打撤</title>
 <!-- 版本历史已外置：完整记录见根目录 CHANGELOG.md -->
-<!-- build: minitool v4.1.4 · 2026-10-29 12:38 · 本应用离线包 -->
+<!-- build: minitool v4.1.5 · 2026-11-04 23:15 · 本应用离线包 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -383,10 +383,18 @@ body.upbar-on #modal{top:var(--upH)}
    选项 .opt 也补了 role=button + tabindex，同样吃这条圈。 */
 .btn:focus-visible,.opt:focus-visible,.fitbtn:focus-visible,.menu-li:focus-visible{
   outline:2px solid #ffd76a;outline-offset:2px}
-/* 图标按钮：只有 emoji/符号，没有文字 */
+/* 图标按钮：只有图标，没有文字 */
 /* aspect-ratio 需 Chrome 88：老内核退回一个近似正方形 */
 .btn.ico{padding:calc(var(--pad) * .9);justify-content:center;min-height:calc(var(--pad) * 1.8 + 1.2em)}
 .btn.ico{padding:calc(var(--pad) * .9);justify-content:center;aspect-ratio:1}
+/* 入口图标（4.1.5）：单色线性 SVG，尺寸跟字号走、颜色跟文字走。
+   不用彩色 emoji —— 容器缺 emoji 字体时那排键会糊成色块（见 00_utils.js 的 ICO 注释）。 */
+.ic{display:inline-flex;align-items:center;justify-content:center;
+  width:1.08em;height:1.08em;flex:none;vertical-align:-.16em}
+.ic svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+/* 状态 chip 里的图标压一档：它跟的是 --fs-sm，比按钮小一号 */
+.chip .ic{width:1.02em;height:1.02em;opacity:.92}
 /* 顶栏的按钮压在地图上：换深蓝玻璃，浅色字才立得住。
    4.0.17：顺手去掉 backdrop-filter —— 它们背后是每帧都在变的地图，
    每一层模糊都要跟着重算一遍（60fps 变 30fps），而这层模糊在深色地图上几乎看不出来。
@@ -414,12 +422,25 @@ body.upbar-on #modal{top:var(--upH)}
 #banner{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%);
   width:92vw;
   width:min(92vw,560px);text-align:center;z-index:19;pointer-events:none;opacity:0;
-  transition:opacity .5s}
+  transition:opacity .5s;isolation:isolate}
+/* 标题底下一层软晕：地图上的实体标签（指挥部、物资箱）是 z-index 14，
+   会从字缝里透出来，白字压在彩色标签上就成了花斑。
+   这里垫一块静止的径向暗晕 —— 一次性画好，不参与每帧合成，跟毛玻璃不是一回事。 */
+#banner::before{content:'';position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);width:132%;height:230%;border-radius:50%;
+  pointer-events:none;z-index:-1;
+  background:radial-gradient(closest-side,rgba(4,12,24,.88),rgba(4,12,24,.55) 55%,rgba(4,12,24,0) 100%)}
 #banner .t{font-size:var(--fs-3xl);font-weight:800;color:#fff;
   text-shadow:0 4px 18px rgba(0,0,0,.65);letter-spacing:1px;line-height:var(--lh-tight);
   overflow-wrap:anywhere}
 #banner .s{font-size:var(--fs-md);color:#bcd9f5;margin-top:4px;line-height:var(--lh-snug);
   text-shadow:0 2px 8px rgba(0,0,0,.65);overflow-wrap:anywhere}
+/* 中央浮层排队（4.1.5）：横幅那 2.1 秒里，目标条与两条操作提示一律让位。
+   以前三层同时压在屏幕中央 —— 横幅在讲"这是哪儿"，目标条在讲"下一步干什么"，
+   左下角还在教怎么走路，谁也没读完。body.banner-on 由 showBanner 挂/摘。 */
+body.banner-on #quest,
+body.banner-on #moveHint,
+body.banner-on #pcHint{opacity:0!important;pointer-events:none}
 
 /* ============ 摇杆（浮动：按下时移动到手指位置） ============ */
 #stick{position:absolute;left:calc(var(--safeL) + 14px);bottom:calc(var(--safeB) + 16px);
@@ -1869,21 +1890,24 @@ x-inp, x-txt{display:none!important}
     <button class="up-x" id="upX" aria-label="这次不提醒">✕</button>
   </div>
 
+  <!-- 顶栏（4.1.5 降噪）：功能入口一律单色线性图标，彩色 emoji 只留给世界里的东西。
+       图标由 00_utils.js 的 ICO 表提供，data-ico 开机时填一次；随模式变脸的几颗
+       （史诗 / 图鉴 / 商行 / 音效）由 syncModeButtons 用 setIco 换。 -->
   <div id="topbar">
-    <div class="chip" id="regionChip">📍 <span class="txt">——</span></div>
+    <div class="chip" id="regionChip"><i class="ic" data-ico="pin"></i><span class="txt">——</span></div>
     <div class="chip small" id="diffChip"><span class="txt">基础题</span></div>
     <div id="topRight">
-      <div class="chip" id="crystalChip">🪙 <span class="mono">0</span></div>
-      <button class="btn fn" id="btnMode">📜 史诗</button>
-      <button class="btn fn" id="btnDex">📖 图鉴</button>
-      <button class="btn fn" id="btnNation">🌍 国度</button>
-      <button class="btn fn" id="btnShop">🏪 商行</button>
-      <button class="btn fn" id="btnDrill">🎯 练枪</button>
-      <button class="btn fn" id="btnWb">📕 错题<span class="wb-dot" id="wbDot" hidden>0</span></button>
-      <button class="btn fn ico" id="btnGoal" aria-label="当前目标">📍</button>
-      <button class="btn fn" id="btnSave">💾 存档</button>
-      <button class="btn fn ico" id="btnSound" aria-label="音效开关">🔊</button>
-      <button class="btn ico" id="btnMenu" aria-label="菜单">☰<span class="wb-dot pin" id="wbDot2" hidden>0</span></button>
+      <div class="chip" id="crystalChip"><i class="ic" data-ico="coin"></i><span class="mono">0</span></div>
+      <button class="btn fn" id="btnMode"><i class="ic" data-ico="scroll"></i><span class="lb">史诗</span></button>
+      <button class="btn fn" id="btnDex"><i class="ic" data-ico="book"></i><span class="lb">图鉴</span></button>
+      <button class="btn fn" id="btnNation"><i class="ic" data-ico="globe"></i><span class="lb">国度</span></button>
+      <button class="btn fn" id="btnShop"><i class="ic" data-ico="shop"></i><span class="lb">商行</span></button>
+      <button class="btn fn" id="btnDrill"><i class="ic" data-ico="target"></i><span class="lb">练枪</span></button>
+      <button class="btn fn" id="btnWb"><i class="ic" data-ico="bookmark"></i><span class="lb">错题</span><span class="wb-dot" id="wbDot" hidden>0</span></button>
+      <button class="btn fn ico" id="btnGoal" aria-label="当前目标"><i class="ic" data-ico="flag"></i></button>
+      <button class="btn fn" id="btnSave"><i class="ic" data-ico="save"></i><span class="lb">存档</span></button>
+      <button class="btn fn ico" id="btnSound" aria-label="音效开关"><i class="ic" data-ico="sound"></i></button>
+      <button class="btn ico" id="btnMenu" aria-label="菜单"><i class="ic" data-ico="menu"></i><span class="wb-dot pin" id="wbDot2" hidden>0</span></button>
     </div>
   </div>
 
@@ -1912,17 +1936,18 @@ x-inp, x-txt{display:none!important}
       <button class="news-x" id="newsX" aria-label="关闭公告">✕</button>
 
       <div class="news-hero">
-        <span class="news-badge">📣 版本更新 · v4.1.4</span>
-        <div class="news-title">定名《数境：搜打撤》</div>
-        <div class="news-sub">名字在界面上统一了 · 顶栏给平台按钮让位 · 玩法一点没变</div>
+        <span class="news-badge">📣 版本更新 · v4.1.5</span>
+        <div class="news-title">把吵闹收掉：顶栏换了一副模样</div>
+        <div class="news-sub">单色图标 · 中央只留一条提示 · 玩法一点没动</div>
       </div>
 
       <div class="news-body">
         <div class="news-sec">
           <div class="news-sec-h">本次更新</div>
-          <div class="news-li"><span class="e">🏷️</span><span><b>窗口标题、菜单抬头、存档码、错题导出里的名字统一成《数境：搜打撤》</b> —— 以前四处抬头各叫各的，看着像四款不同的游戏</span></div>
-          <div class="news-li"><span class="e">📐</span><span>顶栏移到屏幕最上沿，右侧<b>给容器右上角的平台按钮让出位置</b>：最右边的<b>菜单键</b>不再被压在下面（竖屏也一样）</span></div>
-          <div class="news-li"><span class="e">🔁</span><span><b>玩法、题库、存档、熟炼度一律没动</b>：这版只改了名字和顶栏的位置</span></div>
+          <div class="news-li"><span class="e">▫️</span><span>顶栏那排键换成<b>单色线性图标</b>：不再依赖彩色 emoji 字体 —— 旧安卓、平板、各种容器里都不会再糊成几粒色块</span></div>
+          <div class="news-li"><span class="e">▫️</span><span>进场那两秒<b>只留一条提示</b>：以前横幅、目标条、操作提示三层叠在屏幕中央，谁也没读完；现在排队，横幅说完才轮到目标条</span></div>
+          <div class="news-li"><span class="e">▫️</span><span>标题底下一层<b>柔光晕</b>：地图上的指挥部、物资箱标签不再从字缝里透出来</span></div>
+          <div class="news-li"><span class="e">🔁</span><span><b>玩法、题库、存档一律没动</b>：这版只动了顶栏的形与中央的秩序</span></div>
         </div>
       </div>
 

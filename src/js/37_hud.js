@@ -50,8 +50,13 @@ if(window.ResizeObserver&&document.getElementById('topbar')){
    force=true 用于玩家手动点 🎯 按钮召回。 */
 const QUEST_SHOW_MS=5200;
 let questTimer=0,questShown='';
+/* 中央浮层排队用的两个状态（见下面 showBanner 的注释） */
+let pendingQuest=null,bannerClsT=0;
 function setQuestText(txt,showMs,force){
   const el=$('quest');if(!el)return;
+  /* 横幅正占着中央：先排队，等它收（见 showBanner / flushQuest）。
+     注意文案本身已经更新到 DOM —— 排队的是"什么时候亮出来"，不是内容。 */
+  if(typeof bannerTimer!=='undefined'&&bannerTimer>0){pendingQuest={t:txt,ms:showMs,force:force};return;}
   showMs=showMs||QUEST_SHOW_MS;
   $('questText').textContent=txt;
   if(force||txt!==questShown){questShown=txt;el.style.opacity='1';questTimer=showMs;}
@@ -78,11 +83,31 @@ function toast(msg,ms){
   const d=document.createElement('div');d.className='tst';d.textContent=msg;
   box.appendChild(d);setTimeout(()=>d.remove(),ms||1900);
 }
+/* 中央浮层排队（4.1.5）
+   ---------------------------------------------------------------
+   进场横幅、目标条、操作提示以前各自抢着显示：横幅刚出来，目标条就压在它上面，
+   左下角的键位小抄也同时亮着 —— 三层字挤在屏幕中央，谁也读不完。
+   现在按优先级排队：横幅（2.1 秒）> 目标条 > 操作提示。
+   横幅在的时候 body 挂 banner-on，CSS 把另外两层压掉（见 00_base.css）；
+   这期间要说的目标条先存一句，横幅收了再补上。 */
+function flushQuest(){
+  if(!pendingQuest)return;
+  const p=pendingQuest;pendingQuest=null;
+  setQuestText(p.t,p.ms,p.force);
+}
 function showBanner(a,b){
   const el=$('banner');
   el.querySelector('.t').textContent=a;
   el.querySelector('.s').textContent=b||'';
   el.style.opacity=1;bannerTimer=2100;
+  document.body.classList.add('banner-on');
+  /* 用定时器收，不靠主循环的 dt —— 面板开着 / 后台标签页时循环会停，
+     靠它收尾的话这条横幅会永远挂在那儿把目标条压住。 */
+  clearTimeout(bannerClsT);
+  bannerClsT=setTimeout(()=>{
+    document.body.classList.remove('banner-on');
+    flushQuest();
+  },2100);
 }
 let actBtnCache='',actHintCache='';
 
