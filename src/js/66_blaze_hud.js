@@ -22,7 +22,7 @@ function updateHudBlaze(){
 
   setH($('diffChip'), '<span class="txt">'+
     (active?esc(diff.name+' · 信号 '+Math.max(0,BZ.sig)):'未部署')+'</span>');
-  $('diffChip').style.color=active?(diff.id>=3?'#ffb0b0':(diff.id===2?'#ffd76a':'')):'';
+  $('diffChip').style.color=active&&diff.id>=3?'#ffb0b0':'';
 
   /* 局中这一格显示「背包」：几件 / 几格，以及这批东西能卖多少。
      烽火里不掉结晶，钱只能活着回基地、去交易站卖了东西才有。 */
@@ -34,7 +34,7 @@ function updateHudBlaze(){
   }else{
     setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+(BLAZE_STATE.crystals|0)+'</span>');
   }
-  $('crystalChip').style.color='#ffd76a';
+  $('crystalChip').style.color='';
   watchCrystal(BLAZE_STATE.crystals|0);
 
   setQuestText(questTextBlaze());

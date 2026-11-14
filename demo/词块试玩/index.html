@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>词块 · 试玩（数境调性）</title>
+<link rel="stylesheet" href="./wz-blocks.css">
+<style>
+  /* 数境的调性：夜航深蓝 + 冷白字 + 一处青蓝强调；金色不出现在这一页
+     （按 4.1.7 的规矩，金只留给"现在能按下去的那一下"，本页那个动作是"检查/下一题"，
+       但它已经在组件里用品牌色画了，所以整页不额外加金）。 */
+  :root{
+    --bg:#0b1725; --panel:#0f1f31; --line:#1d3145;
+    --ink:#eaf4ff; --ink2:#a9c4dc; --ink3:#7d99b3;
+    --accent:#5ed6ff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;padding:22px 14px 48px;background:
+      radial-gradient(120% 90% at 50% 0%,#132a42 0%,#0b1725 60%,#08121d 100%);
+    color:var(--ink);
+    font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:600px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 4px;font-weight:800;letter-spacing:.5px}
+  h1 span{color:var(--ink3);font-weight:600;font-size:13px;margin-left:8px;letter-spacing:0}
+  .sub{font-size:12.5px;color:var(--ink3);margin:0 0 16px;line-height:1.7}
+  .card{
+    background:linear-gradient(180deg,rgba(23,42,62,.92),rgba(12,26,40,.94));
+    border:1px solid var(--line);border-radius:16px;padding:16px 14px;
+    box-shadow:0 10px 30px -18px rgba(0,0,0,.9);
+  }
+  /* 组件换皮：id 选择器压过 .wzb 的默认变量 */
+  #app{
+    --wzb-bg:#0e1e2f;
+    --wzb-bg2:#0a1626;
+    --wzb-ink:#eaf4ff;
+    --wzb-ink2:#a9c4dc;
+    --wzb-ink3:#7d99b3;
+    --wzb-line:#22405a;
+    --wzb-line2:#1a2f45;
+    --wzb-brand:#5ed6ff;
+    --wzb-brand-bg:rgba(94,214,255,.14);
+    --wzb-ok:#5be0a0;
+    --wzb-ok-bg:rgba(91,224,160,.12);
+    --wzb-bad:#ff8a8a;
+    --wzb-bad-bg:rgba(255,138,138,.12);
+    --wzb-radius:12px;
+  }
+  /* 大题步骤块比公式块长得多：允许换行、按容器宽度收，否则一块能把屏幕撑破
+     （组件的 .wzb-blk 默认按内容宽度排，长句会溢出容器） */
+  #app .wzb-blk{max-width:100%;white-space:normal;text-align:left;line-height:1.4}
+  .log{
+    margin-top:14px;padding-top:10px;border-top:1px dashed var(--line);
+    font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums;
+    white-space:pre-wrap;min-height:1.6em;
+  }
+  .foot{margin-top:14px;font-size:12px;color:var(--ink3);line-height:1.8}
+  .foot code{color:var(--accent);font-size:11.5px}
+  .bar{display:flex;gap:8px;margin-top:14px}
+  .bar button{
+    flex:1;padding:10px;border-radius:11px;cursor:pointer;font-family:inherit;font-size:12.5px;
+    background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);
+  }
+  .bar button:active{transform:scale(.98)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>词块 <span>试玩 · 两道数学大题 + 五道小题</span></h1>
+  <p class="sub">按顺序点下面的块填空；点已填的槽位可以退回。填满自动判，答错的下轮会再考一遍。<br>
+    前两题是导数大题与证明大题 —— 拼的是<b>解题过程</b>，不是公式。</p>
+
+  <div class="card">
+    <div id="app" class="is-dark"></div>
+    <div class="log" id="log">—</div>
+  </div>
+
+  <div class="bar">
+    <button id="reset">整组重来</button>
+  </div>
+
+  <p class="foot">
+    接入方式：<code>WZBlocks.mount(el, {items, labels, onAnswer})</code> ·
+    题源就是现有题库里的方程式与推导步骤，按「能认出是一个成分」切块
+  </p>
+</div>
+
+<script src="./wz-blocks.js"></script>
+<script>
+/* 5 道题：题源来自数境题库里的高考真题（配平 / 电离 / 公式变形 / 光合 / 求导步骤） */
+var ITEMS = [
+  {
+    title: '数学 · 导数大题',
+    prompt: '已知 f(x) = x³ − 3x² + 2。\n(1) 求 f(x) 的单调区间；(2) 求 f(x) 的极值。\n把解题过程按顺序拼出来。',
+    blocks: [
+      'f′(x) = 3x² − 6x = 3x(x − 2)',
+      '令 f′(x) = 0，得 x = 0 或 x = 2',
+      'x < 0 时 f′(x) > 0，f(x) 单调递增',
+      '0 < x < 2 时 f′(x) < 0，f(x) 单调递减',
+      'x > 2 时 f′(x) > 0，f(x) 单调递增',
+      '极大值 f(0) = 2，极小值 f(2) = −2'
+    ],
+    note: 'math-deriv-mono'
+  },
+  {
+    title: '数学 · 证明大题',
+    prompt: '已知数列 {aₙ} 满足 a₁ = 1，aₙ₊₁ = 2aₙ + 1。\n求证：aₙ = 2ⁿ − 1。\n把证明过程按顺序拼出来。',
+    blocks: [
+      '当 n = 1 时，a₁ = 1 = 2¹ − 1，命题成立',
+      '假设 n = k 时命题成立，即 aₖ = 2ᵏ − 1',
+      /* 续行（以 = 开头那半截）不能单独成块：孤零零一个「= …」放在池子里读不通，
+         也不该让玩家去拼"等号在哪"。同一步的推导写在一块里。 */
+      '则 aₖ₊₁ = 2aₖ + 1 = 2(2ᵏ − 1) + 1 = 2ᵏ⁺¹ − 1',
+      '即 n = k + 1 时命题也成立',
+      '由数学归纳法，对一切 n ∈ N* 有 aₙ = 2ⁿ − 1'
+    ],
+    note: 'math-induction'
+  },
+  {
+    title: '化学 · 配平',
+    prompt: '把下面的块拼成一个已配平的化学方程式。\n（实验室制氯气）',
+    blocks: ['MnO₂', ' + ', '4HCl(浓)', ' = ', 'MnCl₂', ' + ', 'Cl₂↑', ' + ', '2H₂O'],
+    note: 'chem-mno2-hcl'
+  },
+  {
+    title: '化学 · 弱电解质',
+    prompt: '拼出醋酸在水中的电离式。',
+    blocks: ['CH₃COOH', ' ⇌ ', 'CH₃COO⁻', ' + ', 'H⁺'],
+    note: 'chem-hac-ion'
+  },
+  {
+    title: '物理 · 公式变形',
+    prompt: '由 v² = v₀² + 2ax 解出加速度 a。',
+    blocks: ['a', ' = ', '(v² − v₀²)', ' / ', '2x'],
+    note: 'phys-kin-a'
+  },
+  {
+    title: '生物 · 光合作用',
+    prompt: '拼出光合作用的总反应式，条件写在箭头里。',
+    blocks: ['6CO₂', ' + ', '6H₂O', ' →(光能·叶绿体) ', 'C₆H₁₂O₆', ' + ', '6O₂'],
+    note: 'bio-photo'
+  },
+  {
+    title: '数学 · 链式法则',
+    prompt: '把求 y = (3x+1)² 的步骤按顺序拼起来。',
+    blocks: ['先对外层求导', ' × ', '再对内层求导', ' = ', '2(3x+1)·3'],
+    note: 'math-chain'
+  }
+];
+
+var logEl = document.getElementById('log');
+var lines = [];
+function say(s) {
+  lines.unshift(s);
+  logEl.textContent = lines.slice(0, 6).join('\n');
+}
+
+var q = WZBlocks.mount(document.getElementById('app'), {
+  items: ITEMS,
+  shuffle: true,
+  keepWrong: true,
+  maxRounds: 3,
+  labels: {
+    hint: '按顺序点下面的块',
+    check: '检查',
+    next: '下一题',
+    right: '拼对了',
+    wrong: '顺序不对 · 正确顺序是',
+    retry: '再过一遍这 {n} 题',
+    done: '五道拼完了',
+    again: '再来一遍',
+    round: '第 {n} 遍'
+  },
+  onAnswer: function (e) {
+    /* 游戏里这一行就是 recordAnswer + wbMiss（错题进本） */
+    say((e.ok ? '✓ ' : '✗ ') + e.item.title + '（第 ' + e.round + ' 遍）');
+  },
+  onRoundEnd: function (e) {
+    say('第 ' + e.round + ' 遍结束 · 对 ' + e.right + ' / 错 ' + e.wrong);
+  },
+  onFinish: function (e) {
+    say('整组完成 · 共 ' + e.total + ' 题 · ' + e.rounds + ' 遍');
+  }
+});
+
+document.getElementById('reset').onclick = function () {
+  lines = [];
+  logEl.textContent = '—';
+  q.reset();
+};
+</script>
+</body>
+</html>

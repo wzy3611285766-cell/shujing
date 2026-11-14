@@ -260,7 +260,9 @@ body.upbar-on #modal{top:var(--upH)}
 .chip.small{padding:calc(var(--pad) * .8) calc(var(--pad) * 1.3);font-size:var(--fs-xs)}
 #topRight{margin-left:auto;display:flex;gap:var(--gap);align-items:center;flex-wrap:nowrap;
   min-width:0;justify-content:flex-end}
-#crystalChip{color:#ffd76a;font-variant-numeric:tabular-nums;flex:none}
+/* 4.1.7 金色收敛：结晶是**状态**不是**动作**，用冷白。
+   金色从这一版起只留给"此刻能按下去的那一下"（主按钮 / 互动键 / 选中的页签）。 */
+#crystalChip{color:#eaf4ff;font-variant-numeric:tabular-nums;flex:none}
 /* ---- iOS 玻璃胶囊按钮（.btn 族，照搬工作台）----
    结构 = 半透明玻璃底面 + backdrop 模糊 + 发丝描边 + 顶部高光 + 镜面渐变层
    按下 = 轻微缩小 + 下沉内阴影 + 高光收敛（iOS 的「压下去」） */
@@ -314,7 +316,8 @@ body.upbar-on #modal{top:var(--upH)}
   color:#cfe6ff;font-size:var(--fs-sm);font-weight:600;line-height:1.5;z-index:18;
   box-shadow:0 4px 14px rgba(0,0,0,.3);opacity:0;
   pointer-events:none;transition:opacity .45s}
-#quest b{color:#ffd76a}
+/* 4.1.7：目标条里的关键词不再染金 —— 一屏只留一处金，那处是"能按下去的东西" */
+#quest b{color:#eaf4ff;font-weight:800}
 
 /* ============ 区域横幅 ============
    旧版字号写死 38px，13 个字的标题在 320px 屏上会顶出屏幕外。 */
@@ -345,7 +348,7 @@ body.banner-on #pcHint{opacity:0!important;pointer-events:none}
   width:var(--stick);height:var(--stick);border-radius:50%;
   background:rgba(10,24,40,.34);border:2px solid rgba(255,255,255,.16);
   z-index:22;touch-action:none;pointer-events:none;opacity:.55;transition:opacity .18s}
-#stick.active{opacity:1;border-color:rgba(255,215,106,.6);background:rgba(10,24,40,.5)}
+#stick.active{opacity:1;border-color:rgba(255,255,255,.45);background:rgba(10,24,40,.5)}
 /* 旋钮靠 left/top:50% + translate(-50%,-50%) 居中。
    JS 推旋钮时只改 --kx / --ky 两个变量，不碰 transform ——
    以前直接写 transform:translate(dx,dy)，把居中的 -50% 覆盖掉了，
@@ -359,8 +362,9 @@ body.banner-on #pcHint{opacity:0!important;pointer-events:none}
 /* 移动提示：抬到摇杆上方，免得和摇杆叠在一起 */
 #moveHint{position:absolute;left:50%;bottom:calc(var(--safeB) + var(--stick) + 20px);
   transform:translateX(-50%);max-width:calc(100% - 28px);
-  background:rgba(10,24,40,.82);color:#ffe9a8;
-  border:1px solid rgba(255,215,106,.35);border-radius:999px;
+  /* 4.1.7：操作提示是"教你怎么动"，不是"现在能按" —— 从暖金改成冷白 */
+  background:rgba(10,24,40,.82);color:#dbeafe;
+  border:1px solid rgba(255,255,255,.18);border-radius:999px;
   padding:calc(var(--pad) * .9) calc(var(--pad) * 2.2);
   font-size:var(--fs-md);font-weight:700;z-index:23;pointer-events:none;text-align:center;
   transition:opacity .4s;animation:float 2.4s ease-in-out infinite}
@@ -376,7 +380,7 @@ cursor:pointer;white-space:nowrap;max-width:44vw;overflow:hidden;
 text-overflow:ellipsis;
 box-shadow:var(--gb-edge-hi),var(--gb-edge-lo),var(--gb-hair),var(--gb-drop)}
 #pcHint:active{transform:scale(.97);box-shadow:var(--gb-press-lift),var(--gb-hair)}
-#pcHint b{color:#ffd76a}
+#pcHint b{color:#eaf4ff}
 body.pc #pcHint{display:flex}
 /* 电脑端摇杆常驻时淡一点，鼠标按住拖动才亮起来 */
 body.pc #stick{opacity:.3}

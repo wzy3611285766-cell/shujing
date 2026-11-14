@@ -91,13 +91,13 @@ function drillActBtn(spot,btn,hint){
 /* 练枪模式的 HUD：位置 / 统计 / 任务条 */
 function updateHudDrill(){
   setH($('regionChip'), '<i class="ic" data-ico="target"></i><span class="txt">练枪场 · 压轴专训</span>');
-  $('regionChip').style.color='#ffd76a';
+  $('regionChip').style.color='';
   const tt=drillTotal();
   setH($('diffChip'), '<span class="txt">'+(tt.n?('累计 '+tt.n+' 题 · 命中 '+pctOf(tt.p)):'还没开练')+'</span>');
-  $('diffChip').style.color=tt.n?'#ffd76a':'';
+  $('diffChip').style.color='';
   const cv=crystalShown();
   setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+cv+'</span>');
-  $('crystalChip').style.color='#ffd76a';
+  $('crystalChip').style.color='';
   watchCrystal(cv);
   setQuestText(questTextDrill());
   measureTopbar();
@@ -272,7 +272,7 @@ function questTextEpic(){
   else{
     const nx=EPOCHS.find(r=>EPIC_SPOTS.some(s=>s.era===r.id&&!state.read[s.sid]));
     txt=nx?`「${ep.name}」已读完 · 顺流而下前往${nx.name}`
-          :'十五纪元读完！你已走完四科交织的科学长河 🌌';
+          :'十五纪元读完 · 四科交织的科学长河走完了';
   }
   /* 星尘攒够一张券、手上又没几张时，顺带提一句出口在哪 ——
      这条河以前是死水，攒到一千多枚也没处花 */

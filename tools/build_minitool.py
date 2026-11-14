@@ -484,8 +484,8 @@ PATCH_CSS = {
             "max-width:36vw;min-width:0;overflow:hidden;white-space:nowrap}",
         ),
         (
-            "#crystalChip{color:#ffd76a;font-variant-numeric:tabular-nums;flex:none}",
-            "#crystalChip{color:#ffd76a;font-variant-numeric:tabular-nums;flex:0 1 auto;min-width:0}\n"
+            "#crystalChip{color:#eaf4ff;font-variant-numeric:tabular-nums;flex:none}",
+            "#crystalChip{color:#eaf4ff;font-variant-numeric:tabular-nums;flex:0 1 auto;min-width:0}\n"
             "/* 小工具：顶栏让出 56px 之后放不下三块 chip，难度压成一个圆点，\n"
             "   只露首字（基 / 常 / 攻），颜色本身仍区分档位。 */\n"
             "#diffChip{flex:0 0 auto;width:calc(var(--fs-xs) + var(--pad) * 2);"

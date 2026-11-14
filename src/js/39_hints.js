@@ -292,7 +292,7 @@ function session(cfg){
       ${lingStrip(q)}
       <div class="qmeta">${cfg.fixedTier
         ? '第二步 · 选出正确答案（高考真题档 · 最多错 1 题）'
-        : '第二步 · 选出正确答案（连对 2 题升档，错 2 题降档）'}</div>
+        : '第二步 · 选出正确答案'}</div>
       <div class="opts">${opts.map((o,idx)=>`<div class="opt" data-i="${idx}">${esc(o)}</div>`).join('')}</div>
       <div id="hintBox"></div>
       <div id="feedback"></div>
@@ -354,7 +354,8 @@ function session(cfg){
          它要在真机上唤醒 AudioContext，可能几百毫秒 —— 排在视觉写入之后
          同步跑，就会把"变绿"那一帧一起拖住（烽火那边实测 800ms）。 */
       fb.className='ok';
-      setH(fb, `✅ 答对！用时 ${cost.toFixed(1)} 秒${bonus?'（迅捷 +'+bonus+'）':''}${apprBonus?'（思路对路 +'+apprBonus+'）':''} · 获得 <b>${gain}</b> 🪙`);
+      /* 文案调性（4.1.5）：陈述句，不用感叹号串三个括号 —— 三件事用「·」分开就够了 */
+      setH(fb, `答对 · 用时 ${cost.toFixed(1)} 秒${bonus?' · 迅捷 +'+bonus:''}${apprBonus?' · 思路对路 +'+apprBonus:''} · 结晶 +<b>${gain}</b>`);
       if(!cfg.fixedTier&&state.streak%2===0&&curTier<3){
         curTier++;
         state.tier[curRid]=Math.max(state.tier[curRid]||1,curTier);
@@ -438,12 +439,12 @@ function sessionFixed(list,title,onFinish){
           const gr=wbGrade(q,true),coin2=2+((ap&&ap.ok)?2:0);
           const nx=state.wrongBook.filter(x=>x.text===q.text)[0];
           fb.className='ok';
-          setH(fb, (gr==='done'?'✅ 答对！🎓 满星毕业，收进「已掌握」'
-            :(gr==='up'?'✅ 答对！⬆️ 熟炼度 +1'+(nx&&nx.due?'，'+esc(nx.due)+' 再见':'')
-              :'✅ 答对！'))+' 🪙+'+coin2+stepsHtml(q,false));}
+          setH(fb, (gr==='done'?'答对 · 满星毕业，收进「已掌握」'
+            :(gr==='up'?'答对 · 熟炼度 +1'+(nx&&nx.due?'，'+esc(nx.due)+' 再见':'')
+              :'答对'))+' · 结晶 +'+coin2+stepsHtml(q,false));}
         else{state.totalWrong++;state.streak=0;
           wbGrade(q,false);
-          fb.className='no';setH(fb, `❌ 正确答案：<b>${esc(q.ans)}</b><div class="exp">💡 ${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">📌 熟炼度归零，明天再来一遍</div>`);}
+          fb.className='no';setH(fb, `正确答案：<b>${esc(q.ans)}</b><div class="exp">${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">熟炼度归零 · 明天再考一次</div>`);}
         /* 音效 / 落盘 / HUD 与闯关同款「先画后算」（wbGrade 要喂反馈文案，保持同步） */
         const tPaint=performance.now();
         afterPaint(()=>{
@@ -498,9 +499,9 @@ function sessionFixed(list,title,onFinish){
         const gr2=wbGrade(q,true),coin3=2+((ap&&ap.ok)?2:0);
         const nx2=state.wrongBook.filter(x=>x.text===q.text)[0];
         fb.className='ok';
-        setH(fb, (gr2==='done'?'✅ 🎓 满星毕业，收进「已掌握」'
-          :(gr2==='up'?'✅ 记住了！⬆️ 熟炼度 +1'+(nx2&&nx2.due?'，'+esc(nx2.due)+' 再见':'')
-            :'✅ 记住了！'))+' 🪙+'+coin3);
+        setH(fb, (gr2==='done'?'满星毕业，收进「已掌握」'
+          :(gr2==='up'?'记住了 · 熟炼度 +1'+(nx2&&nx2.due?'，'+esc(nx2.due)+' 再见':'')
+            :'记住了'))+' · 结晶 +'+coin3);
         box.querySelectorAll('button').forEach(b=>{b.disabled=true;});
         finish(true);
       };
@@ -550,19 +551,19 @@ function startSpirit(s){
           <h2>它跑掉了…</h2>
           <div class="sub">答对 ${right} / ${total}，至少要答对 2 题</div>
           <div class="center" style="font-size:44px;margin:10px 0">💨</div>
-          <div class="center">${sp.e} ${sp.n} 溜走了。<br>别灰心，石碑那边再练几题就会了。</div>
+          <div class="center">${sp.e} ${sp.n} 溜走了。<br>石碑那边再练几题就会了</div>
           <div class="row"><button class="btn primary" id="ok">再试试</button></div>
         `);
         $('ok').onclick=closePanel;return;
       }
       state.caught[s.sid]=true;state.crystals+=6;save();updateHUD();SFX.win();
       openPanel(`
-        <h2>收服成功！</h2>
+        <h2>收服成功</h2>
         <div class="sub">答对 ${right} / ${total} 题</div>
         <div class="center" style="font-size:56px;margin:8px 0">${sp.e}</div>
         <div class="center"><b style="color:#ffd76a;font-size:var(--fs-lg)">${sp.n}</b><br>
-        擅长：${sp.k}<br>它加入了你的图鉴 🪙+6</div>
-        <div class="row"><button class="btn primary" id="ok">太棒了</button></div>
+        擅长：${sp.k}<br>已加入图鉴 · 结晶 +6</div>
+        <div class="row"><button class="btn primary" id="ok">好</button></div>
       `);
       $('ok').onclick=closePanel;
     }});
@@ -599,8 +600,8 @@ function startGuard(s){
           <h2>🏅 获得${reg.name}徽章</h2>
           <div class="sub">答对 ${right} / ${total} 题</div>
           <div class="center" style="font-size:56px;margin:6px 0">${reg.emoji}</div>
-          <div class="center">守护者让开了道路！<br>${un?`<b style="color:#ffd76a">${un}</b> 已开通 🎉`:''}<br>奖励 25 🪙</div>
-          <div class="row"><button class="btn primary" id="ok">出发！</button></div>
+          <div class="center">守护者让开了道路<br>${un?`<b style="color:#ffd76a">${un}</b> 已开通`:''}<br>奖励 · 结晶 25</div>
+          <div class="row"><button class="btn primary" id="ok">出发</button></div>
         `);
         $('ok').onclick=()=>{closePanel();buildStatic();};
       }});

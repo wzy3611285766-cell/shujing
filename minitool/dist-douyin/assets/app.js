@@ -12876,7 +12876,7 @@ function session(cfg){
       ${lingStrip(q)}
       <div class="qmeta">${cfg.fixedTier
         ? '第二步 · 选出正确答案（高考真题档 · 最多错 1 题）'
-        : '第二步 · 选出正确答案（连对 2 题升档，错 2 题降档）'}</div>
+        : '第二步 · 选出正确答案'}</div>
       <div class="opts">${opts.map((o,idx)=>`<div class="opt" data-i="${idx}">${esc(o)}</div>`).join('')}</div>
       <div id="hintBox"></div>
       <div id="feedback"></div>
@@ -12938,7 +12938,8 @@ function session(cfg){
          它要在真机上唤醒 AudioContext，可能几百毫秒 —— 排在视觉写入之后
          同步跑，就会把"变绿"那一帧一起拖住（烽火那边实测 800ms）。 */
       fb.className='ok';
-      setH(fb, `✅ 答对！用时 ${cost.toFixed(1)} 秒${bonus?'（迅捷 +'+bonus+'）':''}${apprBonus?'（思路对路 +'+apprBonus+'）':''} · 获得 <b>${gain}</b> 🪙`);
+      /* 文案调性（4.1.5）：陈述句，不用感叹号串三个括号 —— 三件事用「·」分开就够了 */
+      setH(fb, `答对 · 用时 ${cost.toFixed(1)} 秒${bonus?' · 迅捷 +'+bonus:''}${apprBonus?' · 思路对路 +'+apprBonus:''} · 结晶 +<b>${gain}</b>`);
       if(!cfg.fixedTier&&state.streak%2===0&&curTier<3){
         curTier++;
         state.tier[curRid]=Math.max(state.tier[curRid]||1,curTier);
@@ -13022,12 +13023,12 @@ function sessionFixed(list,title,onFinish){
           const gr=wbGrade(q,true),coin2=2+((ap&&ap.ok)?2:0);
           const nx=state.wrongBook.filter(x=>x.text===q.text)[0];
           fb.className='ok';
-          setH(fb, (gr==='done'?'✅ 答对！🎓 满星毕业，收进「已掌握」'
-            :(gr==='up'?'✅ 答对！⬆️ 熟炼度 +1'+(nx&&nx.due?'，'+esc(nx.due)+' 再见':'')
-              :'✅ 答对！'))+' 🪙+'+coin2+stepsHtml(q,false));}
+          setH(fb, (gr==='done'?'答对 · 满星毕业，收进「已掌握」'
+            :(gr==='up'?'答对 · 熟炼度 +1'+(nx&&nx.due?'，'+esc(nx.due)+' 再见':'')
+              :'答对'))+' · 结晶 +'+coin2+stepsHtml(q,false));}
         else{state.totalWrong++;state.streak=0;
           wbGrade(q,false);
-          fb.className='no';setH(fb, `❌ 正确答案：<b>${esc(q.ans)}</b><div class="exp">💡 ${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">📌 熟炼度归零，明天再来一遍</div>`);}
+          fb.className='no';setH(fb, `正确答案：<b>${esc(q.ans)}</b><div class="exp">${esc(q.exp)}</div>${stepsHtml(q,true)}<div class="exp">熟炼度归零 · 明天再考一次</div>`);}
         /* 音效 / 落盘 / HUD 与闯关同款「先画后算」（wbGrade 要喂反馈文案，保持同步） */
         const tPaint=performance.now();
         afterPaint(()=>{
@@ -13082,9 +13083,9 @@ function sessionFixed(list,title,onFinish){
         const gr2=wbGrade(q,true),coin3=2+((ap&&ap.ok)?2:0);
         const nx2=state.wrongBook.filter(x=>x.text===q.text)[0];
         fb.className='ok';
-        setH(fb, (gr2==='done'?'✅ 🎓 满星毕业，收进「已掌握」'
-          :(gr2==='up'?'✅ 记住了！⬆️ 熟炼度 +1'+(nx2&&nx2.due?'，'+esc(nx2.due)+' 再见':'')
-            :'✅ 记住了！'))+' 🪙+'+coin3);
+        setH(fb, (gr2==='done'?'满星毕业，收进「已掌握」'
+          :(gr2==='up'?'记住了 · 熟炼度 +1'+(nx2&&nx2.due?'，'+esc(nx2.due)+' 再见':'')
+            :'记住了'))+' · 结晶 +'+coin3);
         box.querySelectorAll('button').forEach(b=>{b.disabled=true;});
         finish(true);
       };
@@ -13134,19 +13135,19 @@ function startSpirit(s){
           <h2>它跑掉了…</h2>
           <div class="sub">答对 ${right} / ${total}，至少要答对 2 题</div>
           <div class="center" style="font-size:44px;margin:10px 0">💨</div>
-          <div class="center">${sp.e} ${sp.n} 溜走了。<br>别灰心，石碑那边再练几题就会了。</div>
+          <div class="center">${sp.e} ${sp.n} 溜走了。<br>石碑那边再练几题就会了</div>
           <div class="row"><button class="btn primary" id="ok">再试试</button></div>
         `);
         $('ok').onclick=closePanel;return;
       }
       state.caught[s.sid]=true;state.crystals+=6;save();updateHUD();SFX.win();
       openPanel(`
-        <h2>收服成功！</h2>
+        <h2>收服成功</h2>
         <div class="sub">答对 ${right} / ${total} 题</div>
         <div class="center" style="font-size:56px;margin:8px 0">${sp.e}</div>
         <div class="center"><b style="color:#ffd76a;font-size:var(--fs-lg)">${sp.n}</b><br>
-        擅长：${sp.k}<br>它加入了你的图鉴 🪙+6</div>
-        <div class="row"><button class="btn primary" id="ok">太棒了</button></div>
+        擅长：${sp.k}<br>已加入图鉴 · 结晶 +6</div>
+        <div class="row"><button class="btn primary" id="ok">好</button></div>
       `);
       $('ok').onclick=closePanel;
     }});
@@ -13183,8 +13184,8 @@ function startGuard(s){
           <h2>🏅 获得${reg.name}徽章</h2>
           <div class="sub">答对 ${right} / ${total} 题</div>
           <div class="center" style="font-size:56px;margin:6px 0">${reg.emoji}</div>
-          <div class="center">守护者让开了道路！<br>${un?`<b style="color:#ffd76a">${un}</b> 已开通 🎉`:''}<br>奖励 25 🪙</div>
-          <div class="row"><button class="btn primary" id="ok">出发！</button></div>
+          <div class="center">守护者让开了道路<br>${un?`<b style="color:#ffd76a">${un}</b> 已开通`:''}<br>奖励 · 结晶 25</div>
+          <div class="row"><button class="btn primary" id="ok">出发</button></div>
         `);
         $('ok').onclick=()=>{closePanel();buildStatic();};
       }});
@@ -16475,7 +16476,7 @@ function drillSession(sid,opt){
     openPanel(`${headHtml()}
       ${apprRecapHtmlOf(ap)}
       ${lingStrip(q)}
-      <div class="qmeta">第二步 · 选出正确答案（提示免费，答错不扣任何东西）</div>
+      <div class="qmeta">第二步 · 选出正确答案</div>
       <div class="opts">${opts.map((o,k)=>`<div class="opt" data-i="${k}">${esc(o)}</div>`).join('')}</div>
       <div id="hintBox"></div>
       <div id="feedback"></div>
@@ -16520,8 +16521,7 @@ function drillSession(sid,opt){
     if(correct){
       right++;streak++;best=Math.max(best,streak);state.totalRight++;
       fb.className='ok';
-      setH(fb, `✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q));
-      if(streak>0&&streak%5===0)toast('🔥 连对 '+streak+' 题，手感正好');
+      setH(fb, `答对${(ap&&ap.ok)?' · 思路也对路':''}`+fbExpHtml(q));
     }else{
       wrong++;streak=0;state.totalWrong++;
       /* 存进错题本的那份快照：字段名按错题本的写法（ans 不是 ansText），
@@ -16545,8 +16545,8 @@ function drillSession(sid,opt){
       fb.className='no';
       /* 顺序有讲究：正确答案 → 这题进错题本怎么处理 → 才轮到完整解析。
          解析一摊开就是十几行，把"这题已收进本子"塞在它后面等于没写。 */
-      setH(fb, `❌ 正确答案：<b>${esc(q.ansText)}</b>`
-        +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 📕 ${wbMissWord(kind)}</div>`
+      setH(fb, `正确答案：<b>${esc(q.ansText)}</b>`
+        +`<div class="exp">不扣结晶 · 不降档 · 📕 ${wbMissWord(kind)}</div>`
         +fbExpHtml(q,true));
     }
     /* 音效 / 思路灵 / 落盘 / HUD 走共享的「先画后算」（quizSideFx）——
@@ -16685,7 +16685,7 @@ function showShop(){
       sessionFixed(list,'📜 错题重练',(r,t)=>{
         openPanel(`<h2>复习完成</h2><div class="sub">答对 ${r} / ${t}</div>
           <div class="center" style="font-size:44px;margin:8px 0">📜</div>
-          <div class="center">手感热起来了，继续上路吧！</div>
+          <div class="center">这一轮手感不错</div>
           <div class="row"><button class="btn primary" id="ok">好</button></div>`);
         $('ok').onclick=closePanel;
       });
@@ -17675,13 +17675,13 @@ function drillActBtn(spot,btn,hint){
 /* 练枪模式的 HUD：位置 / 统计 / 任务条 */
 function updateHudDrill(){
   setH($('regionChip'), '<i class="ic" data-ico="target"></i><span class="txt">练枪场 · 压轴专训</span>');
-  $('regionChip').style.color='#ffd76a';
+  $('regionChip').style.color='';
   const tt=drillTotal();
   setH($('diffChip'), '<span class="txt">'+(tt.n?('累计 '+tt.n+' 题 · 命中 '+pctOf(tt.p)):'还没开练')+'</span>');
-  $('diffChip').style.color=tt.n?'#ffd76a':'';
+  $('diffChip').style.color='';
   const cv=crystalShown();
   setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+cv+'</span>');
-  $('crystalChip').style.color='#ffd76a';
+  $('crystalChip').style.color='';
   watchCrystal(cv);
   setQuestText(questTextDrill());
   measureTopbar();
@@ -17856,7 +17856,7 @@ function questTextEpic(){
   else{
     const nx=EPOCHS.find(r=>EPIC_SPOTS.some(s=>s.era===r.id&&!state.read[s.sid]));
     txt=nx?`「${ep.name}」已读完 · 顺流而下前往${nx.name}`
-          :'十五纪元读完！你已走完四科交织的科学长河 🌌';
+          :'十五纪元读完 · 四科交织的科学长河走完了';
   }
   /* 星尘攒够一张券、手上又没几张时，顺带提一句出口在哪 ——
      这条河以前是死水，攒到一千多枚也没处花 */
@@ -18822,10 +18822,11 @@ function updateHUD(){
   $('regionChip').style.color=n.color;
   const tv=state.tier[state.region]||1;
   setH($('diffChip'), '<span class="txt">'+TIER_NAME[tv]+'题</span>');
-  $('diffChip').style.color=tv>=3?'#ffb0b0':(tv===2?'#ffd76a':'');
+  /* 档位只在"高考"（最危险那档）留一点红，二档不再染金 —— 金色归动作 */
+  $('diffChip').style.color=tv>=3?'#ffb0b0':'';
   const cv=crystalShown();
   setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+cv+'</span>');
-  $('crystalChip').style.color='#ffd76a';
+  $('crystalChip').style.color='';
   watchCrystal(cv);
   setQuestText(questText());
   measureTopbar();
@@ -22345,7 +22346,7 @@ function updateHudBlaze(){
 
   setH($('diffChip'), '<span class="txt">'+
     (active?esc(diff.name+' · 信号 '+Math.max(0,BZ.sig)):'未部署')+'</span>');
-  $('diffChip').style.color=active?(diff.id>=3?'#ffb0b0':(diff.id===2?'#ffd76a':'')):'';
+  $('diffChip').style.color=active&&diff.id>=3?'#ffb0b0':'';
 
   /* 局中这一格显示「背包」：几件 / 几格，以及这批东西能卖多少。
      烽火里不掉结晶，钱只能活着回基地、去交易站卖了东西才有。 */
@@ -22357,7 +22358,7 @@ function updateHudBlaze(){
   }else{
     setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+(BLAZE_STATE.crystals|0)+'</span>');
   }
-  $('crystalChip').style.color='#ffd76a';
+  $('crystalChip').style.color='';
   watchCrystal(BLAZE_STATE.crystals|0);
 
   setQuestText(questTextBlaze());
@@ -23495,7 +23496,7 @@ function showMenu(){
   const head = '数境：搜打撤';
   /* 当前版本挂在菜单标题上（4.0.8）：以前只有"有新版本"那条通知栏才会提版本号，
      平时想说自己跑的是哪一版都没处看。BUILD_VER 由构建期注入，
-     没经过构建（4.1.5 占位）时不显示，免得把占位符贴到界面上。 */
+     没经过构建（4.1.7 占位）时不显示，免得把占位符贴到界面上。 */
   const verTag=(typeof BUILD_VER!=='undefined'&&String(BUILD_VER).indexOf('__')!==0)
     ?('<span class="ver-tag">v'+esc(BUILD_VER)+'</span>'):'';
   /* 三个世界列全，点哪个去哪个 —— 以前只能循环切换，
@@ -24657,7 +24658,7 @@ function acctMenuDesc(){
    边界：file:// 打开、离线、没部署 version.json、预览沙箱 —— 一律静默跳过，
    绝不让"版本检查"影响游戏本身。
    ========================================================= */
-const BUILD_VER='4.1.5';
+const BUILD_VER='4.1.7';
 const UPBAR_KEY='genji_upbar_skip';   /* 点过 ✕ 的版本号：同一个标签页里不再顶 */
 function upbarSkipped(v){
   try{return sessionStorage.getItem(UPBAR_KEY)===String(v);}catch(e){return false;}

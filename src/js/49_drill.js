@@ -617,7 +617,7 @@ function drillSession(sid,opt){
     openPanel(`${headHtml()}
       ${apprRecapHtmlOf(ap)}
       ${lingStrip(q)}
-      <div class="qmeta">第二步 · 选出正确答案（提示免费，答错不扣任何东西）</div>
+      <div class="qmeta">第二步 · 选出正确答案</div>
       <div class="opts">${opts.map((o,k)=>`<div class="opt" data-i="${k}">${esc(o)}</div>`).join('')}</div>
       <div id="hintBox"></div>
       <div id="feedback"></div>
@@ -662,8 +662,7 @@ function drillSession(sid,opt){
     if(correct){
       right++;streak++;best=Math.max(best,streak);state.totalRight++;
       fb.className='ok';
-      setH(fb, `✅ 答对！${(ap&&ap.ok)?'思路也对路 👍':''}`+fbExpHtml(q));
-      if(streak>0&&streak%5===0)toast('🔥 连对 '+streak+' 题，手感正好');
+      setH(fb, `答对${(ap&&ap.ok)?' · 思路也对路':''}`+fbExpHtml(q));
     }else{
       wrong++;streak=0;state.totalWrong++;
       /* 存进错题本的那份快照：字段名按错题本的写法（ans 不是 ansText），
@@ -687,8 +686,8 @@ function drillSession(sid,opt){
       fb.className='no';
       /* 顺序有讲究：正确答案 → 这题进错题本怎么处理 → 才轮到完整解析。
          解析一摊开就是十几行，把"这题已收进本子"塞在它后面等于没写。 */
-      setH(fb, `❌ 正确答案：<b>${esc(q.ansText)}</b>`
-        +`<div class="exp">练枪零损失：不扣结晶、不降档、不算失败 —— 📕 ${wbMissWord(kind)}</div>`
+      setH(fb, `正确答案：<b>${esc(q.ansText)}</b>`
+        +`<div class="exp">不扣结晶 · 不降档 · 📕 ${wbMissWord(kind)}</div>`
         +fbExpHtml(q,true));
     }
     /* 音效 / 思路灵 / 落盘 / HUD 走共享的「先画后算」（quizSideFx）——
@@ -827,7 +826,7 @@ function showShop(){
       sessionFixed(list,'📜 错题重练',(r,t)=>{
         openPanel(`<h2>复习完成</h2><div class="sub">答对 ${r} / ${t}</div>
           <div class="center" style="font-size:44px;margin:8px 0">📜</div>
-          <div class="center">手感热起来了，继续上路吧！</div>
+          <div class="center">这一轮手感不错</div>
           <div class="row"><button class="btn primary" id="ok">好</button></div>`);
         $('ok').onclick=closePanel;
       });

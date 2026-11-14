@@ -271,10 +271,11 @@ function updateHUD(){
   $('regionChip').style.color=n.color;
   const tv=state.tier[state.region]||1;
   setH($('diffChip'), '<span class="txt">'+TIER_NAME[tv]+'题</span>');
-  $('diffChip').style.color=tv>=3?'#ffb0b0':(tv===2?'#ffd76a':'');
+  /* 档位只在"高考"（最危险那档）留一点红，二档不再染金 —— 金色归动作 */
+  $('diffChip').style.color=tv>=3?'#ffb0b0':'';
   const cv=crystalShown();
   setH($('crystalChip'), '<i class="ic" data-ico="coin"></i><span class="mono">'+cv+'</span>');
-  $('crystalChip').style.color='#ffd76a';
+  $('crystalChip').style.color='';
   watchCrystal(cv);
   setQuestText(questText());
   measureTopbar();
